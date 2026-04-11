@@ -1,0 +1,38 @@
+{
+  "persons": [
+    {
+      "name": "Alon - No IPO",
+      "base_scenario": "Baseline"
+    },
+    {
+      "name": "Alon - IPO Year 2",
+      "base_scenario": "Baseline",
+      "extra_events": [
+        {"year": 2, "portfolio_injection": 3000000, "description": "Stock offering"},
+        {"year": 3, "portfolio_injection": -500000, "description": "Surrogacy"}
+      ]
+    },
+    {
+      "name": "Alon - IPO Year 3",
+      "base_scenario": "Baseline",
+      "extra_events": [
+        {"year": 3, "portfolio_injection": 2000000, "description": "Stock offering"},
+        {"year": 3, "portfolio_injection": -500000, "description": "Surrogacy"}
+      ]
+    },
+    {
+      "name": "Alon - Buy Apartment",
+      "base_scenario": "Baseline",
+      "mortgage": {
+        "principal": 2250000,
+        "annual_rate": 0.04,
+        "duration_years": 25
+      }
+    },
+    {
+      "name": "Alon - Raise Scenario",
+      "base_scenario": "Baseline",
+      "monthly_income": 60000
+    }
+  ]
+}

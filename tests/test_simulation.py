@@ -5,7 +5,7 @@ from pathlib import Path
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from models import Mortgage, Scenario, Event
+from models import Mortgage, Scenario, Event, Person
 from simulation import simulate
 
 
@@ -523,6 +523,175 @@ class TestBuildInsights(unittest.TestCase):
 
         # Both should produce identical output
         self.assertEqual(insights_string, formatted_string)
+
+
+class TestPerson(unittest.TestCase):
+    """Test Person object (scenario composition)."""
+
+    def test_resolve_no_overrides_inherits_all_base_fields(self):
+        """All base fields should be inherited when no overrides are set."""
+        base = Scenario(
+            name="Baseline",
+            monthly_income=20_000,
+            monthly_expenses=13_000,
+            age=41,
+            return_rate=0.07,
+            withdrawal_rate=0.04,
+        )
+        person = Person(name="Test Person", base_scenario=base)
+        resolved = person.resolve()
+
+        # Should inherit all base fields (except name, which comes from person)
+        self.assertEqual(resolved.name, "Test Person")
+        self.assertEqual(resolved.monthly_income, 20_000)
+        self.assertEqual(resolved.monthly_expenses, 13_000)
+        self.assertEqual(resolved.age, 41)
+        self.assertEqual(resolved.return_rate, 0.07)
+        self.assertEqual(resolved.withdrawal_rate, 0.04)
+
+    def test_resolve_name_becomes_scenario_name(self):
+        """Person's name should become the resolved Scenario's name."""
+        base = Scenario(
+            name="Baseline",
+            monthly_income=20_000,
+            monthly_expenses=13_000,
+        )
+        person = Person(name="Alice - My Custom Scenario", base_scenario=base)
+        resolved = person.resolve()
+
+        self.assertEqual(resolved.name, "Alice - My Custom Scenario")
+        # Base should not be mutated
+        self.assertEqual(base.name, "Baseline")
+
+    def test_resolve_scalar_override_applied(self):
+        """Scalar overrides (income, expenses, age, etc.) should be applied."""
+        base = Scenario(
+            name="Baseline",
+            monthly_income=20_000,
+            monthly_expenses=13_000,
+            age=41,
+        )
+        person = Person(
+            name="Test",
+            base_scenario=base,
+            monthly_income=60_000,  # Override
+            age=50,  # Override
+        )
+        resolved = person.resolve()
+
+        self.assertEqual(resolved.monthly_income, 60_000)
+        self.assertEqual(resolved.monthly_expenses, 13_000)  # Not overridden
+        self.assertEqual(resolved.age, 50)
+
+    def test_resolve_extra_events_appended_to_base(self):
+        """extra_events should be appended after base_scenario.events."""
+        base = Scenario(
+            name="Baseline",
+            monthly_income=20_000,
+            monthly_expenses=13_000,
+            events=[Event(year=1, portfolio_injection=100_000, description="Base event")],
+        )
+        person = Person(
+            name="Test",
+            base_scenario=base,
+            extra_events=[
+                Event(year=2, portfolio_injection=200_000, description="Extra event 1"),
+                Event(year=3, portfolio_injection=300_000, description="Extra event 2"),
+            ],
+        )
+        resolved = person.resolve()
+
+        self.assertEqual(len(resolved.events), 3)
+        self.assertEqual(resolved.events[0].year, 1)
+        self.assertEqual(resolved.events[0].description, "Base event")
+        self.assertEqual(resolved.events[1].year, 2)
+        self.assertEqual(resolved.events[1].description, "Extra event 1")
+        self.assertEqual(resolved.events[2].year, 3)
+        self.assertEqual(resolved.events[2].description, "Extra event 2")
+
+    def test_resolve_replace_events_replaces_base(self):
+        """replace_events should completely replace base_scenario.events."""
+        base = Scenario(
+            name="Baseline",
+            monthly_income=20_000,
+            monthly_expenses=13_000,
+            events=[Event(year=1, portfolio_injection=100_000, description="Base event")],
+        )
+        person = Person(
+            name="Test",
+            base_scenario=base,
+            replace_events=[
+                Event(year=5, portfolio_injection=500_000, description="New event 1"),
+                Event(year=6, portfolio_injection=600_000, description="New event 2"),
+            ],
+        )
+        resolved = person.resolve()
+
+        # Should have exactly the replace_events, not base + replace
+        self.assertEqual(len(resolved.events), 2)
+        self.assertEqual(resolved.events[0].year, 5)
+        self.assertEqual(resolved.events[0].description, "New event 1")
+        self.assertEqual(resolved.events[1].year, 6)
+        self.assertEqual(resolved.events[1].description, "New event 2")
+
+    def test_resolve_does_not_mutate_base_scenario(self):
+        """Base scenario should not be mutated by resolve()."""
+        base = Scenario(
+            name="Baseline",
+            monthly_income=20_000,
+            monthly_expenses=13_000,
+            events=[Event(year=1, portfolio_injection=100_000, description="Base event")],
+        )
+        person = Person(
+            name="Test",
+            base_scenario=base,
+            extra_events=[Event(year=2, portfolio_injection=200_000, description="Extra")],
+        )
+        resolved = person.resolve()
+
+        # Base should still have only 1 event
+        self.assertEqual(len(base.events), 1)
+        # Resolved should have 2 events
+        self.assertEqual(len(resolved.events), 2)
+
+    def test_resolve_mortgage_override_applied(self):
+        """Person's mortgage should replace base_scenario.mortgage if set."""
+        base = Scenario(
+            name="Baseline",
+            monthly_income=20_000,
+            monthly_expenses=13_000,
+            mortgage=Mortgage(principal=1_000_000, annual_rate=0.04, duration_years=20),
+        )
+        new_mortgage = Mortgage(principal=2_000_000, annual_rate=0.03, duration_years=25)
+        person = Person(
+            name="Test",
+            base_scenario=base,
+            mortgage=new_mortgage,
+        )
+        resolved = person.resolve()
+
+        self.assertEqual(resolved.mortgage.principal, 2_000_000)
+        self.assertEqual(resolved.mortgage.annual_rate, 0.03)
+        self.assertEqual(resolved.mortgage.duration_years, 25)
+
+    def test_resolve_produces_valid_scenario_for_simulation(self):
+        """Resolved person should produce a valid Scenario that can be simulated."""
+        base = Scenario(
+            name="Baseline",
+            monthly_income=20_000,
+            monthly_expenses=13_000,
+        )
+        person = Person(
+            name="Test Person",
+            base_scenario=base,
+            extra_events=[Event(year=2, portfolio_injection=1_000_000, description="Bonus")],
+        )
+        resolved = person.resolve()
+
+        # Should be able to simulate without error
+        result = simulate(resolved, years=5)
+        self.assertEqual(len(result.year_data), 5)
+        self.assertEqual(result.scenario_name, "Test Person")
 
 
 if __name__ == "__main__":
