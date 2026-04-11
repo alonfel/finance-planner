@@ -1,0 +1,29 @@
+{
+  "scenarios": [
+    {
+      "name": "Baseline",
+      "monthly_income": 45000,
+      "monthly_expenses": 25000,
+      "currency": "ILS",
+      "initial_portfolio": 0,
+      "return_rate": 0.07,
+      "withdrawal_rate": 0.04,
+      "mortgage": null
+    },
+    {
+      "name": "Buy Apartment",
+      "monthly_income": 45000,
+      "monthly_expenses": 25000,
+      "currency": "ILS",
+      "initial_portfolio": 0,
+      "return_rate": 0.07,
+      "withdrawal_rate": 0.04,
+      "mortgage": {
+        "principal": 2250000,
+        "annual_rate": 0.04,
+        "duration_years": 25,
+        "currency": "ILS"
+      }
+    }
+  ]
+}
