@@ -17,10 +17,13 @@ The engine:
 - ✅ Simulates portfolio growth with annual investment returns
 - ✅ Tracks income, expenses, and net savings each year
 - ✅ Applies mortgage payments when active
+- ✅ Models one-time financial events (stock offerings, inheritances, emergencies)
 - ✅ Detects retirement (first year portfolio meets retirement goal)
-- ✅ Compares two scenarios and generates insights
+- ✅ Shows retirement year, calendar year, and retirement age
+- ✅ Compares multiple scenarios and generates structured insights
+- ✅ Configurable scenario parameter display in output
 - ✅ 100% configuration-driven (no code changes needed)
-- ✅ Pure functions, fully testable (16 unit tests, all passing)
+- ✅ Pure functions, fully testable (29 unit tests, all passing)
 
 ---
 
@@ -121,13 +124,26 @@ Edit: settings.json  (change "years": 20)
 ```json
 {
   "simulation": {
-    "years": 20
+    "years": 20,
+    "return_rate": 0.07,
+    "withdrawal_rate": 0.04
+  },
+  "output": {
+    "show_fields": [
+      "income_expenses",
+      "mortgage_details",
+      "events",
+      "rates_settings"
+    ]
   }
 }
 ```
 
 **Edit to:**
 - Change simulation period (`"years": 40` for 40-year forecast)
+- Change default investment return rate (`"return_rate": 0.06` for 6%)
+- Change safe withdrawal rate (`"withdrawal_rate": 0.05` for 5% rule)
+- Customize scenario header output (remove/reorder fields in `show_fields` list)
 
 ---
 
@@ -166,6 +182,17 @@ class Scenario:
     return_rate: float = 0.07
     withdrawal_rate: float = 0.04
     currency: str = "ILS"
+    age: int = 30
+    events: list[Event] = field(default_factory=list)
+```
+
+**Event** (models.py)
+```python
+@dataclass
+class Event:
+    year: int                    # Which simulation year
+    portfolio_injection: float   # + = gain, - = expense
+    description: str = ""        # Event label
 ```
 
 **Mortgage** (models.py)
@@ -197,15 +224,17 @@ For each year:
 3. If mortgage is active (year ≤ duration):
    - **Expenses** += monthly_payment × 12
 4. **Net savings** = income − expenses
-5. **Portfolio** = (portfolio + net_savings) × (1 + return_rate)
-6. **Required capital** = expenses / withdrawal_rate
-7. If portfolio ≥ required_capital: **Retirement detected**
+5. **Apply events:** portfolio += any event injections for this year
+6. **Portfolio growth** = (portfolio + net_savings) × (1 + return_rate)
+7. **Required capital** = expenses / withdrawal_rate
+8. If portfolio ≥ required_capital: **Retirement detected**
+9. **Output retirement:** simulation year, calendar year, retirement age
 
 ---
 
 ## Testing
 
-16 unit tests verify correctness:
+29 unit tests verify correctness:
 
 ```bash
 python -m unittest discover -s tests -p "test_*.py" -v
@@ -215,9 +244,10 @@ python -m unittest discover -s tests -p "test_*.py" -v
 - Mortgage payment formula (standard amortization)
 - Scenario A: always positive savings, monotonic portfolio growth
 - Scenario B: correctly handles mortgage burden
+- **Events:** positive injections, negative withdrawals, multiple events, compounding
 - Retirement detection
 - Pure function behavior (deterministic)
-- Scenario comparison logic
+- **Insights:** structured insight object creation, formatting, comparison logic
 
 ---
 
@@ -250,32 +280,47 @@ python -m unittest discover -s tests -p "test_*.py" -v
 ## Example Use Cases
 
 ### Question: "When can I retire?"
-Edit `scenarios.json` with your income/expenses, run:
+Edit `scenarios.json` with your income/expenses/age, run:
 ```bash
 python main.py
 ```
-Look for retirement year in output.
+Look for output like: `✓ Retirement achieved in year 10 (expected: 2035, age: 50)`
 
 ### Question: "Should I buy the apartment?"
 Create two scenarios: with and without mortgage, run `main.py` to compare.
+
+### Question: "What if I get a stock offering in 2 years?"
+Add an event to your scenario in `scenarios.json`:
+```json
+"events": [
+  {"year": 2, "portfolio_injection": 3000000, "description": "Stock offering"}
+]
+```
+Compare timing (year 2 vs year 10 vs year 29) to see impact on retirement.
 
 ### Question: "What if I earn more?"
 Edit `scenarios.json`, change income, run again. See how retirement timeline changes.
 
 ### Question: "How sensitive is this to investment returns?"
-Edit `scenarios.json`, change `"return_rate"`, run again.
+Edit `settings.json`, change `"return_rate"`, run again.
 
 ---
+
+## Current Features
+
+- ✅ **Events** — one-time portfolio injections/withdrawals (stock offerings, emergencies)
+- ✅ **Age tracking** — see retirement year and retirement age
+- ✅ **Global settings** — return_rate and withdrawal_rate in settings.json
 
 ## Future Extensions
 
 The design cleanly supports:
 
-- **Scenario Trees** — branching scenarios at specific years
-- **Events** — irregular income/expenses (bonuses, unexpected costs, inheritance)
+- **Scenario Trees** — branching scenarios at specific years (income changes)
 - **Inflation** — adjust expenses by inflation rate annually
 - **Multiple Assets** — portfolio with different return rates (stocks, bonds, real estate)
 - **Advanced Outputs** — charts, sensitivity analysis, Monte Carlo simulations
+- **Tax modeling** — incorporate taxes into withdrawal calculations
 
 ---
 
@@ -319,18 +364,19 @@ python -m unittest tests.test_simulation.TestMortgage -v
 
 | File | Purpose |
 |---|---|
-| `models.py` | Data models: Scenario, Mortgage, YearData, SimulationResult |
+| `models.py` | Data models: Scenario, Mortgage, YearData, SimulationResult, Event |
 | `simulation.py` | Core simulation engine: `simulate(scenario, years)` |
-| `comparison.py` | Compare scenarios: `compare_scenarios()`, `generate_insights()` |
+| `comparison.py` | Insights model: `build_insights()`, `format_insights()`, `generate_insights()` |
 | `scenarios.py` | Load scenarios from `scenarios.json` |
-| `settings.py` | Load settings from `settings.json` |
-| `main.py` | Entry point: runs both scenarios, displays results |
-| `scenarios.json` | **CONFIG:** Scenario data (income, expenses, mortgage) |
-| `settings.json` | **CONFIG:** Simulation settings (years) |
+| `settings.py` | Load settings from `settings.json` (simulation + output config) |
+| `main.py` | Entry point: runs scenarios, displays results with configurable headers |
+| `compare_all_scenarios.py` | Comprehensive analysis: all scenarios, all pairwise comparisons |
+| `scenarios.json` | **CONFIG:** Scenario data (income, expenses, mortgage, events) |
+| `settings.json` | **CONFIG:** Simulation settings (years, rates) + output display fields |
 | `README.md` | This file — project overview |
 | `CLAUDE.md` | How to work with this codebase in Claude Code |
 | `ARCHITECTURE.md` | Technical design and extension patterns |
-| `tests/test_simulation.py` | 16 unit tests (all passing) |
+| `tests/test_simulation.py` | 29 unit tests (all passing) |
 
 ---
 

@@ -4,11 +4,15 @@ Financial Simulation Engine
 Main entry point: simulates both scenarios and generates comparison report.
 """
 
+from datetime import datetime
 from models import Scenario, Mortgage
 from simulation import simulate
 from comparison import compare_scenarios, generate_insights
-from scenarios import SCENARIO_A, SCENARIO_B
+from scenarios import SCENARIO_A, SCENARIO_B, load_scenarios
 from settings import SETTINGS
+
+# Current year for calculating future retirement dates
+CURRENT_YEAR = datetime.now().year
 
 
 # Currency symbols
@@ -24,14 +28,62 @@ def get_currency_symbol(currency: str) -> str:
     return CURRENCY_SYMBOLS.get(currency, currency)
 
 
-def print_year_summary(result, limit_years=40):
-    """Print a table of year-by-year results."""
+def print_scenario_header(scenario, settings):
+    """Print scenario input parameters as a header block.
+
+    Displays fields configured in settings.output.show_fields.
+    """
+    currency_symbol = get_currency_symbol(scenario.currency)
+    fields = settings.output.show_fields
+
+    print(f"\n{'─'*110}")
+    print(f"  Scenario Parameters: {scenario.name}")
+    print(f"{'─'*110}")
+
+    if "income_expenses" in fields:
+        net = scenario.monthly_income - scenario.monthly_expenses
+        print(f"  Income:   {currency_symbol} {scenario.monthly_income:>10,.0f}/month")
+        print(f"  Expenses: {currency_symbol} {scenario.monthly_expenses:>10,.0f}/month")
+        print(f"  Net:      {currency_symbol} {net:>10,.0f}/month")
+
+    if "mortgage_details" in fields:
+        if scenario.mortgage:
+            m = scenario.mortgage
+            print(f"  Mortgage: {currency_symbol} {m.principal:,.0f} @ {m.annual_rate*100:.1f}% for {m.duration_years}y  |  Monthly payment: {currency_symbol} {m.monthly_payment:,.0f}")
+        else:
+            print(f"  Mortgage: None")
+
+    if "events" in fields:
+        if scenario.events:
+            for e in scenario.events:
+                sign = "+" if e.portfolio_injection >= 0 else ""
+                print(f"  Event year {e.year}: {e.description}  ({sign}{currency_symbol} {e.portfolio_injection:,.0f})")
+        else:
+            print(f"  Events: None")
+
+    if "rates_settings" in fields:
+        print(f"  Return rate: {scenario.return_rate*100:.1f}%  |  Withdrawal rate: {scenario.withdrawal_rate*100:.1f}%  |  Simulation: {settings.years} years  |  Age: {scenario.age}")
+
+    print(f"{'─'*110}")
+
+
+def print_year_summary(result, scenario, limit_years=40, start_age=30):
+    """Print a table of year-by-year results with scenario header.
+
+    Args:
+        result: SimulationResult object
+        scenario: Scenario object (for parameter display)
+        limit_years: Max years to display
+        start_age: Starting age for retirement age calculation
+    """
+    # Print scenario parameters header
+    print_scenario_header(scenario, SETTINGS)
+
     # Get currency symbol from first year's data (all years use same currency)
-    # For now, get it from the scenario name (will be improved)
-    currency_symbol = "₪"  # Default to ILS (shekel)
+    currency_symbol = get_currency_symbol(scenario.currency)
 
     print(f"\n{'='*110}")
-    print(f"Scenario: {result.scenario_name} ({currency_symbol})")
+    print(f"Year-by-Year: {result.scenario_name} ({currency_symbol})")
     print(f"{'='*110}")
     print(
         f"{'Year':<6} {'Income':<14} {'Expenses':<14} {'Net Savings':<14} {'Portfolio':<16} {'Req. Capital':<14}"
@@ -49,7 +101,9 @@ def print_year_summary(result, limit_years=40):
         )
 
     if result.retirement_year:
-        print(f"\n✓ Retirement achieved in year {result.retirement_year}")
+        future_year = CURRENT_YEAR + result.retirement_year - 1
+        retirement_age = start_age + result.retirement_year - 1
+        print(f"\n✓ Retirement achieved in year {result.retirement_year} (expected: {future_year}, age: {retirement_age})")
         print(f"  Portfolio at retirement: {currency_symbol} {result.year_data[result.retirement_year - 1].portfolio:,.0f}")
     else:
         print(f"\n✗ No retirement achieved within {len(result.year_data)} years")
@@ -125,8 +179,8 @@ def main():
     result_b = simulate(SCENARIO_B, years=SETTINGS.years)
 
     # Print detailed year-by-year results
-    print_year_summary(result_a, limit_years=SETTINGS.years)
-    print_year_summary(result_b, limit_years=SETTINGS.years)
+    print_year_summary(result_a, SCENARIO_A, limit_years=SETTINGS.years, start_age=SCENARIO_A.age)
+    print_year_summary(result_b, SCENARIO_B, limit_years=SETTINGS.years, start_age=SCENARIO_B.age)
 
     # Validate both scenarios
     validate_scenario_a_behavior(result_a)
@@ -138,6 +192,73 @@ def main():
     print("="*110)
     insights = generate_insights(result_a, result_b)
     print(insights)
+
+    # Event scenarios: IPO timing comparison
+    print("\n" + "="*110)
+    print("IPO TIMING ANALYSIS: 3-Scenario Comparison")
+    print("="*110)
+
+    all_scenarios = load_scenarios()
+    print("\nSimulating IPO Year 2 (3M offering)...")
+    result_ipo2 = simulate(all_scenarios["IPO Year 2"], years=SETTINGS.years)
+
+    print("Simulating IPO Year 3 (2M offering)...")
+    result_ipo3 = simulate(all_scenarios["IPO Year 3"], years=SETTINGS.years)
+
+    print("Simulating IPO Year 29 (2M offering, delayed)...")
+    result_ipo29 = simulate(all_scenarios["IPO Year 29"], years=SETTINGS.years)
+
+    # Print summary comparison table
+    print("\n" + "="*110)
+    print("QUICK COMPARISON: IPO Timing Impact")
+    print("="*110)
+    print(
+        f"{'Scenario':<20} {'Offering':<20} {'Amount':<15} {'Retirement Year':<18} {'Final Portfolio':<20}"
+    )
+    print("-" * 110)
+    print(
+        f"{'IPO Year 2':<20} {'Year 2':<20} {'₪3,000,000':<15} "
+        f"{(str(result_ipo2.retirement_year) if result_ipo2.retirement_year else 'N/A'):<18} "
+        f"₪{result_ipo2.year_data[-1].portfolio:>17,.0f}"
+    )
+    print(
+        f"{'IPO Year 3':<20} {'Year 3':<20} {'₪2,000,000':<15} "
+        f"{(str(result_ipo3.retirement_year) if result_ipo3.retirement_year else 'N/A'):<18} "
+        f"₪{result_ipo3.year_data[-1].portfolio:>17,.0f}"
+    )
+    print(
+        f"{'IPO Year 29':<20} {'Year 29':<20} {'₪2,000,000':<15} "
+        f"{(str(result_ipo29.retirement_year) if result_ipo29.retirement_year else 'N/A'):<18} "
+        f"₪{result_ipo29.year_data[-1].portfolio:>17,.0f}"
+    )
+
+    # Print detailed results for each scenario
+    print_year_summary(result_ipo2, all_scenarios["IPO Year 2"], limit_years=min(15, SETTINGS.years), start_age=all_scenarios["IPO Year 2"].age)
+    print_year_summary(result_ipo3, all_scenarios["IPO Year 3"], limit_years=min(15, SETTINGS.years), start_age=all_scenarios["IPO Year 3"].age)
+    print_year_summary(result_ipo29, all_scenarios["IPO Year 29"], limit_years=min(15, SETTINGS.years), start_age=all_scenarios["IPO Year 29"].age)
+
+    # Pairwise comparisons
+    print("\n" + "="*110)
+    print("DETAILED COMPARISONS")
+    print("="*110)
+
+    print("\n" + "="*110)
+    print("IPO Year 2 vs Year 3 (Impact of 1-year delay, 1M less capital)")
+    print("="*110)
+    insights_2_vs_3 = generate_insights(result_ipo2, result_ipo3)
+    print(insights_2_vs_3)
+
+    print("\n" + "="*110)
+    print("IPO Year 3 vs Year 29 (Impact of 26-year delay)")
+    print("="*110)
+    insights_3_vs_29 = generate_insights(result_ipo3, result_ipo29)
+    print(insights_3_vs_29)
+
+    print("\n" + "="*110)
+    print("IPO Year 2 vs Year 29 (Extreme: Early vs Late offering)")
+    print("="*110)
+    insights_2_vs_29 = generate_insights(result_ipo2, result_ipo29)
+    print(insights_2_vs_29)
 
     print("\n" + "="*110)
     print("✓ Simulation complete and validated!")

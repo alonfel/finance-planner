@@ -51,8 +51,15 @@ def simulate(scenario: Scenario, years: int = 40) -> SimulationResult:
                 annual_expenses += scenario.mortgage.monthly_payment * 12
                 mortgage_active = True
 
-        # Compute net savings and portfolio growth
+        # Compute net savings
         net_savings = annual_income - annual_expenses
+
+        # Apply one-time events (stock offerings, bonuses, emergencies, etc.)
+        for event in scenario.events:
+            if event.year == year_num:
+                portfolio += event.portfolio_injection
+
+        # Portfolio growth
         portfolio = (portfolio + net_savings) * (1 + scenario.return_rate)
 
         # Compute required capital for retirement

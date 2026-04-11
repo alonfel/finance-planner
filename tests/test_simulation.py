@@ -5,7 +5,7 @@ from pathlib import Path
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from models import Mortgage, Scenario
+from models import Mortgage, Scenario, Event
 from simulation import simulate
 
 
@@ -177,6 +177,111 @@ class TestSimulate(unittest.TestCase):
         self.assertGreater(result_yes.year_data[0].expenses, result_no.year_data[0].expenses)
 
 
+class TestEvents(unittest.TestCase):
+    """Test event handling in scenarios."""
+
+    def test_event_portfolio_injection_positive(self):
+        """Positive event (stock offering) should increase portfolio in that year."""
+        scenario = Scenario(
+            name="With Offering",
+            monthly_income=20_000,
+            monthly_expenses=13_000,
+            events=[Event(year=2, portfolio_injection=1_000_000, description="Stock offering")],
+        )
+        result = simulate(scenario, years=5)
+        # Year 1 portfolio before event
+        year1_portfolio = result.year_data[0].portfolio
+        # Year 2 portfolio should have the injection
+        year2_portfolio = result.year_data[1].portfolio
+        # Year 2 should be noticeably higher due to injection
+        self.assertGreater(year2_portfolio, year1_portfolio * 1.5)
+
+    def test_event_portfolio_injection_negative(self):
+        """Negative event (expense) should decrease portfolio in that year."""
+        scenario = Scenario(
+            name="With Expense",
+            monthly_income=20_000,
+            monthly_expenses=13_000,
+            initial_portfolio=500_000,
+            events=[Event(year=2, portfolio_injection=-100_000, description="Emergency expense")],
+        )
+        result = simulate(scenario, years=5)
+        # Without the event, portfolio would grow
+        # But with the event, year 2 should show the impact
+        year1_portfolio = result.year_data[0].portfolio
+        year2_portfolio = result.year_data[1].portfolio
+        year3_portfolio = result.year_data[2].portfolio
+        # Year 2 should be lower due to expense
+        self.assertLess(year2_portfolio, year1_portfolio * 1.07 * 1.07)
+
+    def test_multiple_events_same_year(self):
+        """Multiple events in the same year should all apply."""
+        scenario = Scenario(
+            name="Multiple Events",
+            monthly_income=20_000,
+            monthly_expenses=13_000,
+            events=[
+                Event(year=2, portfolio_injection=1_000_000, description="Stock offering"),
+                Event(year=2, portfolio_injection=-300_000, description="Expense"),
+            ],
+        )
+        result = simulate(scenario, years=5)
+        # Net injection should be 700,000
+        year1_portfolio = result.year_data[0].portfolio
+        year2_portfolio = result.year_data[1].portfolio
+        # Year 2 should reflect net event of +700,000 before compounding
+        self.assertGreater(year2_portfolio, year1_portfolio * 1.5)
+
+    def test_event_compounds_same_year(self):
+        """Events should compound in the same year they occur."""
+        scenario = Scenario(
+            name="Event Compounding",
+            monthly_income=20_000,
+            monthly_expenses=13_000,
+            initial_portfolio=100,
+            events=[Event(year=1, portfolio_injection=100, description="Injection")],
+        )
+        result = simulate(scenario, years=2)
+        # Year 1: (100 + injection 100 + savings) * (1 + 0.07)
+        # The injection should be included in the compounding
+        year1_portfolio = result.year_data[0].portfolio
+        # Should be more than if no injection
+        self.assertGreater(year1_portfolio, 200)  # Base would be lower without injection
+
+    def test_no_events_by_default(self):
+        """Scenarios without events should work normally (events defaults to [])."""
+        scenario = Scenario(
+            name="No Events",
+            monthly_income=20_000,
+            monthly_expenses=13_000,
+        )
+        result = simulate(scenario, years=5)
+        # Should complete without error
+        self.assertEqual(len(result.year_data), 5)
+        # Portfolio should grow normally
+        self.assertGreater(result.year_data[-1].portfolio, result.year_data[0].portfolio)
+
+    def test_event_accelerates_retirement(self):
+        """Large event injection should accelerate retirement."""
+        scenario_no_event = Scenario(
+            name="No Event",
+            monthly_income=20_000,
+            monthly_expenses=13_000,
+        )
+        scenario_with_event = Scenario(
+            name="With Event",
+            monthly_income=20_000,
+            monthly_expenses=13_000,
+            events=[Event(year=2, portfolio_injection=2_000_000, description="Inheritance")],
+        )
+        result_no = simulate(scenario_no_event, years=40)
+        result_yes = simulate(scenario_with_event, years=40)
+        # Event scenario should retire earlier
+        self.assertIsNotNone(result_no.retirement_year)
+        self.assertIsNotNone(result_yes.retirement_year)
+        self.assertLess(result_yes.retirement_year, result_no.retirement_year)
+
+
 class TestComparisonAndInsights(unittest.TestCase):
     """Test comparison and insights generation."""
 
@@ -247,6 +352,177 @@ class TestComparisonAndInsights(unittest.TestCase):
 
         self.assertIsInstance(insights, str)
         self.assertGreater(len(insights), 0)
+
+
+class TestBuildInsights(unittest.TestCase):
+    """Test structured insight generation (without formatting)."""
+
+    def test_retirement_insight_count_always_two(self):
+        """Should always have exactly 2 RetirementInsights (one per scenario)."""
+        from comparison import build_insights, RetirementInsight
+
+        scenario_a = Scenario(
+            name="Baseline",
+            monthly_income=20_000,
+            monthly_expenses=13_000,
+        )
+        scenario_b = Scenario(
+            name="Buy Apartment",
+            monthly_income=20_000,
+            monthly_expenses=13_000,
+            mortgage=Mortgage(principal=1_500_000, annual_rate=0.04, duration_years=25),
+        )
+        result_a = simulate(scenario_a, years=40)
+        result_b = simulate(scenario_b, years=40)
+        insights = build_insights(result_a, result_b)
+
+        retirement_insights = [i for i in insights if isinstance(i, RetirementInsight)]
+        self.assertEqual(len(retirement_insights), 2)
+
+    def test_retirement_delta_only_when_both_retire(self):
+        """RetirementDeltaInsight should only appear when both scenarios retire."""
+        from comparison import build_insights, RetirementDeltaInsight
+
+        # Both scenarios retire
+        scenario_a = Scenario(
+            name="Baseline",
+            monthly_income=20_000,
+            monthly_expenses=13_000,
+        )
+        scenario_b = Scenario(
+            name="Higher Income",
+            monthly_income=30_000,
+            monthly_expenses=13_000,
+        )
+        result_a = simulate(scenario_a, years=40)
+        result_b = simulate(scenario_b, years=40)
+        insights = build_insights(result_a, result_b)
+
+        delta_insights = [i for i in insights if isinstance(i, RetirementDeltaInsight)]
+        # Both should retire, so there should be exactly 1 delta insight
+        self.assertEqual(len(delta_insights), 1)
+
+    def test_retirement_delta_absent_when_one_never_retires(self):
+        """RetirementDeltaInsight should be absent when one scenario doesn't retire."""
+        from comparison import build_insights, RetirementDeltaInsight
+
+        # Scenario B with huge mortgage (will never retire in 20 years)
+        scenario_a = Scenario(
+            name="Baseline",
+            monthly_income=20_000,
+            monthly_expenses=13_000,
+        )
+        scenario_b = Scenario(
+            name="Big Mortgage",
+            monthly_income=20_000,
+            monthly_expenses=18_000,
+            mortgage=Mortgage(principal=5_000_000, annual_rate=0.05, duration_years=30),
+        )
+        result_a = simulate(scenario_a, years=20)
+        result_b = simulate(scenario_b, years=20)
+        insights = build_insights(result_a, result_b)
+
+        delta_insights = [i for i in insights if isinstance(i, RetirementDeltaInsight)]
+        # B doesn't retire, so no delta
+        self.assertEqual(len(delta_insights), 0)
+
+    def test_mortgage_insight_only_when_mortgage_present(self):
+        """MortgageInsight should only appear when scenario B has a mortgage."""
+        from comparison import build_insights, MortgageInsight
+
+        # A without mortgage, B without mortgage
+        scenario_a = Scenario(
+            name="Baseline",
+            monthly_income=20_000,
+            monthly_expenses=13_000,
+        )
+        scenario_b = Scenario(
+            name="Also Baseline",
+            monthly_income=20_000,
+            monthly_expenses=13_000,
+        )
+        result_a = simulate(scenario_a, years=40)
+        result_b = simulate(scenario_b, years=40)
+        insights = build_insights(result_a, result_b)
+
+        mortgage_insights = [i for i in insights if isinstance(i, MortgageInsight)]
+        # No mortgage in scenario B
+        self.assertEqual(len(mortgage_insights), 0)
+
+    def test_mortgage_insight_present_when_mortgage_in_b(self):
+        """MortgageInsight should appear when scenario B has a mortgage."""
+        from comparison import build_insights, MortgageInsight
+
+        scenario_a = Scenario(
+            name="Baseline",
+            monthly_income=20_000,
+            monthly_expenses=13_000,
+        )
+        scenario_b = Scenario(
+            name="Buy Apartment",
+            monthly_income=20_000,
+            monthly_expenses=13_000,
+            mortgage=Mortgage(principal=1_500_000, annual_rate=0.04, duration_years=25),
+        )
+        result_a = simulate(scenario_a, years=40)
+        result_b = simulate(scenario_b, years=40)
+        insights = build_insights(result_a, result_b)
+
+        mortgage_insights = [i for i in insights if isinstance(i, MortgageInsight)]
+        # Mortgage in scenario B
+        self.assertEqual(len(mortgage_insights), 1)
+        self.assertEqual(mortgage_insights[0].scenario_name, "Buy Apartment")
+
+    def test_portfolio_insight_difference_sign(self):
+        """PortfolioInsight should correctly compute the difference (B - A)."""
+        from comparison import build_insights, PortfolioInsight
+
+        scenario_a = Scenario(
+            name="Baseline",
+            monthly_income=20_000,
+            monthly_expenses=13_000,
+        )
+        scenario_b = Scenario(
+            name="Buy Apartment",
+            monthly_income=20_000,
+            monthly_expenses=13_000,
+            mortgage=Mortgage(principal=1_500_000, annual_rate=0.04, duration_years=25),
+        )
+        result_a = simulate(scenario_a, years=40)
+        result_b = simulate(scenario_b, years=40)
+        insights = build_insights(result_a, result_b)
+
+        portfolio_insights = [i for i in insights if isinstance(i, PortfolioInsight)]
+        self.assertEqual(len(portfolio_insights), 1)
+        # B has mortgage, so should have lower portfolio
+        self.assertLess(portfolio_insights[0].difference, 0)
+
+    def test_format_insights_output_unchanged(self):
+        """Verify format_insights produces same output as original generate_insights."""
+        from comparison import build_insights, format_insights, generate_insights
+
+        scenario_a = Scenario(
+            name="Baseline",
+            monthly_income=20_000,
+            monthly_expenses=13_000,
+        )
+        scenario_b = Scenario(
+            name="Buy Apartment",
+            monthly_income=20_000,
+            monthly_expenses=13_000,
+            mortgage=Mortgage(principal=1_500_000, annual_rate=0.04, duration_years=25),
+        )
+        result_a = simulate(scenario_a, years=40)
+        result_b = simulate(scenario_b, years=40)
+
+        # Using generate_insights (backward-compatible wrapper)
+        insights_string = generate_insights(result_a, result_b)
+        # Using build_insights + format_insights
+        structured_insights = build_insights(result_a, result_b)
+        formatted_string = format_insights(structured_insights)
+
+        # Both should produce identical output
+        self.assertEqual(insights_string, formatted_string)
 
 
 if __name__ == "__main__":

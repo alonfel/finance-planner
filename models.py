@@ -3,6 +3,14 @@ from typing import Optional
 
 
 @dataclass
+class Event:
+    """Represents a one-time portfolio event (e.g., stock offering, inheritance, emergency expense)."""
+    year: int  # Which simulation year (1-indexed)
+    portfolio_injection: float  # Positive = gain, negative = expense
+    description: str = ""  # Optional label for the event
+
+
+@dataclass
 class Mortgage:
     """Represents a fixed-rate mortgage with standard amortization."""
     principal: float
@@ -26,7 +34,7 @@ class Mortgage:
 
 @dataclass
 class Scenario:
-    """Represents a financial scenario with income, expenses, and optional mortgage."""
+    """Represents a financial scenario with income, expenses, optional mortgage, and one-time events."""
     name: str
     monthly_income: float
     monthly_expenses: float
@@ -35,3 +43,5 @@ class Scenario:
     return_rate: float = 0.07  # Annual portfolio return rate
     withdrawal_rate: float = 0.04  # Safe withdrawal rate (4% rule)
     currency: str = "ILS"  # Currency code (e.g., "ILS", "USD", "EUR")
+    age: int = 30  # Current age (used to calculate retirement age)
+    events: list[Event] = field(default_factory=list)  # One-time events

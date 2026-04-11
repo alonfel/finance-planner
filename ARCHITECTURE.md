@@ -245,65 +245,222 @@ def load_scenarios(path: Path) -> dict[str, Scenario]:
 }
 ```
 
+### OutputConfig (settings.py)
+
+```python
+@dataclass
+class OutputConfig:
+    """Configuration for scenario parameter display in output."""
+    show_fields: List[str] = field(default_factory=lambda: [
+        "income_expenses",
+        "mortgage_details",
+        "events",
+        "rates_settings"
+    ])
+```
+
+**Design:**
+- Ordered list of field names to display in scenario headers
+- Valid field names: `"income_expenses"`, `"mortgage_details"`, `"events"`, `"rates_settings"`
+- Remove a field to hide it; reorder to change display order
+- Enables flexible, user-configurable output without code changes
+
 ### settings.py: Load Settings from JSON
 
 ```python
 @dataclass
 class Settings:
     years: int = 40  # Default fallback
+    return_rate: float = 0.07
+    withdrawal_rate: float = 0.04
+    output: OutputConfig = field(default_factory=OutputConfig)
 
 def load_settings(path: Path) -> Settings:
-    """Load simulation settings."""
+    """Load simulation and output settings."""
     with open(path) as f:
         data = json.load(f)
     sim = data.get("simulation", {})
-    return Settings(years=sim.get("years", 40))
+    output_data = data.get("output", {})
+    return Settings(
+        years=sim.get("years", 40),
+        return_rate=sim.get("return_rate", 0.07),
+        withdrawal_rate=sim.get("withdrawal_rate", 0.04),
+        output=OutputConfig(
+            show_fields=output_data.get("show_fields", [...defaults...])
+        )
+    )
 ```
 
 **Design:**
-- Wraps settings in `"simulation"` key for extensibility
-  - Future: `"display"`, `"defaults"` sections
+- `"simulation"` key holds simulation parameters
+- `"output"` key holds display configuration (new)
 - Provides defaults if JSON is incomplete
 - `SETTINGS = load_settings()` loaded at import time
-- `SETTINGS.years` used throughout codebase
+- `SETTINGS.years`, `SETTINGS.output.show_fields` used throughout
 
 **JSON Schema:**
 ```json
 {
   "simulation": {
-    "years": 20
+    "years": 20,
+    "return_rate": 0.07,
+    "withdrawal_rate": 0.04
+  },
+  "output": {
+    "show_fields": [
+      "income_expenses",
+      "mortgage_details",
+      "events",
+      "rates_settings"
+    ]
   }
 }
 ```
 
 ---
 
-## Comparison & Insights
+## Comparison & Insights Layer
 
-### Function: `compare_scenarios(result_a, result_b) -> ComparisonResult`
+The insights layer separates **computation from presentation**, enabling both programmatic access and flexible output formats.
 
-**Computes:**
-- Retirement year difference (B − A)
-- Final portfolio difference (B − A)
-- Labels and context
+### Insight Data Models (comparison.py)
+
+Structured insight types (Union):
+
+```python
+@dataclass
+class RetirementInsight:
+    """When does each scenario retire?"""
+    scenario_name: str
+    retirement_year: Optional[int]
+    years_simulated: int
+
+@dataclass
+class RetirementDeltaInsight:
+    """How much does one scenario delay retirement?"""
+    scenario_a_name: str
+    scenario_b_name: str
+    year_difference: int
+
+@dataclass
+class PortfolioInsight:
+    """How different are final portfolios?"""
+    scenario_a_name: str
+    scenario_b_name: str
+    final_portfolio_a: float
+    final_portfolio_b: float
+    difference: float
+    years_simulated: int
+    currency_symbol: str = "₪"
+
+@dataclass
+class MortgageInsight:
+    """When is mortgage active, and how does it impact savings?"""
+    scenario_name: str
+    first_mortgage_year: int
+    last_mortgage_year: int
+    avg_net_savings_during_mortgage: float
+    currency_symbol: str = "₪"
+
+Insight = Union[RetirementInsight, RetirementDeltaInsight, PortfolioInsight, MortgageInsight]
+```
 
 **Design:**
-- Symmetric: works for any two results
-- Uses `ComparisonResult` for structured output
-- Ready for JSON serialization
+- Each insight is a typed, named object (not free-form strings)
+- Can be processed programmatically (inspect, analyze, reformat)
+- Enables future output formats (JSON, charts, etc.)
+- Separates interpretation (build_insights) from presentation (format_insights)
 
-### Function: `generate_insights(result_a, result_b) -> str`
+### Function: `build_insights(result_a, result_b) -> List[Insight]`
 
-**Outputs human-readable text:**
-- Retirement timelines
-- Delay/acceleration messaging
-- Portfolio comparison
-- Mortgage burden narrative
+**Inputs:** Two `SimulationResult` objects
+**Output:** List of structured insight objects
+
+**Algorithm:**
+1. Create `RetirementInsight` for scenario A
+2. Create `RetirementInsight` for scenario B
+3. If both retire: create `RetirementDeltaInsight` showing difference
+4. Create `PortfolioInsight` showing final portfolio comparison
+5. If either has mortgage: create `MortgageInsight` for each
+
+**Design:**
+- Pure function: same input → same output
+- No string formatting (separates concerns)
+- Ready for any presentation layer
+- Handles edge cases (one scenario never retires, etc.)
+
+### Function: `format_insights(insights: List[Insight]) -> str`
+
+**Input:** List of insight objects
+**Output:** Human-readable text
+
+**Algorithm:**
+- Dispatch on each insight type using `isinstance()`
+- Format each insight as text paragraph
+- Combine into single multi-line string
 
 **Design:**
 - Pure text generation (no side effects)
-- Adaptable validation (doesn't assume negative savings)
-- Flexible output for different time periods
+- Reads from typed objects (type-safe)
+- Easy to modify output format without changing build_insights
+- Multiple formatters possible (text, JSON, HTML, etc.)
+
+### Function: `generate_insights(result_a, result_b) -> str`
+
+**Convenience function:**
+```python
+def generate_insights(result_a, result_b) -> str:
+    return format_insights(build_insights(result_a, result_b))
+```
+
+**Design:**
+- One-liner composition
+- Preserves backward compatibility
+- Users can call either `build_insights()` (for programmatic access) or `generate_insights()` (for text)
+
+---
+
+## Output & Display
+
+### Scenario Parameter Headers
+
+Scenario input parameters (income, expenses, mortgage, events, rates) are displayed in configurable headers using the `show_fields` list in `settings.json`.
+
+### Function: `print_scenario_header(scenario, settings)`
+
+**Input:** Scenario object + Settings object
+**Output:** Formatted text block showing scenario parameters
+
+**Display fields (conditional on show_fields):**
+
+| Field name | Content |
+|---|---|
+| `"income_expenses"` | Monthly income, monthly expenses, net monthly savings |
+| `"mortgage_details"` | Principal, annual rate, duration, computed monthly payment |
+| `"events"` | List of events: year, description, amount (with +/− sign) |
+| `"rates_settings"` | Return rate, withdrawal rate, simulation years, scenario age |
+
+**Design:**
+- Reads `settings.output.show_fields` list
+- Only displays fields in the list
+- Order matches list order
+- Currency formatting using scenario's currency
+- Works in both `main.py` and `compare_all_scenarios.py`
+
+**Configuration Example:**
+
+```json
+{
+  "output": {
+    "show_fields": [
+      "income_expenses",
+      "mortgage_details"
+    ]
+  }
+}
+```
+
+This would show only income/expenses and mortgage (hide events and rates).
 
 ---
 
@@ -481,7 +638,7 @@ portfolio = (portfolio + net_savings) * (1 + effective_return)
 - Test behavior, not implementation
 - Construct scenarios directly (not from JSON)
 - Assert on observable outcomes
-- All 16 tests should pass, always
+- All 29 tests should pass, always
 
 **Coverage areas:**
 
@@ -506,10 +663,18 @@ portfolio = (portfolio + net_savings) * (1 + effective_return)
    - Year count matches requested
    - Pure function (deterministic)
 
-5. **Comparison** — Cross-scenario logic
-   - Difference computation is correct
-   - Handles None retirement years
-   - Format is structured
+5. **Events** — Portfolio injections/withdrawals
+   - Positive events (stock offerings)
+   - Negative events (expenses)
+   - Multiple events in one scenario
+   - Events compound in same year
+
+6. **Insights** — Structured insight objects
+   - RetirementInsight count and correctness
+   - RetirementDeltaInsight only when both retire
+   - PortfolioInsight difference sign
+   - MortgageInsight presence/absence
+   - format_insights() output format
 
 ---
 
@@ -527,11 +692,12 @@ comparison.py (imports simulation)
 settings.py (no imports from project)
   ↓
 main.py (imports all of above)
+compare_all_scenarios.py (imports all of above)
 
 tests/test_simulation.py (imports models, simulation, scenarios, comparison)
 ```
 
-**Key:** No circular dependencies. Clean layering.
+**Key:** No circular dependencies. Clean layering. `compare_all_scenarios.py` is a standalone script (like `main.py`) that can import everything above it.
 
 ---
 
@@ -556,22 +722,25 @@ tests/test_simulation.py (imports models, simulation, scenarios, comparison)
 
 ## Extensibility Roadmap
 
-**Phase 1 (MVP)** ✅ — Current
+**Phase 1 (MVP)** ✅ — Complete
 - Single scenario timeline
 - Fixed income/expenses
 - One mortgage per scenario
 
-**Phase 2** (Planned)
-- Scenario branches (income changes at year X)
+**Phase 2** ✅ — Complete
 - Events (bonuses, inheritance, emergencies)
-- Inflation adjustment
+- Structured insights layer (build_insights + format_insights)
+- Configurable output display (show_fields)
+- Comprehensive pairwise analysis (compare_all_scenarios.py)
 
-**Phase 3** (Possible)
+**Phase 3** (Planned)
+- Scenario branches (income changes at year X)
+- Inflation adjustment
 - Multiple asset allocations
+
+**Phase 4** (Possible)
 - Tax modeling
 - Retirement spending adjustments (e.g., travel budget drops)
-
-**Phase 4** (Advanced)
 - Monte Carlo simulations (vary returns, inflation)
 - Sensitivity analysis (how sensitive to interest rate changes?)
 - Tax-efficient withdrawal strategies

@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
-from models import Scenario, Mortgage
+from models import Scenario, Mortgage, Event
+from settings import SETTINGS
 
 
 _SCENARIOS_FILE = Path(__file__).parent / "scenarios.json"
@@ -18,15 +19,25 @@ def _scenario_from_dict(d: dict) -> Scenario:
             currency=m.get("currency", "ILS"),
         )
 
+    events = []
+    for e in d.get("events", []):
+        events.append(Event(
+            year=e["year"],
+            portfolio_injection=e["portfolio_injection"],
+            description=e.get("description", ""),
+        ))
+
     return Scenario(
         name=d["name"],
         monthly_income=d["monthly_income"],
         monthly_expenses=d["monthly_expenses"],
         mortgage=mortgage,
         initial_portfolio=d.get("initial_portfolio", 0.0),
-        return_rate=d.get("return_rate", 0.07),
-        withdrawal_rate=d.get("withdrawal_rate", 0.04),
+        return_rate=d.get("return_rate", SETTINGS.return_rate),
+        withdrawal_rate=d.get("withdrawal_rate", SETTINGS.withdrawal_rate),
         currency=d.get("currency", "ILS"),
+        age=d.get("age", 30),
+        events=events,
     )
 
 
