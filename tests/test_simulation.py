@@ -5,7 +5,7 @@ from pathlib import Path
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from models import Mortgage, Scenario, Event, Person
+from models import Mortgage, Scenario, Event, ScenarioNode
 from simulation import simulate
 
 
@@ -525,173 +525,298 @@ class TestBuildInsights(unittest.TestCase):
         self.assertEqual(insights_string, formatted_string)
 
 
-class TestPerson(unittest.TestCase):
-    """Test Person object (scenario composition)."""
+class TestScenarioNode(unittest.TestCase):
+    """Test ScenarioNode tree-based scenario composition."""
 
-    def test_resolve_no_overrides_inherits_all_base_fields(self):
-        """All base fields should be inherited when no overrides are set."""
+    def test_root_node_resolves_like_person(self):
+        """Root node (parent_name=None) resolves identically to old Person behavior."""
         base = Scenario(
             name="Baseline",
             monthly_income=20_000,
             monthly_expenses=13_000,
             age=41,
-            return_rate=0.07,
-            withdrawal_rate=0.04,
         )
-        person = Person(name="Test Person", base_scenario=base)
-        resolved = person.resolve()
+        node = ScenarioNode(name="Test Node", base_scenario=base)
+        resolved = node.resolve()
 
-        # Should inherit all base fields (except name, which comes from person)
-        self.assertEqual(resolved.name, "Test Person")
+        self.assertEqual(resolved.name, "Test Node")
         self.assertEqual(resolved.monthly_income, 20_000)
         self.assertEqual(resolved.monthly_expenses, 13_000)
         self.assertEqual(resolved.age, 41)
-        self.assertEqual(resolved.return_rate, 0.07)
-        self.assertEqual(resolved.withdrawal_rate, 0.04)
 
-    def test_resolve_name_becomes_scenario_name(self):
-        """Person's name should become the resolved Scenario's name."""
-        base = Scenario(
-            name="Baseline",
-            monthly_income=20_000,
-            monthly_expenses=13_000,
-        )
-        person = Person(name="Alice - My Custom Scenario", base_scenario=base)
-        resolved = person.resolve()
-
-        self.assertEqual(resolved.name, "Alice - My Custom Scenario")
-        # Base should not be mutated
-        self.assertEqual(base.name, "Baseline")
-
-    def test_resolve_scalar_override_applied(self):
-        """Scalar overrides (income, expenses, age, etc.) should be applied."""
+    def test_two_level_chain_inherits_scalars(self):
+        """Child node inherits all scalar fields from resolved parent."""
         base = Scenario(
             name="Baseline",
             monthly_income=20_000,
             monthly_expenses=13_000,
             age=41,
         )
-        person = Person(
-            name="Test",
-            base_scenario=base,
-            monthly_income=60_000,  # Override
-            age=50,  # Override
+        root = ScenarioNode(name="Root", base_scenario=base)
+        child = ScenarioNode(name="Child", parent_name="Root")
+
+        all_nodes = {"Root": root, "Child": child}
+        resolved = child.resolve(all_nodes)
+
+        self.assertEqual(resolved.monthly_income, 20_000)
+        self.assertEqual(resolved.monthly_expenses, 13_000)
+        self.assertEqual(resolved.age, 41)
+
+    def test_two_level_chain_overrides_scalar(self):
+        """Child node overrides a scalar field from parent."""
+        base = Scenario(
+            name="Baseline",
+            monthly_income=20_000,
+            monthly_expenses=13_000,
         )
-        resolved = person.resolve()
+        root = ScenarioNode(name="Root", base_scenario=base)
+        child = ScenarioNode(name="Child", parent_name="Root", monthly_income=30_000)
 
-        self.assertEqual(resolved.monthly_income, 60_000)
+        all_nodes = {"Root": root, "Child": child}
+        resolved = child.resolve(all_nodes)
+
+        self.assertEqual(resolved.monthly_income, 30_000)
         self.assertEqual(resolved.monthly_expenses, 13_000)  # Not overridden
-        self.assertEqual(resolved.age, 50)
 
-    def test_resolve_extra_events_appended_to_base(self):
-        """extra_events should be appended after base_scenario.events."""
+    def test_three_level_chain_resolves_correctly(self):
+        """Grandchild inherits from parent, not from root."""
+        base = Scenario(
+            name="Baseline",
+            monthly_income=10_000,
+            monthly_expenses=5_000,
+        )
+        root = ScenarioNode(name="Root", base_scenario=base)
+        child = ScenarioNode(name="Child", parent_name="Root", monthly_income=20_000)
+        grandchild = ScenarioNode(name="Grandchild", parent_name="Child")  # No override
+
+        all_nodes = {"Root": root, "Child": child, "Grandchild": grandchild}
+        resolved = grandchild.resolve(all_nodes)
+
+        # Should inherit child's overridden income, not root's
+        self.assertEqual(resolved.monthly_income, 20_000)
+        self.assertEqual(resolved.monthly_expenses, 5_000)
+
+    def test_append_mode_accumulates_events(self):
+        """event_mode='append' accumulates events from parent and child."""
         base = Scenario(
             name="Baseline",
             monthly_income=20_000,
             monthly_expenses=13_000,
             events=[Event(year=1, portfolio_injection=100_000, description="Base event")],
         )
-        person = Person(
-            name="Test",
-            base_scenario=base,
-            extra_events=[
-                Event(year=2, portfolio_injection=200_000, description="Extra event 1"),
-                Event(year=3, portfolio_injection=300_000, description="Extra event 2"),
-            ],
+        root = ScenarioNode(name="Root", base_scenario=base)
+        child = ScenarioNode(
+            name="Child",
+            parent_name="Root",
+            event_mode="append",
+            events=[Event(year=2, portfolio_injection=200_000, description="Child event")],
         )
-        resolved = person.resolve()
 
-        self.assertEqual(len(resolved.events), 3)
+        all_nodes = {"Root": root, "Child": child}
+        resolved = child.resolve(all_nodes)
+
+        self.assertEqual(len(resolved.events), 2)
         self.assertEqual(resolved.events[0].year, 1)
         self.assertEqual(resolved.events[0].description, "Base event")
         self.assertEqual(resolved.events[1].year, 2)
-        self.assertEqual(resolved.events[1].description, "Extra event 1")
-        self.assertEqual(resolved.events[2].year, 3)
-        self.assertEqual(resolved.events[2].description, "Extra event 2")
+        self.assertEqual(resolved.events[1].description, "Child event")
 
-    def test_resolve_replace_events_replaces_base(self):
-        """replace_events should completely replace base_scenario.events."""
+    def test_replace_mode_discards_parent_events(self):
+        """event_mode='replace' discards parent events and uses only this node's."""
         base = Scenario(
             name="Baseline",
             monthly_income=20_000,
             monthly_expenses=13_000,
             events=[Event(year=1, portfolio_injection=100_000, description="Base event")],
         )
-        person = Person(
-            name="Test",
-            base_scenario=base,
-            replace_events=[
-                Event(year=5, portfolio_injection=500_000, description="New event 1"),
-                Event(year=6, portfolio_injection=600_000, description="New event 2"),
-            ],
+        root = ScenarioNode(name="Root", base_scenario=base)
+        child = ScenarioNode(
+            name="Child",
+            parent_name="Root",
+            event_mode="replace",
+            events=[Event(year=5, portfolio_injection=500_000, description="New event")],
         )
-        resolved = person.resolve()
 
-        # Should have exactly the replace_events, not base + replace
-        self.assertEqual(len(resolved.events), 2)
+        all_nodes = {"Root": root, "Child": child}
+        resolved = child.resolve(all_nodes)
+
+        self.assertEqual(len(resolved.events), 1)
         self.assertEqual(resolved.events[0].year, 5)
-        self.assertEqual(resolved.events[0].description, "New event 1")
-        self.assertEqual(resolved.events[1].year, 6)
-        self.assertEqual(resolved.events[1].description, "New event 2")
+        self.assertEqual(resolved.events[0].description, "New event")
+
+    def test_three_level_event_composition_replace_in_middle(self):
+        """Replace in middle level discards root events, then grandchild appends."""
+        base = Scenario(
+            name="Baseline",
+            monthly_income=20_000,
+            monthly_expenses=13_000,
+            events=[Event(year=1, portfolio_injection=100_000, description="E1")],
+        )
+        root = ScenarioNode(name="Root", base_scenario=base)
+        child = ScenarioNode(
+            name="Child",
+            parent_name="Root",
+            event_mode="replace",
+            events=[Event(year=2, portfolio_injection=200_000, description="E2")],
+        )
+        grandchild = ScenarioNode(
+            name="Grandchild",
+            parent_name="Child",
+            event_mode="append",
+            events=[Event(year=3, portfolio_injection=300_000, description="E3")],
+        )
+
+        all_nodes = {"Root": root, "Child": child, "Grandchild": grandchild}
+        resolved = grandchild.resolve(all_nodes)
+
+        # Should have E2 (from replace) + E3 (appended), not E1
+        self.assertEqual(len(resolved.events), 2)
+        self.assertEqual(resolved.events[0].description, "E2")
+        self.assertEqual(resolved.events[1].description, "E3")
+
+    def test_three_level_event_composition_replace_at_leaf(self):
+        """Replace at leaf level discards all ancestor events."""
+        base = Scenario(
+            name="Baseline",
+            monthly_income=20_000,
+            monthly_expenses=13_000,
+            events=[Event(year=1, portfolio_injection=100_000, description="E1")],
+        )
+        root = ScenarioNode(name="Root", base_scenario=base)
+        child = ScenarioNode(
+            name="Child",
+            parent_name="Root",
+            event_mode="append",
+            events=[Event(year=2, portfolio_injection=200_000, description="E2")],
+        )
+        grandchild = ScenarioNode(
+            name="Grandchild",
+            parent_name="Child",
+            event_mode="replace",
+            events=[Event(year=3, portfolio_injection=300_000, description="E3")],
+        )
+
+        all_nodes = {"Root": root, "Child": child, "Grandchild": grandchild}
+        resolved = grandchild.resolve(all_nodes)
+
+        # Should have only E3 (replace discards E1 and E2)
+        self.assertEqual(len(resolved.events), 1)
+        self.assertEqual(resolved.events[0].description, "E3")
 
     def test_resolve_does_not_mutate_base_scenario(self):
-        """Base scenario should not be mutated by resolve()."""
+        """Resolving a multi-level chain does not mutate any base_scenario."""
         base = Scenario(
             name="Baseline",
             monthly_income=20_000,
             monthly_expenses=13_000,
-            events=[Event(year=1, portfolio_injection=100_000, description="Base event")],
+            events=[Event(year=1, portfolio_injection=100_000, description="Base")],
         )
-        person = Person(
-            name="Test",
+        root = ScenarioNode(
+            name="Root",
             base_scenario=base,
-            extra_events=[Event(year=2, portfolio_injection=200_000, description="Extra")],
+            events=[Event(year=2, portfolio_injection=200_000, description="Root")],
         )
-        resolved = person.resolve()
+        child = ScenarioNode(
+            name="Child",
+            parent_name="Root",
+            event_mode="append",
+            events=[Event(year=3, portfolio_injection=300_000, description="Child")],
+        )
 
-        # Base should still have only 1 event
+        all_nodes = {"Root": root, "Child": child}
+        resolved = child.resolve(all_nodes)
+
+        # Base should still have 1 event
         self.assertEqual(len(base.events), 1)
-        # Resolved should have 2 events
-        self.assertEqual(len(resolved.events), 2)
+        # Resolved should have 3 (base + root + child)
+        self.assertEqual(len(resolved.events), 3)
 
-    def test_resolve_mortgage_override_applied(self):
-        """Person's mortgage should replace base_scenario.mortgage if set."""
+    def test_resolve_is_pure(self):
+        """Calling resolve() twice on the same node returns identical results."""
+        base = Scenario(
+            name="Baseline",
+            monthly_income=20_000,
+            monthly_expenses=13_000,
+        )
+        root = ScenarioNode(name="Root", base_scenario=base, monthly_income=30_000)
+        child = ScenarioNode(name="Child", parent_name="Root", monthly_expenses=10_000)
+
+        all_nodes = {"Root": root, "Child": child}
+        resolved1 = child.resolve(all_nodes)
+        resolved2 = child.resolve(all_nodes)
+
+        self.assertEqual(resolved1.name, resolved2.name)
+        self.assertEqual(resolved1.monthly_income, resolved2.monthly_income)
+        self.assertEqual(resolved1.monthly_expenses, resolved2.monthly_expenses)
+        self.assertEqual(len(resolved1.events), len(resolved2.events))
+
+    def test_cycle_detection_raises_in_resolve(self):
+        """Attempting to resolve a node with a cycle raises ValueError."""
+        base = Scenario(
+            name="Baseline",
+            monthly_income=20_000,
+            monthly_expenses=13_000,
+        )
+        # Create a cycle: A -> B -> A
+        node_a = ScenarioNode(name="A", parent_name="B")  # Will point to B
+        node_b = ScenarioNode(name="B", parent_name="A")  # Will point back to A
+
+        all_nodes = {"A": node_a, "B": node_b}
+
+        with self.assertRaises(ValueError) as context:
+            node_a.resolve(all_nodes)
+
+        self.assertIn("Cycle detected", str(context.exception))
+
+    def test_missing_parent_raises_in_resolve(self):
+        """Resolving a node with a non-existent parent raises KeyError."""
+        node = ScenarioNode(name="Child", parent_name="NonExistent")
+        all_nodes = {"Child": node}
+
+        with self.assertRaises(KeyError):
+            node.resolve(all_nodes)
+
+    def test_mortgage_override_applied(self):
+        """Child node's mortgage replaces parent's resolved mortgage."""
         base = Scenario(
             name="Baseline",
             monthly_income=20_000,
             monthly_expenses=13_000,
             mortgage=Mortgage(principal=1_000_000, annual_rate=0.04, duration_years=20),
         )
+        root = ScenarioNode(name="Root", base_scenario=base)
         new_mortgage = Mortgage(principal=2_000_000, annual_rate=0.03, duration_years=25)
-        person = Person(
-            name="Test",
-            base_scenario=base,
-            mortgage=new_mortgage,
-        )
-        resolved = person.resolve()
+        child = ScenarioNode(name="Child", parent_name="Root", mortgage=new_mortgage)
+
+        all_nodes = {"Root": root, "Child": child}
+        resolved = child.resolve(all_nodes)
 
         self.assertEqual(resolved.mortgage.principal, 2_000_000)
         self.assertEqual(resolved.mortgage.annual_rate, 0.03)
         self.assertEqual(resolved.mortgage.duration_years, 25)
 
-    def test_resolve_produces_valid_scenario_for_simulation(self):
-        """Resolved person should produce a valid Scenario that can be simulated."""
+def test_resolved_node_is_valid_for_simulation(self):
+        """A resolved ScenarioNode can be passed to simulate() without error."""
         base = Scenario(
             name="Baseline",
             monthly_income=20_000,
             monthly_expenses=13_000,
         )
-        person = Person(
-            name="Test Person",
-            base_scenario=base,
-            extra_events=[Event(year=2, portfolio_injection=1_000_000, description="Bonus")],
+        root = ScenarioNode(name="Root", base_scenario=base)
+        child = ScenarioNode(
+            name="Child",
+            parent_name="Root",
+            event_mode="append",
+            events=[Event(year=2, portfolio_injection=1_000_000, description="Bonus")],
         )
-        resolved = person.resolve()
+
+        all_nodes = {"Root": root, "Child": child}
+        resolved = child.resolve(all_nodes)
 
         # Should be able to simulate without error
         result = simulate(resolved, years=5)
         self.assertEqual(len(result.year_data), 5)
-        self.assertEqual(result.scenario_name, "Test Person")
+        self.assertEqual(result.scenario_name, "Child")
 
 
 if __name__ == "__main__":

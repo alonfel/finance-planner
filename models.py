@@ -49,16 +49,20 @@ class Scenario:
 
 
 @dataclass
-class Person:
-    """A named individual built from a base Scenario with optional overrides.
+class ScenarioNode:
+    """A node in a scenario inheritance tree.
 
-    Allows reusing a base scenario across multiple people with different overrides
-    (income, events, mortgage, age, etc.) without duplicating the base definition.
+    Supports tree-based scenario composition where each node can override fields
+    from its parent and control event composition (append or replace).
+
+    Root node: set base_scenario, leave parent_name=None
+    Child node: set parent_name, leave base_scenario=None
     """
     name: str
-    base_scenario: Scenario
+    base_scenario: Optional[Scenario] = None
+    parent_name: Optional[str] = None
 
-    # Scalar overrides — None means "inherit from base_scenario"
+    # Scalar overrides — None means "inherit from resolved parent"
     monthly_income: Optional[float] = None
     monthly_expenses: Optional[float] = None
     age: Optional[int] = None
@@ -67,49 +71,92 @@ class Person:
     withdrawal_rate: Optional[float] = None
     currency: Optional[str] = None
 
-    # Mortgage override — replaces base_scenario.mortgage if set
+    # Mortgage override — replaces resolved parent's mortgage if set
     mortgage: Optional[Mortgage] = None
 
-    # Event composition:
-    # - extra_events are appended to base_scenario.events (default path)
-    # - replace_events, if set, replaces base_scenario.events entirely
-    extra_events: list[Event] = field(default_factory=list)
-    replace_events: Optional[list[Event]] = None
+    # Event composition: child controls mode relative to parent
+    event_mode: str = "append"                         # "append" | "replace"
+    events: list[Event] = field(default_factory=list)  # This node's own events
 
-    def resolve(self) -> Scenario:
-        """Build final Scenario by merging base scenario with overrides.
+    def resolve(self, all_nodes: dict[str, "ScenarioNode"] = None) -> Scenario:
+        """Resolve this node into a flat Scenario by walking the ancestor chain.
 
-        Does not mutate base_scenario. Returns a new Scenario with:
-        - All base fields inherited
-        - This person's name as the scenario name
-        - Any scalar overrides applied
-        - Events merged (either base + extra, or replace_events if set)
-        - Mortgage replaced if set
+        For root nodes (parent_name=None), walks only this node.
+        For child nodes, walks up to the root via parent_name links, then applies
+        overrides root-to-leaf, merging events according to each node's event_mode.
+
+        Does not mutate any node's base_scenario or any intermediate resolved Scenario.
+
+        Args:
+            all_nodes: dict[str, ScenarioNode] containing all nodes in the tree.
+                      If None, treats as empty dict. For root nodes, can be omitted.
 
         Returns:
-            A new Scenario object ready for simulate()
+            A new Scenario object with name=self.name and merged events.
         """
-        # Determine final events
-        if self.replace_events is not None:
-            final_events = list(self.replace_events)
-        else:
-            final_events = list(self.base_scenario.events) + list(self.extra_events)
+        if all_nodes is None:
+            all_nodes = {}
 
-        # Build overrides dict: only include fields where person explicitly set a value
-        overrides = {}
-        for field_name in ['monthly_income', 'monthly_expenses', 'age',
-                           'initial_portfolio', 'return_rate', 'withdrawal_rate', 'currency']:
-            val = getattr(self, field_name)
-            if val is not None:
-                overrides[field_name] = val
+        # Build ancestor chain: root -> ... -> self
+        ancestor_chain = self._build_ancestor_chain(all_nodes)
 
-        if self.mortgage is not None:
-            overrides['mortgage'] = self.mortgage
+        # Start from root: apply overrides root-to-leaf, accumulating events
+        current_scenario = ancestor_chain[0].base_scenario
+        accumulated_events = list(ancestor_chain[0].base_scenario.events)
 
-        # Use dataclasses.replace() to create a shallow copy with overrides
+        # Apply overrides and events for each node in the chain (root to leaf)
+        for i, node in enumerate(ancestor_chain):
+            # Apply scalar overrides
+            overrides = {}
+            for field_name in ['monthly_income', 'monthly_expenses', 'age',
+                               'initial_portfolio', 'return_rate', 'withdrawal_rate', 'currency']:
+                val = getattr(node, field_name)
+                if val is not None:
+                    overrides[field_name] = val
+
+            if node.mortgage is not None:
+                overrides['mortgage'] = node.mortgage
+
+            current_scenario = dataclasses.replace(current_scenario, **overrides)
+
+            # Apply event merge
+            if i == 0:
+                # For the root node, start fresh: either use base_scenario.events + node.events (append)
+                # or node.events only (replace)
+                if node.event_mode == "replace":
+                    accumulated_events = list(node.events)
+                else:  # append
+                    accumulated_events = accumulated_events + list(node.events)
+            else:
+                # For child nodes, merge with what we accumulated so far
+                if node.event_mode == "replace":
+                    accumulated_events = list(node.events)
+                else:  # append
+                    accumulated_events = accumulated_events + list(node.events)
+
+        # Final scenario with this node's name and merged events
         return dataclasses.replace(
-            self.base_scenario,
+            current_scenario,
             name=self.name,
-            events=final_events,
-            **overrides
+            events=accumulated_events
         )
+
+    def _build_ancestor_chain(self, all_nodes: dict[str, "ScenarioNode"]) -> list["ScenarioNode"]:
+        """Walk parent_name links from self to root, return [root, ..., self]."""
+        chain = [self]
+        current = self
+
+        # Walk up to root
+        while current.parent_name is not None:
+            if current.parent_name not in all_nodes:
+                raise KeyError(f"Parent '{current.parent_name}' not found in scenario nodes")
+            parent = all_nodes[current.parent_name]
+
+            # Cycle detection
+            if parent.name in [n.name for n in chain]:
+                raise ValueError(f"Cycle detected in scenario tree: {parent.name} is ancestor of itself")
+
+            chain.insert(0, parent)
+            current = parent
+
+        return chain

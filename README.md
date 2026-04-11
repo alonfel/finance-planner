@@ -37,14 +37,44 @@ cd /Users/alon/Documents/finance_planner
 ```
 
 ### 2. Run
+
+**Basic scenario comparison:**
 ```bash
 python main.py
 ```
-
-**Output:**
 - Year-by-year financial snapshot for each scenario
 - Validation checks
 - Comparison report and insights
+
+**Comprehensive analysis of all scenarios:**
+```bash
+python scenario_analysis/compare_all_scenarios.py
+```
+- All scenarios simulated
+- Quick overview table
+- All pairwise scenario comparisons with insights
+
+**Personal scenario analysis:**
+```bash
+python scenario_analysis/compare_your_baseline_vs_exit_vs_friend.py
+```
+- Year-by-year snapshots at milestones (1, 5, 10, 15, 20 years)
+- Compare baseline vs. exit scenarios vs. friend's scenario
+- Portfolio value, retirement year, and annual savings metrics
+- Strategic insights and key differences
+
+**Explore scenario trees:**
+```bash
+python scenario_analysis/explore_tree.py
+```
+- Tree structure visualization
+- Simulation results for each node
+- Pairwise comparisons showing inheritance impacts
+
+**Run tests:**
+```bash
+python -m unittest discover -s tests -p "test_*.py" -v
+```
 
 ### 3. Modify
 Edit configuration files — **no Python code changes**:
@@ -311,12 +341,30 @@ Edit `settings.json`, change `"return_rate"`, run again.
 - ✅ **Events** — one-time portfolio injections/withdrawals (stock offerings, emergencies)
 - ✅ **Age tracking** — see retirement year and retirement age
 - ✅ **Global settings** — return_rate and withdrawal_rate in settings.json
+- ✅ **Scenario Trees** — inheritance-based scenario composition (new!)
+  - Define base scenarios, extend with child nodes
+  - Control event composition ("append" or "replace")
+  - Explore "what-if" variations efficiently
+
+## Scenario Trees (New!)
+
+Build complex financial scenarios through **inheritance** instead of flat definitions:
+
+```
+Baseline (₪45K income)
+├─ Buy Apartment (add mortgage)
+│  └─ Buy Apartment + Exit (change income, add exit proceeds)
+└─ Other variations...
+```
+
+**Key advantage:** Define once, extend incrementally. Compounding effects are explicit and testable.
+
+See [SCENARIO_TREE_GUIDE.md](SCENARIO_TREE_GUIDE.md) for detailed examples.
 
 ## Future Extensions
 
 The design cleanly supports:
 
-- **Scenario Trees** — branching scenarios at specific years (income changes)
 - **Inflation** — adjust expenses by inflation rate annually
 - **Multiple Assets** — portfolio with different return rates (stocks, bonds, real estate)
 - **Advanced Outputs** — charts, sensitivity analysis, Monte Carlo simulations
@@ -364,19 +412,27 @@ python -m unittest tests.test_simulation.TestMortgage -v
 
 | File | Purpose |
 |---|---|
-| `models.py` | Data models: Scenario, Mortgage, YearData, SimulationResult, Event |
+| `models.py` | Data models: Scenario, ScenarioNode, Mortgage, YearData, SimulationResult, Event |
 | `simulation.py` | Core simulation engine: `simulate(scenario, years)` |
 | `comparison.py` | Insights model: `build_insights()`, `format_insights()`, `generate_insights()` |
 | `scenarios.py` | Load scenarios from `scenarios.json` |
 | `settings.py` | Load settings from `settings.json` (simulation + output config) |
 | `main.py` | Entry point: runs scenarios, displays results with configurable headers |
-| `compare_all_scenarios.py` | Comprehensive analysis: all scenarios, all pairwise comparisons |
 | `scenarios.json` | **CONFIG:** Scenario data (income, expenses, mortgage, events) |
 | `settings.json` | **CONFIG:** Simulation settings (years, rates) + output display fields |
 | `README.md` | This file — project overview |
 | `CLAUDE.md` | How to work with this codebase in Claude Code |
 | `ARCHITECTURE.md` | Technical design and extension patterns |
-| `tests/test_simulation.py` | 29 unit tests (all passing) |
+| `SCENARIO_TREE_GUIDE.md` | Scenario trees: complete usage guide (new!) |
+| `scenario_analysis/` | **Folder:** Scenario tree analysis scripts and configs |
+| `scenario_analysis/scenario_nodes.py` | Load scenario trees from `scenario_nodes.json` |
+| `scenario_analysis/scenario_nodes.json` | **CONFIG:** Scenario tree definitions |
+| `scenario_analysis/compare_your_baseline_vs_exit_vs_friend.py` | Your personal scenario comparison |
+| `scenario_analysis/compare_with_without_exit.py` | Exit impact analysis |
+| `scenario_analysis/explore_tree.py` | Interactive scenario tree exploration |
+| `tests/test_simulation.py` | 42 core unit tests (all passing) |
+| `tests/test_income_exit_clusters.py` | Income variation analysis |
+| `tests/test_scenario_clusters.py` | Multi-scenario cluster exploration |
 
 ---
 

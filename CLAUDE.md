@@ -16,7 +16,7 @@ Outputs:
 
 ### Running Comprehensive Analysis
 ```bash
-python compare_all_scenarios.py
+python scenario_analysis/compare_all_scenarios.py
 ```
 
 Outputs:
@@ -24,12 +24,35 @@ Outputs:
 - Quick overview table
 - All pairwise scenario comparisons with insights
 
+### Comparing Your Scenarios (Personal Analysis)
+```bash
+python scenario_analysis/compare_your_baseline_vs_exit_vs_friend.py
+```
+
+Outputs:
+- Year-by-year snapshots at milestones (1, 5, 10, 15, 20 years)
+- Your baseline (no exit), You + ₪2M exit, You + ₪3M exit, and Friend's scenario
+- Detailed metrics: portfolio value, retirement year, annual savings
+- Side-by-side comparison table
+- Key differences and strategic insights
+
+### Exploring Scenario Trees (New!)
+```bash
+python scenario_analysis/explore_tree.py
+```
+
+Outputs:
+- Tree structure visualization
+- Simulation results for each node
+- Pairwise comparisons showing inheritance impacts
+- How-to examples for creating variations
+
 ### Running Tests
 ```bash
 python -m unittest discover -s tests -p "test_*.py" -v
 ```
 
-All 29 tests should pass.
+All 52 tests should pass (36 core + 16 ScenarioNode tests).
 
 ---
 
@@ -110,22 +133,158 @@ Change financial parameters without touching Python:
 
 ```
 finance_planner/
-├── models.py              # Data models: Scenario, Mortgage, Event, YearData
+├── models.py              # Data models: Scenario, ScenarioNode, Mortgage, Event
 ├── simulation.py          # Core engine: simulate()
 ├── comparison.py          # Insights model: build_insights(), format_insights()
 ├── scenarios.py           # Load scenarios from JSON
 ├── settings.py            # Load settings from JSON
-├── main.py                # Entry point: run both scenarios with insights
-├── compare_all_scenarios.py # Comprehensive analysis: all scenarios, all comparisons
+├── main.py                # Entry point: run scenarios with insights
 ├── scenarios.json         # Scenario data (EDIT THIS)
 ├── settings.json          # Simulation config + output display (EDIT THIS)
 ├── README.md              # Project overview
-├── CLAUDE.md              # This file (guidelines for working in Claude Code)
+├── CLAUDE.md              # This file
 ├── ARCHITECTURE.md        # Technical design & extension patterns
+├── SCENARIO_TREE_GUIDE.md # Scenario trees guide
+├── scenario_analysis/     # Scenario tree analysis and comparisons
+│   ├── __init__.py
+│   ├── scenario_nodes.py  # Load scenario trees from JSON
+│   ├── scenario_nodes.json # Scenario tree definitions (EDIT THIS)
+│   ├── compare_your_baseline_vs_exit_vs_friend.py # Personal scenario comparison
+│   ├── compare_with_without_exit.py # Exit impact analysis
+│   └── explore_tree.py    # Interactive tree exploration
 └── tests/
     ├── __init__.py
-    └── test_simulation.py # 29 unit tests
+    ├── test_simulation.py  # 42 core unit tests
+    ├── test_income_exit_clusters.py # Income variation analysis
+    └── test_scenario_clusters.py # Multi-scenario exploration
 ```
+
+---
+
+## Scenario Trees (Inheritance-Based Composition)
+
+### What Are Scenario Trees?
+
+Build complex scenarios through **inheritance** instead of defining them flat:
+
+```
+Baseline (root)
+├─ Buy Apartment (add mortgage)
+│  └─ Buy Apartment + Exit (change income + inject exit proceeds)
+```
+
+Each node inherits from its parent and adds small, understandable changes.
+
+### How to Use Scenario Trees
+
+**Load and explore:**
+```bash
+python scenario_analysis/explore_tree.py
+```
+
+**Programmatically:**
+```python
+from scenario_analysis.scenario_nodes import load_scenario_nodes
+from simulation import simulate
+
+nodes = load_scenario_nodes()
+resolved = nodes["Alon - Buy Apartment + Exit"].resolve(nodes)
+result = simulate(resolved, years=20)
+```
+
+**Compare nodes:**
+```python
+from comparison import build_insights, format_insights
+
+result_a = simulate(nodes["Alon Baseline"].resolve(nodes), years=20)
+result_b = simulate(nodes["Alon - Buy Apartment + Exit"].resolve(nodes), years=20)
+insights = build_insights(result_a, result_b)
+print(format_insights(insights))
+```
+
+### scenario_nodes.json Format
+
+```json
+{
+  "scenario_nodes": [
+    {
+      "name": "Alon Baseline",
+      "base_scenario": "Baseline",
+      "monthly_income": 45000,
+      "monthly_expenses": 25000,
+      "age": 41,
+      "event_mode": "append",
+      "events": []
+    },
+    {
+      "name": "Alon - Buy Apartment",
+      "parent": "Alon Baseline",
+      "mortgage": {
+        "principal": 2250000,
+        "annual_rate": 0.04,
+        "duration_years": 25
+      },
+      "event_mode": "append",
+      "events": [
+        {"year": 1, "portfolio_injection": -200000, "description": "Down payment fees"}
+      ]
+    },
+    {
+      "name": "Alon - Buy Apartment + Exit",
+      "parent": "Alon - Buy Apartment",
+      "monthly_income": 35000,
+      "event_mode": "replace",
+      "events": [
+        {"year": 2, "portfolio_injection": 5000000, "description": "Company exit"}
+      ]
+    }
+  ]
+}
+```
+
+**Key concepts:**
+- Root nodes: have `"base_scenario"`, no `"parent"`
+- Child nodes: have `"parent"`, no `"base_scenario"`
+- Event composition: `"append"` = add to parent's events, `"replace"` = discard parent's events
+- Inheritance: child inherits all parent's fields; only override what changes
+
+### Creating a New Tree Node
+
+```python
+from models import ScenarioNode, Event
+from scenario_analysis.scenario_nodes import load_scenario_nodes
+
+nodes = load_scenario_nodes()
+
+# Create a variation
+new_node = ScenarioNode(
+    name="Custom Variation",
+    parent_name="Alon - Buy Apartment",
+    monthly_income=50_000,  # Override: different from parent
+    event_mode="append",
+    events=[Event(year=5, portfolio_injection=-300_000, description="Home renovation")]
+)
+
+# Simulate it
+all_nodes = {**nodes, "Custom Variation": new_node}
+resolved = new_node.resolve(all_nodes)
+result = simulate(resolved, years=20)
+```
+
+### Why Scenario Trees Matter
+
+1. **DRY (Don't Repeat Yourself)** — Define base once, extend as needed
+2. **Inheritance clarity** — See exactly what each node changes
+3. **Compounding visibility** — Small changes compound over time; easy to test
+4. **"What-if" exploration** — Quickly model variations without duplication
+
+### Further Reading
+
+See [SCENARIO_TREE_GUIDE.md](SCENARIO_TREE_GUIDE.md) for:
+- Real financial examples with outcomes
+- How inheritance chains resolve
+- Sensitivity analysis examples
+- Design decisions and rationale
 
 ---
 
@@ -292,6 +451,33 @@ Insight types: `RetirementInsight`, `RetirementDeltaInsight`, `PortfolioInsight`
 
 ## Extending the System
 
+### Add a Scenario Tree Node
+
+1. Edit `scenario_nodes.json`
+2. Add a new node with a unique `"name"`
+3. Set `"parent"` to an existing node name (or use `"base_scenario"` for root)
+4. Override fields as needed
+5. Set `event_mode` ("append" or "replace") and `events` list
+6. Run `python explore_tree.py` to see the tree
+
+**Example:**
+```json
+{
+  "name": "My Custom Scenario",
+  "parent": "Alon - Buy Apartment",
+  "monthly_income": 50000,
+  "event_mode": "append",
+  "events": []
+}
+```
+
+Then resolve and simulate:
+```python
+from scenario_nodes import load_scenario_nodes
+nodes = load_scenario_nodes()
+result = simulate(nodes["My Custom Scenario"].resolve(nodes), years=20)
+```
+
 ### Add a Setting
 1. Add field to `Settings` dataclass in `settings.py`
 2. Update `load_settings()` to read from JSON
@@ -336,11 +522,17 @@ print(generate_insights(result_a, result_b))
 - Tests construct scenarios directly, **not** from JSON (isolation)
 - If you change scenario values in `scenarios.json`, tests don't break
 - Tests verify **logic**, not specific data
-- Key tests:
-  - Mortgage payment formula (correct amortization)
-  - Scenario A: always positive savings, monotonic portfolio growth
-  - Scenario B: negative → positive savings transition at mortgage end
-  - Retirement detection works correctly
+- Key test areas:
+  - **Mortgage:** amortization formula, edge cases (0% rate)
+  - **Simulation:** core engine, events, retirement detection
+  - **Insights:** structured objects, comparison logic
+  - **ScenarioNode:** inheritance resolution, event composition, validation
+    - Root nodes resolve like Person (backward compat)
+    - 2-level and 3-level chains inherit correctly
+    - Event modes ("append" vs "replace") work as expected
+    - Cycle detection and validation happen at load time
+
+**Total: 52 tests** (36 core + 16 ScenarioNode) — all passing
 
 ---
 
@@ -382,10 +574,19 @@ This usually means scenario parameters have changed (which is fine!). Check that
 
 ## Summary: The Workflow
 
-1. **Edit config files** (scenarios.json, settings.json)
-2. **Run** `python main.py`
-3. **See results** — year tables, validations, comparison
+### For Flat Scenarios:
+1. **Edit config** (scenarios.json, settings.json)
+2. **Run** `python main.py` or `python compare_all_scenarios.py`
+3. **See results** — year tables, comparisons, insights
 4. **Iterate** — change config, re-run
-5. **Test** — `python -m unittest ...` to verify correctness
 
-**No Python code changes needed for scenario tweaks!**
+### For Scenario Trees:
+1. **Edit** scenario_nodes.json
+2. **Explore** `python explore_tree.py` (or programmatic: load_scenario_nodes)
+3. **Resolve** nodes into flat Scenarios via `.resolve(all_nodes)`
+4. **Simulate** using existing simulate() function
+5. **Compare** using existing comparison tools
+
+**No Python code changes needed!**
+
+Both approaches coexist: flat scenarios (scenarios.json) and trees (scenario_nodes.json) work independently or together.

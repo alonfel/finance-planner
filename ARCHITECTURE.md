@@ -684,6 +684,7 @@ portfolio = (portfolio + net_savings) * (1 + effective_return)
 models.py (no imports from project)
   ↓
 scenarios.py (imports models)
+scenario_nodes.py (imports models, scenarios)
   ↓
 simulation.py (imports models)
   ↓
@@ -693,11 +694,12 @@ settings.py (no imports from project)
   ↓
 main.py (imports all of above)
 compare_all_scenarios.py (imports all of above)
+explore_tree.py (imports all of above)
 
-tests/test_simulation.py (imports models, simulation, scenarios, comparison)
+tests/test_simulation.py (imports models, simulation, scenarios, scenario_nodes, comparison)
 ```
 
-**Key:** No circular dependencies. Clean layering. `compare_all_scenarios.py` is a standalone script (like `main.py`) that can import everything above it.
+**Key:** No circular dependencies. Clean layering. Scripts (`main.py`, `compare_all_scenarios.py`, `explore_tree.py`) are standalone and import everything above them. `scenario_nodes.py` depends on `scenarios.py` (for resolving base_scenario references).
 
 ---
 
@@ -720,6 +722,97 @@ tests/test_simulation.py (imports models, simulation, scenarios, comparison)
 
 ---
 
+## Scenario Trees (ScenarioNode)
+
+### Motivation
+
+Instead of defining each scenario independently, **ScenarioNode** enables building complex scenarios through **inheritance**. This makes compounding effects explicit and "what-if" exploration efficient.
+
+**Example:**
+```
+Baseline (root node)
+├─ Buy Apartment (child: add mortgage)
+│  └─ Buy Apartment + Exit (grandchild: change income + events)
+```
+
+### ScenarioNode Data Model
+
+```python
+@dataclass
+class ScenarioNode:
+    name: str
+    base_scenario: Optional[Scenario] = None  # Root nodes only
+    parent_name: Optional[str] = None         # Child nodes only
+
+    # Scalar overrides (None = inherit from parent)
+    monthly_income: Optional[float] = None
+    monthly_expenses: Optional[float] = None
+    age: Optional[int] = None
+    initial_portfolio: Optional[float] = None
+    return_rate: Optional[float] = None
+    withdrawal_rate: Optional[float] = None
+    currency: Optional[str] = None
+
+    # Mortgage override
+    mortgage: Optional[Mortgage] = None
+
+    # Event composition
+    event_mode: str = "append"                 # "append" | "replace"
+    events: list[Event] = field(default_factory=list)
+
+    def resolve(self, all_nodes: dict[str, "ScenarioNode"] = None) -> Scenario:
+        """Resolve node into flat Scenario by walking ancestor chain."""
+        ...
+```
+
+**Design notes:**
+- Root nodes: `parent_name=None`, `base_scenario` set
+- Child nodes: `parent_name="SomeName"`, `base_scenario=None`
+- `resolve(all_nodes)` walks parent chain and merges overrides root-to-leaf
+- Event merging: "append" accumulates events, "replace" discards ancestors
+- `Person = ScenarioNode` alias for backward compatibility
+
+### Resolution Algorithm
+
+For each node in the ancestor chain (root → leaf):
+1. Apply scalar overrides via `dataclasses.replace()` (None values skipped)
+2. Apply event merge:
+   - If `event_mode="replace"`: `accumulated_events = node.events`
+   - If `event_mode="append"`: `accumulated_events += node.events`
+
+**Example:**
+```
+Root:  base_scenario.events=[E1]       → accumulated=[E1]
+Child: event_mode="append", events=[E2] → accumulated=[E1, E2]
+Grand: event_mode="replace", events=[E3] → accumulated=[E3]
+```
+
+### Validation (at load time)
+
+- **Cycle detection:** No node can be its own ancestor
+- **Parent validation:** All `parent_name` references must exist in the dict
+- **Root validation:** Every ancestor chain must lead to a root with `base_scenario`
+
+### Usage Example
+
+```python
+from scenario_nodes import load_scenario_nodes
+from simulation import simulate
+
+nodes = load_scenario_nodes()
+resolved = nodes["Alon - Buy Apartment + Exit"].resolve(nodes)
+result = simulate(resolved, years=20)
+```
+
+### Files
+
+- **scenario_nodes.py** — Loader + validator + tree resolution
+- **scenario_nodes.json** — Tree definitions
+- **explore_tree.py** — Interactive exploration script
+- **SCENARIO_TREE_GUIDE.md** — User guide + examples
+
+---
+
 ## Extensibility Roadmap
 
 **Phase 1 (MVP)** ✅ — Complete
@@ -733,10 +826,16 @@ tests/test_simulation.py (imports models, simulation, scenarios, comparison)
 - Configurable output display (show_fields)
 - Comprehensive pairwise analysis (compare_all_scenarios.py)
 
-**Phase 3** (Planned)
-- Scenario branches (income changes at year X)
+**Phase 3** ✅ — Complete
+- Scenario trees with inheritance (ScenarioNode)
+- Event composition control ("append" vs "replace")
+- Full validation + cycle detection
+- Up to 3 levels deep
+
+**Phase 4** (Planned)
 - Inflation adjustment
 - Multiple asset allocations
+- Branching at specific years (income changes)
 
 **Phase 4** (Possible)
 - Tax modeling

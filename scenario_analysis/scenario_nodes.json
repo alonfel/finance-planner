@@ -1,0 +1,45 @@
+{
+  "scenario_nodes": [
+    {
+      "name": "Alon Baseline",
+      "base_scenario": "Baseline",
+      "monthly_income": 45000,
+      "monthly_expenses": 25000,
+      "age": 41,
+      "return_rate": 0.05,
+      "event_mode": "append",
+      "events": []
+    },
+    {
+      "name": "Alon - Buy Apartment",
+      "parent": "Alon Baseline",
+      "mortgage": {
+        "principal": 2250000,
+        "annual_rate": 0.04,
+        "duration_years": 25,
+        "currency": "ILS"
+      },
+      "event_mode": "append",
+      "events": [
+        {
+          "year": 1,
+          "portfolio_injection": -200000,
+          "description": "Down payment legal fees"
+        }
+      ]
+    },
+    {
+      "name": "Alon - Buy Apartment + Exit",
+      "parent": "Alon - Buy Apartment",
+      "monthly_income": 35000,
+      "event_mode": "replace",
+      "events": [
+        {
+          "year": 2,
+          "portfolio_injection": 5000000,
+          "description": "Company exit proceeds"
+        }
+      ]
+    }
+  ]
+}
