@@ -127,6 +127,37 @@
         "simulations",
         "pairwise_comparisons"
       ]
+    },
+    {
+      "id": "baseline_exit_variants",
+      "title": "Baseline (No Apartment) + Exit Variants",
+      "description": "Compare baseline at ₪45K with 3 exit scenarios: no exit, ₪2M exit, ₪3M exit",
+      "type": "milestone_snapshots",
+      "scenarios": [
+        {
+          "label": "No Exit",
+          "node": "Alon Baseline"
+        },
+        {
+          "label": "+₪2M Exit",
+          "node": "Alon Baseline + ₪2M Exit"
+        },
+        {
+          "label": "+₪3M Exit",
+          "node": "Alon Baseline + ₪3M Exit"
+        }
+      ],
+      "milestones": [1, 5, 10, 15, 20],
+      "metrics": [
+        "portfolio",
+        "retirement_year",
+        "annual_savings",
+        "age"
+      ],
+      "outputs": [
+        "milestone_table",
+        "comparison_summary"
+      ]
     }
   ]
 }

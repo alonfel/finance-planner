@@ -135,6 +135,14 @@ def handle_parameter_pair_comparison(analysis: Dict[str, Any], all_nodes: Dict[s
             # Print scenario comparison
             print(f"\n{scenario_name}")
             print(f"{'='*120}\n")
+
+            # Print yearly portfolio growth graph
+            comparison_results = {
+                var1_label: result_var1,
+                var2_label: result_var2,
+            }
+            plot_scenarios_graph(comparison_results)
+
             print_metric_comparison(result_var1, result_var2, metrics, var1_label, var2_label)
 
             # Print insights if requested
@@ -200,6 +208,24 @@ def handle_parameter_sweep(analysis: Dict[str, Any], all_nodes: Dict[str, Scenar
             result = simulate_scenario(variant_node, temp_nodes)
             results[param_value][var_name] = result
 
+    # Print graphs for each variation
+    print("\n[YEARLY PORTFOLIO GROWTH BY INCOME LEVEL]")
+    print("="*120)
+    for variation in test_variations:
+        var_name = variation.get("name")
+        print(f"\n{var_name}")
+        print("-"*120)
+
+        # Collect results for this variation across all income levels
+        variation_results = {}
+        for param_value in param_values:
+            if param_value in results and var_name in results[param_value]:
+                label = f"₪{param_value//1000}K"
+                variation_results[label] = results[param_value][var_name]
+
+        if variation_results:
+            plot_scenarios_graph(variation_results)
+
     # Print detailed tables
     if "detailed_tables" in outputs:
         print_sweep_detailed_tables(results, test_variations, parameter, param_values, metrics)
@@ -237,6 +263,9 @@ def handle_milestone_snapshots(analysis: Dict[str, Any], all_nodes: Dict[str, Sc
         node = all_nodes[node_name]
         result = simulate_scenario(node, all_nodes)
         results[label] = result
+
+    # Print yearly portfolio growth graph
+    plot_scenarios_graph(results)
 
     # Print milestone table
     if "milestone_table" in outputs:
@@ -296,6 +325,9 @@ def handle_tree_exploration(analysis: Dict[str, Any], all_nodes: Dict[str, Scena
     for name in scenario_names:
         result = simulate_scenario(all_nodes[name], all_nodes)
         results[name] = result
+
+    # Print yearly portfolio growth graph
+    plot_scenarios_graph(results)
 
     # Print simulations
     if "simulations" in outputs:
@@ -509,6 +541,105 @@ def print_milestone_table(results: Dict, milestones: List[int], metrics: List[st
             else:
                 row += f" | {'N/A':<35}"
         print(row)
+
+
+def plot_scenarios_graph(results: Dict):
+    """Create ASCII graph showing yearly portfolio values for all scenarios."""
+    if not results:
+        return
+
+    # Get all year data
+    scenarios = {}
+    max_years = 0
+    for label, result in results.items():
+        portfolios = [yd.portfolio for yd in result.year_data]
+        scenarios[label] = portfolios
+        max_years = max(max_years, len(portfolios))
+
+    if max_years == 0:
+        return
+
+    # Find min/max portfolio values for scaling
+    all_portfolios = []
+    for portfolios in scenarios.values():
+        all_portfolios.extend(portfolios)
+
+    min_val = min(all_portfolios)
+    max_val = max(all_portfolios)
+
+    # Add some padding
+    range_val = max_val - min_val
+    min_val = max(0, min_val - range_val * 0.05)
+    max_val = max_val + range_val * 0.05
+
+    # Create graph dimensions
+    graph_height = 15
+    graph_width = max_years
+
+    # Create grid
+    grid = [[' ' for _ in range(graph_width)] for _ in range(graph_height)]
+
+    # Plot each scenario with a different character
+    chars = ['█', '▓', '▒', '░', '●', '○', '◆', '◇', '■', '□']
+    scenario_chars = {label: chars[i % len(chars)] for i, label in enumerate(sorted(scenarios.keys()))}
+
+    for label, portfolios in scenarios.items():
+        char = scenario_chars[label]
+        for year_idx, portfolio in enumerate(portfolios):
+            if year_idx < graph_width:
+                # Scale portfolio to grid height
+                if max_val > min_val:
+                    normalized = (portfolio - min_val) / (max_val - min_val)
+                else:
+                    normalized = 0.5
+
+                row = int((1 - normalized) * (graph_height - 1))
+                row = max(0, min(graph_height - 1, row))
+
+                # Plot character
+                if grid[row][year_idx] == ' ':
+                    grid[row][year_idx] = char
+                else:
+                    grid[row][year_idx] = '+'  # Overlap indicator
+
+    # Print graph
+    print("\n[YEARLY PORTFOLIO GROWTH]")
+    print("-" * (graph_width + 15))
+
+    # Print Y-axis labels and grid
+    y_labels = []
+    for i in range(graph_height):
+        normalized = 1 - (i / (graph_height - 1))
+        value = min_val + normalized * (max_val - min_val)
+        y_labels.append(value)
+
+    for row_idx in range(graph_height):
+        # Y-axis label
+        value = y_labels[row_idx]
+        label = f"₪{value/1_000_000:>4.1f}M"
+
+        # Grid content
+        line = ''.join(grid[row_idx])
+        print(f"{label} │{line}")
+
+    # X-axis
+    print("      ├" + "─" * graph_width)
+
+    # X-axis labels (years)
+    x_labels = "      │"
+    for year in range(1, max_years + 1):
+        if year % 2 == 1:
+            x_labels += str(year % 10)
+        else:
+            x_labels += " "
+    print(x_labels)
+
+    # Legend
+    print("\n[LEGEND]")
+    for label in sorted(scenarios.keys()):
+        char = scenario_chars[label]
+        final_port = scenarios[label][-1] if scenarios[label] else 0
+        print(f"  {char} {label:<40} → ₪{final_port:>12,.0f}")
 
 
 def print_milestone_summary(results: Dict):

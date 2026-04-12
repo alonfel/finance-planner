@@ -87,6 +87,30 @@
           "description": "Child 2 surrogacy expense"
         }
       ]
+    },
+    {
+      "name": "Alon Baseline + ₪2M Exit",
+      "parent": "Alon Baseline",
+      "event_mode": "replace",
+      "events": [
+        {
+          "year": 1,
+          "portfolio_injection": 2000000,
+          "description": "Exit proceeds"
+        }
+      ]
+    },
+    {
+      "name": "Alon Baseline + ₪3M Exit",
+      "parent": "Alon Baseline",
+      "event_mode": "replace",
+      "events": [
+        {
+          "year": 1,
+          "portfolio_injection": 3000000,
+          "description": "Exit proceeds"
+        }
+      ]
     }
   ]
 }
