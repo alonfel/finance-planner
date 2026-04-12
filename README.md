@@ -67,17 +67,23 @@ python main.py
 - Validation checks
 - Comparison report and insights
 
-**Configuration-driven analysis (NEW!):**
+**Configuration-driven analysis with decoupled caching (NEW!):**
 ```bash
+# Step 1: Simulate all scenarios ONCE (when scenarios change)
+python scenario_analysis/run_simulations.py
+
+# Step 2: Analyze many times (fast, uses cached results)
 python scenario_analysis/run_analysis.py
 ```
 - Runs all analyses defined in `scenario_analysis/analysis.json`
 - **No code changes needed** — just edit the JSON to add analyses
+- ~100x faster iteration: change output format without re-simulating
 - Supported analysis types:
   - Parameter pair comparison (e.g., income ₪45K vs ₪25K)
   - Parameter sweep (e.g., income range ₪25K-₪50K with/without exit)
   - Milestone snapshots (e.g., years 1, 5, 10, 15, 20)
   - Scenario tree exploration (structure, simulations, pairwise comparisons)
+- **Built-in caching:** Results cached in `simulation_cache.json` for fast re-analysis
 
 **Run tests:**
 ```bash

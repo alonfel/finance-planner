@@ -464,6 +464,141 @@ This would show only income/expenses and mortgage (hide events and rates).
 
 ---
 
+## Analysis Layer: Decoupled Simulation & Analysis
+
+The analysis system decouples simulation (expensive) from analysis/output (fast), enabling rapid iteration on visualizations and reports without re-running scenarios.
+
+### Two-Step Workflow
+
+**Step 1: `run_simulations.py` — Simulate & Cache**
+
+```python
+# run_all_simulations(all_nodes: Dict) -> Dict[str, Dict]
+# - Iterates through all ScenarioNode objects
+# - Resolves each node via .resolve(all_nodes)
+# - Calls simulate(scenario, years=20)
+# - Converts each SimulationResult to JSON-serializable dict
+# - Saves to simulation_cache.json with timestamp
+```
+
+**Key functions:**
+- `simulation_result_to_dict(result)` — Serializes SimulationResult to dict
+- `year_data_to_dict(year_data)` — Serializes YearData to dict
+- `save_cache(results, path)` — Writes JSON with metadata
+
+**Output:** `simulation_cache.json`
+```json
+{
+  "generated_at": "2026-04-12T08:52:19.653433",
+  "num_scenarios": 8,
+  "results": {
+    "Alon Baseline": {
+      "scenario_name": "Alon Baseline",
+      "retirement_year": 16,
+      "year_data": [
+        {"year": 1, "income": 540000, "expenses": 325000, ...},
+        // ... years 2-20
+      ]
+    },
+    // ... 7 more scenarios
+  }
+}
+```
+
+**Step 2: `run_analysis.py` — Load Cache & Analyze**
+
+```python
+# load_cache(path) -> Optional[Dict]
+# - Reads simulation_cache.json
+# - Returns results dict or None if missing
+
+# dict_to_simulation_result(data: Dict) -> SimulationResult
+# - Reconstructs SimulationResult from cached dict
+# - Rebuilds YearData objects
+# - Maintains object structure for handlers
+
+# analyze(analysis_config, cached_results)
+# - Dispatches to type-specific handler
+# - Handler uses cached results instead of simulating
+# - Produces formatted output (graphs, tables, insights)
+```
+
+### Architecture Benefits
+
+| Benefit | How |
+|---------|-----|
+| **Fast iteration** | Edit analysis.json, re-run Step 2 (~1s vs ~2s to re-simulate all) |
+| **Consistent results** | Same cache used across multiple analyses |
+| **Programmatic access** | Load cache.json directly to process raw data |
+| **Fallback safety** | If cache missing, run_analysis.py simulates inline |
+| **Version control** | Cache included in git (41KB, human-readable JSON) |
+
+### Handler Pattern
+
+Each analysis type has a handler that accepts cached results:
+
+```python
+def handle_milestone_snapshots(
+    analysis: Dict,
+    all_nodes: Dict[str, ScenarioNode],
+    cached_results: Dict[str, SimulationResult] = None
+):
+    """
+    Load cached results and produce analysis output.
+    
+    If cached_results provided: use it (fast)
+    If cached_results missing: simulate inline (slow but works)
+    """
+    results = {}
+    for scenario_info in scenarios:
+        node = all_nodes[node_name]
+        
+        # Try cache first
+        if cached_results and node.name in cached_results:
+            result = cached_results[node.name]
+        else:
+            # Fallback: simulate
+            resolved = node.resolve(all_nodes)
+            result = simulate(resolved, years=20)
+        
+        results[label] = result
+    
+    # Produce output using results
+    plot_scenarios_graph(results)
+    print_milestone_table(results, milestones, metrics)
+```
+
+### When to Re-Simulate
+
+Re-run `run_simulations.py` when:
+- ✅ Adding new scenario nodes to `scenario_nodes.json`
+- ✅ Changing scenario parameters (income, expenses, mortgage, events)
+- ✅ Modifying simulation settings (return_rate, withdrawal_rate, years)
+- ✅ Needing fresh results after upstream changes
+
+Don't re-simulate when:
+- ❌ Changing analysis output format (edit analysis.json, re-run analysis)
+- ❌ Adding new analyses (same scenarios, different groupings)
+- ❌ Modifying graphs/tables (same results, different display)
+
+### Storage Hierarchy
+
+```
+scenario_nodes.json  (scenario tree definitions)
+      ↓
+run_simulations.py   (resolve + simulate)
+      ↓
+simulation_cache.json (raw results, JSON-serialized)
+      ↓
+run_analysis.py      (load cache, format output)
+      ↓
+analysis.json        (define what to analyze)
+```
+
+Each layer is independent: changing analysis doesn't re-run simulation.
+
+---
+
 ## Extension Patterns
 
 ### Pattern 1: Add a Scenario Field
