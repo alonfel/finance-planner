@@ -5,10 +5,16 @@
       "monthly_income": 45000,
       "monthly_expenses": 25000,
       "currency": "ILS",
-      "initial_portfolio": 0,
+      "initial_portfolio": 1400000,
       "mortgage": null,
       "age": 41,
-      "events": []
+      "events": [
+        {
+          "year": 2,
+          "portfolio_injection": -500000,
+          "description": "Surrogacy expense"
+        }
+      ]
     },
     {
       "name": "Buy Apartment",
