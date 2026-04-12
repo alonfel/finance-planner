@@ -3,10 +3,9 @@ import sys
 from pathlib import Path
 
 # Add parent directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from models import Mortgage, Scenario, Event, ScenarioNode
-from simulation import simulate
+from domain.models import Mortgage, Scenario, Event, ScenarioNode
+from domain.simulation import simulate
 
 
 class TestMortgage(unittest.TestCase):
@@ -287,7 +286,7 @@ class TestComparisonAndInsights(unittest.TestCase):
 
     def test_scenario_b_retires_much_later_or_not(self):
         """Scenario B (with mortgage) should not retire within 40 years (or much later)."""
-        from comparison import compare_scenarios
+        from domain.insights import compare_scenarios
 
         scenario_a = Scenario(
             name="Baseline",
@@ -311,7 +310,7 @@ class TestComparisonAndInsights(unittest.TestCase):
 
     def test_scenario_b_has_lower_final_portfolio(self):
         """Scenario B should end with lower portfolio than A."""
-        from comparison import compare_scenarios
+        from domain.insights import compare_scenarios
 
         scenario_a = Scenario(
             name="Baseline",
@@ -333,7 +332,7 @@ class TestComparisonAndInsights(unittest.TestCase):
 
     def test_generate_insights_returns_string(self):
         """generate_insights should return a string."""
-        from comparison import generate_insights
+        from domain.insights import generate_insights
 
         scenario_a = Scenario(
             name="Baseline",
@@ -359,7 +358,7 @@ class TestBuildInsights(unittest.TestCase):
 
     def test_retirement_insight_count_always_two(self):
         """Should always have exactly 2 RetirementInsights (one per scenario)."""
-        from comparison import build_insights, RetirementInsight
+        from domain.insights import build_insights, RetirementInsight
 
         scenario_a = Scenario(
             name="Baseline",
@@ -381,7 +380,7 @@ class TestBuildInsights(unittest.TestCase):
 
     def test_retirement_delta_only_when_both_retire(self):
         """RetirementDeltaInsight should only appear when both scenarios retire."""
-        from comparison import build_insights, RetirementDeltaInsight
+        from domain.insights import build_insights, RetirementDeltaInsight
 
         # Both scenarios retire
         scenario_a = Scenario(
@@ -404,7 +403,7 @@ class TestBuildInsights(unittest.TestCase):
 
     def test_retirement_delta_absent_when_one_never_retires(self):
         """RetirementDeltaInsight should be absent when one scenario doesn't retire."""
-        from comparison import build_insights, RetirementDeltaInsight
+        from domain.insights import build_insights, RetirementDeltaInsight
 
         # Scenario B with huge mortgage (will never retire in 20 years)
         scenario_a = Scenario(
@@ -428,7 +427,7 @@ class TestBuildInsights(unittest.TestCase):
 
     def test_mortgage_insight_only_when_mortgage_present(self):
         """MortgageInsight should only appear when scenario B has a mortgage."""
-        from comparison import build_insights, MortgageInsight
+        from domain.insights import build_insights, MortgageInsight
 
         # A without mortgage, B without mortgage
         scenario_a = Scenario(
@@ -451,7 +450,7 @@ class TestBuildInsights(unittest.TestCase):
 
     def test_mortgage_insight_present_when_mortgage_in_b(self):
         """MortgageInsight should appear when scenario B has a mortgage."""
-        from comparison import build_insights, MortgageInsight
+        from domain.insights import build_insights, MortgageInsight
 
         scenario_a = Scenario(
             name="Baseline",
@@ -475,7 +474,7 @@ class TestBuildInsights(unittest.TestCase):
 
     def test_portfolio_insight_difference_sign(self):
         """PortfolioInsight should correctly compute the difference (B - A)."""
-        from comparison import build_insights, PortfolioInsight
+        from domain.insights import build_insights, PortfolioInsight
 
         scenario_a = Scenario(
             name="Baseline",
@@ -499,7 +498,7 @@ class TestBuildInsights(unittest.TestCase):
 
     def test_format_insights_output_unchanged(self):
         """Verify format_insights produces same output as original generate_insights."""
-        from comparison import build_insights, format_insights, generate_insights
+        from domain.insights import build_insights, format_insights, generate_insights
 
         scenario_a = Scenario(
             name="Baseline",

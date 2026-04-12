@@ -3,17 +3,16 @@ Test multiple scenario clusters to explore different financial outcomes.
 
 Creates variations along different axes:
   - Income levels (₪30K, ₪45K, ₪60K)
-  - Mortgage sizes (none, ₪1.5M, ₪2.5M)
   - Exit timing (year 2, 3, 5) and size (₪3M, ₪5M, ₪7M)
   - Event combinations
 
 Generates clusters and shows comparative outcomes.
 """
 
-from models import ScenarioNode, Mortgage, Event
-from scenario_analysis.scenario_nodes import load_scenario_nodes
-from simulation import simulate
-from comparison import build_insights, format_insights
+from domain.models import ScenarioNode, Mortgage, Event
+from infrastructure.loaders import load_scenario_nodes
+from domain.simulation import simulate
+from domain.insights import build_insights, format_insights
 import json
 
 def generate_income_cluster(base_node_name, base_nodes):

@@ -5,110 +5,13 @@ Main entry point: simulates both scenarios and generates comparison report.
 """
 
 from datetime import datetime
-from models import Scenario, Mortgage
-from simulation import simulate
-from comparison import compare_scenarios, generate_insights
-from scenarios import SCENARIO_A, SCENARIO_B, load_scenarios
-from settings import SETTINGS
+from domain.simulation import simulate
+from domain.insights import generate_insights
+from infrastructure.loaders import load_scenarios, SETTINGS
+from presentation.formatters import print_scenario_header, print_year_summary
 
 # Current year for calculating future retirement dates
 CURRENT_YEAR = datetime.now().year
-
-
-# Currency symbols
-CURRENCY_SYMBOLS = {
-    "ILS": "₪",
-    "USD": "$",
-    "EUR": "€",
-}
-
-
-def get_currency_symbol(currency: str) -> str:
-    """Get currency symbol for display."""
-    return CURRENCY_SYMBOLS.get(currency, currency)
-
-
-def print_scenario_header(scenario, settings):
-    """Print scenario input parameters as a header block.
-
-    Displays fields configured in settings.output.show_fields.
-    """
-    currency_symbol = get_currency_symbol(scenario.currency)
-    fields = settings.output.show_fields
-
-    print(f"\n{'─'*110}")
-    print(f"  Scenario Parameters: {scenario.name}")
-    print(f"{'─'*110}")
-
-    if "income_expenses" in fields:
-        net = scenario.monthly_income - scenario.monthly_expenses
-        print(f"  Income:   {currency_symbol} {scenario.monthly_income:>10,.0f}/month")
-        print(f"  Expenses: {currency_symbol} {scenario.monthly_expenses:>10,.0f}/month")
-        print(f"  Net:      {currency_symbol} {net:>10,.0f}/month")
-
-    if "mortgage_details" in fields:
-        if scenario.mortgage:
-            m = scenario.mortgage
-            print(f"  Mortgage: {currency_symbol} {m.principal:,.0f} @ {m.annual_rate*100:.1f}% for {m.duration_years}y  |  Monthly payment: {currency_symbol} {m.monthly_payment:,.0f}")
-        else:
-            print(f"  Mortgage: None")
-
-    if "events" in fields:
-        if scenario.events:
-            for e in scenario.events:
-                sign = "+" if e.portfolio_injection >= 0 else ""
-                print(f"  Event year {e.year}: {e.description}  ({sign}{currency_symbol} {e.portfolio_injection:,.0f})")
-        else:
-            print(f"  Events: None")
-
-    if "rates_settings" in fields:
-        print(f"  Return rate: {scenario.return_rate*100:.1f}%  |  Withdrawal rate: {scenario.withdrawal_rate*100:.1f}%  |  Simulation: {settings.years} years  |  Age: {scenario.age}")
-
-    print(f"{'─'*110}")
-
-
-def print_year_summary(result, scenario, limit_years=40, start_age=30):
-    """Print a table of year-by-year results with scenario header.
-
-    Args:
-        result: SimulationResult object
-        scenario: Scenario object (for parameter display)
-        limit_years: Max years to display
-        start_age: Starting age for retirement age calculation
-    """
-    # Print scenario parameters header
-    print_scenario_header(scenario, SETTINGS)
-
-    # Get currency symbol from first year's data (all years use same currency)
-    currency_symbol = get_currency_symbol(scenario.currency)
-
-    print(f"\n{'='*110}")
-    print(f"Year-by-Year: {result.scenario_name} ({currency_symbol})")
-    print(f"{'='*110}")
-    print(
-        f"{'Year':<6} {'Income':<14} {'Expenses':<14} {'Net Savings':<14} {'Portfolio':<16} {'Req. Capital':<14}"
-    )
-    print("-" * 110)
-
-    for year_data in result.year_data[:limit_years]:
-        print(
-            f"{year_data.year:<6} "
-            f"{currency_symbol} {year_data.income:>11,.0f} "
-            f"{currency_symbol} {year_data.expenses:>11,.0f} "
-            f"{currency_symbol} {year_data.net_savings:>11,.0f} "
-            f"{currency_symbol} {year_data.portfolio:>13,.0f} "
-            f"{currency_symbol} {year_data.required_capital:>11,.0f}"
-        )
-
-    if result.retirement_year:
-        future_year = CURRENT_YEAR + result.retirement_year - 1
-        retirement_age = start_age + result.retirement_year - 1
-        print(f"\n✓ Retirement achieved in year {result.retirement_year} (expected: {future_year}, age: {retirement_age})")
-        print(f"  Portfolio at retirement: {currency_symbol} {result.year_data[result.retirement_year - 1].portfolio:,.0f}")
-    else:
-        print(f"\n✗ No retirement achieved within {len(result.year_data)} years")
-
-    print(f"Final portfolio (year {len(result.year_data)}): {currency_symbol} {result.year_data[-1].portfolio:,.0f}")
 
 
 def validate_scenario_b_behavior(result_b):
@@ -171,16 +74,21 @@ def main():
     print("FINANCIAL SIMULATION ENGINE")
     print("="*110)
 
+    # Load scenarios
+    all_scenarios = load_scenarios()
+    scenario_a = all_scenarios["Baseline"]
+    scenario_b = all_scenarios["Buy Apartment"]
+
     # Simulate both scenarios
     print("\nSimulating Scenario A (Baseline)...")
-    result_a = simulate(SCENARIO_A, years=SETTINGS.years)
+    result_a = simulate(scenario_a, years=SETTINGS.years)
 
     print("Simulating Scenario B (Buy Apartment)...")
-    result_b = simulate(SCENARIO_B, years=SETTINGS.years)
+    result_b = simulate(scenario_b, years=SETTINGS.years)
 
     # Print detailed year-by-year results
-    print_year_summary(result_a, SCENARIO_A, limit_years=SETTINGS.years, start_age=SCENARIO_A.age)
-    print_year_summary(result_b, SCENARIO_B, limit_years=SETTINGS.years, start_age=SCENARIO_B.age)
+    print_year_summary(result_a, scenario_a, limit_years=SETTINGS.years, start_age=scenario_a.age)
+    print_year_summary(result_b, scenario_b, limit_years=SETTINGS.years, start_age=scenario_b.age)
 
     # Validate both scenarios
     validate_scenario_a_behavior(result_a)
@@ -198,7 +106,6 @@ def main():
     print("IPO TIMING ANALYSIS: 3-Scenario Comparison")
     print("="*110)
 
-    all_scenarios = load_scenarios()
     print("\nSimulating IPO Year 2 (3M offering)...")
     result_ipo2 = simulate(all_scenarios["IPO Year 2"], years=SETTINGS.years)
 
@@ -261,7 +168,7 @@ def main():
     print(insights_2_vs_29)
 
     print("\n" + "="*110)
-    print("✓ Simulation complete and validated!")
+    print("END OF REPORT")
     print("="*110 + "\n")
 
 

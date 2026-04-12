@@ -3,13 +3,12 @@ Test income variations (₪25K - ₪50K) with fixed expenses (₪25K) and exit (
 
 This shows the impact of income on retirement timeline when:
 - Exit event is guaranteed (₪2M in year 2)
-- Expenses are constant (₪25K/month)
 - Only income varies
 """
 
-from models import ScenarioNode, Event
-from scenario_analysis.scenario_nodes import load_scenario_nodes
-from simulation import simulate
+from domain.models import ScenarioNode, Event
+from infrastructure.loaders import load_scenario_nodes
+from domain.simulation import simulate
 
 def create_income_exit_cluster():
     """Create cluster: income ₪25K-₪50K with fixed ₪2M exit in year 2"""

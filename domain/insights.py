@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from typing import Optional, List, Union
-from simulation import SimulationResult
+from domain.simulation import SimulationResult
 
 
 @dataclass

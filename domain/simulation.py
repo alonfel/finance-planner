@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from typing import Optional
-from models import Scenario
+from domain.models import Scenario
 
 
 @dataclass

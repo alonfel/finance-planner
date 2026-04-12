@@ -1,0 +1,13 @@
+{
+  "run_at": "2026-04-12T09:32:30",
+  "profile": "default",
+  "analyses_run": [
+    "income_sensitivity",
+    "exit_impact",
+    "personal_comparison",
+    "scenario_tree_exploration",
+    "baseline_exit_variants"
+  ],
+  "cache_generated_at": "2026-04-12T09:32:24.788261",
+  "num_scenarios": 8
+}

@@ -13,19 +13,22 @@ This allows fast iteration on analysis/output without re-simulating.
 Fallback: If cache doesn't exist, simulates inline (slower but works).
 """
 
-import sys
 import json
 from pathlib import Path
 from dataclasses import replace
-from typing import Optional, Dict, Any, List
-from datetime import datetime
+from typing import Dict, Any, List
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from scenario_analysis.scenario_nodes import load_scenario_nodes
-from models import ScenarioNode, Event
-from simulation import simulate, SimulationResult, YearData
-from comparison import build_insights, format_insights
+from infrastructure.loaders import load_scenario_nodes
+from domain.models import ScenarioNode, Event
+from domain.simulation import simulate, SimulationResult
+from domain.insights import build_insights, format_insights
+from infrastructure.cache import load_cache, dict_to_simulation_result
+from infrastructure.data_layer import (
+    get_analysis_config_path,
+    get_cache_path,
+    save_run_result,
+    DEFAULT_PROFILE,
+)
 
 
 def load_analyses(path: Path) -> List[Dict[str, Any]]:
@@ -33,48 +36,6 @@ def load_analyses(path: Path) -> List[Dict[str, Any]]:
     with open(path) as f:
         data = json.load(f)
     return data.get("analyses", [])
-
-
-def load_cache(path: Path) -> Optional[Dict[str, Dict[str, Any]]]:
-    """Load cached simulation results from JSON."""
-    if not path.exists():
-        return None
-
-    try:
-        with open(path) as f:
-            cache_data = json.load(f)
-        return cache_data.get("results", {})
-    except Exception as e:
-        print(f"⚠️  Could not load cache: {e}")
-        return None
-
-
-def dict_to_simulation_result(data: Dict[str, Any]) -> SimulationResult:
-    """
-    Reconstruct a SimulationResult from cached dict data.
-
-    This converts the cached JSON back into the in-memory object structure
-    used by the analysis handlers.
-    """
-    year_data_list = []
-    for yd in data.get("year_data", []):
-        yd_obj = YearData(
-            year=yd["year"],
-            income=yd["income"],
-            expenses=yd["expenses"],
-            net_savings=yd["net_savings"],
-            portfolio=yd["portfolio"],
-            required_capital=yd["required_capital"],
-            mortgage_active=yd["mortgage_active"],
-        )
-        year_data_list.append(yd_obj)
-
-    result = SimulationResult(
-        scenario_name=data["scenario_name"],
-        retirement_year=data["retirement_year"],
-        year_data=year_data_list,
-    )
-    return result
 
 
 def create_variant_node(
@@ -761,8 +722,9 @@ def print_assumptions():
 
 
 def main():
-    analysis_file = Path(__file__).parent / "analysis.json"
-    cache_file = Path(__file__).parent / "simulation_cache.json"
+    # Use profile-based data layer (fixes path mismatch bug)
+    analysis_file = get_analysis_config_path(DEFAULT_PROFILE)
+    cache_file = get_cache_path(DEFAULT_PROFILE)
 
     print("\n" + "="*120)
     print("SCENARIO ANALYSIS RUNNER".center(120))
@@ -834,6 +796,15 @@ def main():
             print(f"\n❌ Error running analysis '{analysis_id}': {e}")
             import traceback
             traceback.print_exc()
+
+    # Save run result with metadata
+    analyses_run = [a.get("id", "unknown") for a in analyses]
+    cache_generated_at = cache_meta.get("generated_at", "unknown") if 'cache_meta' in locals() else "inline"
+    save_run_result(DEFAULT_PROFILE, {
+        "analyses_run": analyses_run,
+        "cache_generated_at": cache_generated_at,
+        "num_scenarios": len(all_cached_results),
+    })
 
     print(f"\n{'='*120}")
     print("Analysis complete".center(120))

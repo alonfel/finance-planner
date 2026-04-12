@@ -21,11 +21,10 @@ from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any, List
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from scenario_analysis.scenario_nodes import load_scenario_nodes
-from simulation import simulate
-
+from infrastructure.loaders import load_scenario_nodes
+from domain.simulation import simulate
+from infrastructure.cache import simulation_result_to_dict, save_cache, load_cache
 
 def year_data_to_dict(year_data) -> Dict[str, Any]:
     """Convert YearData object to a serializable dict."""
