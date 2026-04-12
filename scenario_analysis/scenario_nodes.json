@@ -40,6 +40,53 @@
           "description": "Company exit proceeds"
         }
       ]
+    },
+    {
+      "name": "Alon Baseline - Low Income (₪25K)",
+      "parent": "Alon Baseline",
+      "monthly_income": 25000,
+      "event_mode": "replace",
+      "events": [
+        {
+          "year": 2,
+          "portfolio_injection": -500000,
+          "description": "Child 2 surrogacy expense"
+        }
+      ]
+    },
+    {
+      "name": "Alon - Low Income + ₪2M Exit",
+      "parent": "Alon Baseline - Low Income (₪25K)",
+      "event_mode": "append",
+      "events": [
+        {
+          "year": 1,
+          "portfolio_injection": 2000000,
+          "description": "Exit proceeds"
+        },
+        {
+          "year": 2,
+          "portfolio_injection": -500000,
+          "description": "Child 2 surrogacy expense"
+        }
+      ]
+    },
+    {
+      "name": "Alon - Low Income + ₪3M Exit",
+      "parent": "Alon Baseline - Low Income (₪25K)",
+      "event_mode": "append",
+      "events": [
+        {
+          "year": 1,
+          "portfolio_injection": 3000000,
+          "description": "Exit proceeds"
+        },
+        {
+          "year": 2,
+          "portfolio_injection": -500000,
+          "description": "Child 2 surrogacy expense"
+        }
+      ]
     }
   ]
 }
