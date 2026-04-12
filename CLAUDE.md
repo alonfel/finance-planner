@@ -29,6 +29,14 @@ Default analyses:
 
 **To add a new analysis:** Edit `analysis.json` and add a new analysis block. No Python code changes needed.
 
+**Understanding the Output:**
+Each analysis shows three parts:
+1. **[YEARLY PORTFOLIO GROWTH]** — ASCII graph with all scenarios on one chart
+2. **[METRIC TABLE]** or **[MILESTONE SNAPSHOTS]** — Numerical data at key years
+3. **[Insights]** or **[SUMMARY]** — Interpretation of results
+
+See [GRAPH_GUIDE.md](GRAPH_GUIDE.md) for a detailed walkthrough with examples.
+
 ### Running Tests
 ```bash
 python -m unittest discover -s tests -p "test_*.py" -v

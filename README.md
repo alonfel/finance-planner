@@ -105,6 +105,37 @@ Edit: scenario_analysis/analysis.json  (add analysis block, no Python!)
 
 ---
 
+## Understanding the Output: Graphs, Tables & Insights
+
+Every analysis shows three components together:
+
+1. **[YEARLY PORTFOLIO GROWTH]** — ASCII graph showing all scenarios on one chart
+   - X-axis: Years 1-20
+   - Y-axis: Portfolio values
+   - Different characters (█ ▓ ▒ etc.) for each scenario
+   - Year 2 dip shows surrogacy expense (-₪500K)
+
+2. **[METRIC TABLE]** or **[MILESTONE SNAPSHOTS]** — Numerical data
+   - Portfolio values at key years (1, 5, 10, 15, 20)
+   - Retirement year, final portfolio, annual savings
+
+3. **[Insights]** or **[SUMMARY]** — Interpretation
+   - Which scenario retires earliest
+   - How much exit/income changes retirement timing
+   - Compounding effects
+
+**Example:** When comparing "No Exit" vs "₪2M Exit" vs "₪3M Exit":
+- Graph shows three lines with different heights
+- Year 1: Exit scenarios jump up (₪2M/₪3M injection)
+- Year 2: All dip together (surrogacy)
+- Years 3-20: Exit scenarios grow faster (bigger base × 5% compounding)
+- Table shows exact portfolio at years 1, 5, 10, 15, 20
+- Summary shows retirement years: No Exit = Year 16, ₪2M = Year 9, ₪3M = Year 6
+
+See [GRAPH_GUIDE.md](GRAPH_GUIDE.md) for detailed walkthrough with examples.
+
+---
+
 ## Example: Current Scenarios
 
 ### Scenario A — Baseline

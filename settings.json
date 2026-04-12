@@ -1,7 +1,7 @@
 {
   "simulation": {
     "years": 20,
-    "return_rate": 0.07,
+    "return_rate": 0.05,
     "withdrawal_rate": 0.04
   },
   "output": {
