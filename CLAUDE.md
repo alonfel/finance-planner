@@ -335,6 +335,27 @@ But for most cases, one of the four types above handles your needs!
 
 ---
 
+## Quick Reference: What to Edit
+
+| What You Want to Do | File to Edit | Notes |
+|---|---|---|
+| Change income/expenses for a scenario | `scenarios.json` | Simple, one-off scenarios |
+| Create a scenario variation (inheritance) | `scenario_analysis/scenario_nodes.json` | Use when inheriting from another scenario |
+| Compare 2 income levels (₪45K vs ₪25K) | `scenario_analysis/analysis.json` | Add analysis block (type: `parameter_pair_comparison`) |
+| Sweep income across a range | `scenario_analysis/analysis.json` | Add analysis block (type: `parameter_sweep`) |
+| Show snapshots at years 1, 5, 10, 15, 20 | `scenario_analysis/analysis.json` | Add analysis block (type: `milestone_snapshots`) |
+| Visualize scenario tree structure | `scenario_analysis/analysis.json` | Add analysis block (type: `tree_exploration`) |
+| Change simulation period (20 → 40 years) | `settings.json` | Change `"years": 20` |
+| Change investment return rate | `settings.json` | Change `"return_rate": 0.07` |
+| Add a mortgage | `scenarios.json` or `scenario_nodes.json` | Add `"mortgage"` object |
+| Add a one-time event (stock offering, bonus) | `scenarios.json` or `scenario_nodes.json` | Add to `"events"` array |
+
+**Golden Rule:** 
+- ✅ **Edit JSON files** to change data, scenarios, or analyses
+- ❌ **Don't edit Python** unless adding a new analysis type
+
+---
+
 ## Adding New Scenarios (Best Practices)
 
 ### When to Use `scenarios.json` vs `scenario_nodes.json`
