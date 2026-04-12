@@ -37,6 +37,41 @@ Each analysis shows three parts:
 
 See [GRAPH_GUIDE.md](GRAPH_GUIDE.md) for a detailed walkthrough with examples.
 
+### Decoupled Workflow: Simulate Once, Analyze Many Times
+
+**Problem:** Re-running all scenarios just to change how you display/analyze them is slow.
+
+**Solution:** Decouple simulation (expensive, runs once) from analysis/output (fast, run many times):
+
+```bash
+# Step 1: Simulate all scenarios ONCE, save results to cache
+python scenario_analysis/run_simulations.py
+
+# Step 2: Run analysis as many times as you want (loads from cache, no re-simulation)
+python scenario_analysis/run_analysis.py
+
+# Step 3: Modify analysis.json and re-run Step 2
+# Edit scenario_analysis/analysis.json
+python scenario_analysis/run_analysis.py    # Same cached results, new output!
+```
+
+**Benefits:**
+- ✅ Change output format without re-simulating
+- ✅ Add new analyses instantly (edit JSON, run analysis)
+- ✅ Consistent results across multiple analysis runs
+- ✅ ~100x faster iteration on analysis/visualization
+
+**How it works:**
+- `run_simulations.py` → Executes all 8 scenarios, saves results to `simulation_cache.json`
+- `run_analysis.py` → Loads cache, produces formatted output
+- Cache includes: year-by-year data, retirement timing, portfolio values
+- Fallback: If cache is missing, `run_analysis.py` simulates inline (slower)
+
+**When to re-simulate:**
+- After changing `scenario_nodes.json` (new scenarios or parameter changes)
+- After changing `settings.json` (return rate, withdrawal rate, years)
+- To get fresh results: `python scenario_analysis/run_simulations.py` then `python scenario_analysis/run_analysis.py`
+
 ### Running Tests
 ```bash
 python -m unittest discover -s tests -p "test_*.py" -v
@@ -137,10 +172,12 @@ finance_planner/
 ├── SCENARIO_TREE_GUIDE.md # Scenario trees guide
 ├── scenario_analysis/     # Configuration-driven analysis system
 │   ├── __init__.py
-│   ├── run_analysis.py    # Generic analysis runner (interprets analysis.json)
-│   ├── analysis.json      # Analysis definitions (EDIT THIS to add analyses)
-│   ├── scenario_nodes.json # Scenario tree definitions (EDIT THIS to add nodes)
-│   └── scenario_nodes.py  # Load scenario trees from JSON
+│   ├── run_simulations.py    # Step 1: Run all scenarios, save cache
+│   ├── run_analysis.py       # Step 2: Load cache, produce analysis output
+│   ├── simulation_cache.json # Raw results from last simulation run (auto-generated)
+│   ├── analysis.json         # Analysis definitions (EDIT THIS to add analyses)
+│   ├── scenario_nodes.json   # Scenario tree definitions (EDIT THIS to add nodes)
+│   └── scenario_nodes.py     # Load scenario trees from JSON
 └── tests/
     ├── __init__.py
     ├── test_simulation.py  # 42 core unit tests
@@ -357,9 +394,12 @@ But for most cases, one of the four types above handles your needs!
 | Change investment return rate | `settings.json` | Change `"return_rate": 0.07` |
 | Add a mortgage | `scenarios.json` or `scenario_nodes.json` | Add `"mortgage"` object |
 | Add a one-time event (stock offering, bonus) | `scenarios.json` or `scenario_nodes.json` | Add to `"events"` array |
+| Re-simulate after changing scenarios | Command: `python scenario_analysis/run_simulations.py` | Clears old cache, creates new one |
+| Run analysis fast (use cached results) | Command: `python scenario_analysis/run_analysis.py` | Uses cache if available, falls back to inline |
 
-**Golden Rule:** 
+**Golden Rules:** 
 - ✅ **Edit JSON files** to change data, scenarios, or analyses
+- ✅ **Use cached results** (run simulations once, analyze many times)
 - ❌ **Don't edit Python** unless adding a new analysis type
 
 ---

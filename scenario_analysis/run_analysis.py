@@ -4,6 +4,13 @@ Generic analysis runner: load analysis.json and execute all analyses.
 This script interprets analysis.json (pure configuration) and executes the
 specified analyses without any Python code changes. New analysis types require
 adding a handler function, but new analyses only require JSON updates.
+
+DECOUPLED WORKFLOW:
+  1. python run_simulations.py      → Run all scenarios, cache to simulation_cache.json
+  2. python run_analysis.py         → Load cache, produce analysis output
+
+This allows fast iteration on analysis/output without re-simulating.
+Fallback: If cache doesn't exist, simulates inline (slower but works).
 """
 
 import sys
@@ -11,12 +18,13 @@ import json
 from pathlib import Path
 from dataclasses import replace
 from typing import Optional, Dict, Any, List
+from datetime import datetime
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from scenario_analysis.scenario_nodes import load_scenario_nodes
 from models import ScenarioNode, Event
-from simulation import simulate, SimulationResult
+from simulation import simulate, SimulationResult, YearData
 from comparison import build_insights, format_insights
 
 
@@ -25,6 +33,48 @@ def load_analyses(path: Path) -> List[Dict[str, Any]]:
     with open(path) as f:
         data = json.load(f)
     return data.get("analyses", [])
+
+
+def load_cache(path: Path) -> Optional[Dict[str, Dict[str, Any]]]:
+    """Load cached simulation results from JSON."""
+    if not path.exists():
+        return None
+
+    try:
+        with open(path) as f:
+            cache_data = json.load(f)
+        return cache_data.get("results", {})
+    except Exception as e:
+        print(f"⚠️  Could not load cache: {e}")
+        return None
+
+
+def dict_to_simulation_result(data: Dict[str, Any]) -> SimulationResult:
+    """
+    Reconstruct a SimulationResult from cached dict data.
+
+    This converts the cached JSON back into the in-memory object structure
+    used by the analysis handlers.
+    """
+    year_data_list = []
+    for yd in data.get("year_data", []):
+        yd_obj = YearData(
+            year=yd["year"],
+            income=yd["income"],
+            expenses=yd["expenses"],
+            net_savings=yd["net_savings"],
+            portfolio=yd["portfolio"],
+            required_capital=yd["required_capital"],
+            mortgage_active=yd["mortgage_active"],
+        )
+        year_data_list.append(yd_obj)
+
+    result = SimulationResult(
+        scenario_name=data["scenario_name"],
+        retirement_year=data["retirement_year"],
+        year_data=year_data_list,
+    )
+    return result
 
 
 def create_variant_node(
@@ -77,9 +127,19 @@ def create_variant_node(
 def simulate_scenario(
     node: ScenarioNode,
     all_nodes: Dict[str, ScenarioNode],
+    cached_results: Dict[str, SimulationResult] = None,
     years: int = 20
 ) -> SimulationResult:
-    """Resolve and simulate a scenario node."""
+    """
+    Get simulation result for a scenario node.
+
+    Tries to use cached result first; falls back to running simulation.
+    """
+    # Check cache first
+    if cached_results and node.name in cached_results:
+        return cached_results[node.name]
+
+    # Fallback: simulate inline
     resolved = node.resolve(all_nodes)
     return simulate(resolved, years=years)
 
@@ -89,7 +149,7 @@ def simulate_scenario(
 # ============================================================================
 
 
-def handle_parameter_pair_comparison(analysis: Dict[str, Any], all_nodes: Dict[str, ScenarioNode]):
+def handle_parameter_pair_comparison(analysis: Dict[str, Any], all_nodes: Dict[str, ScenarioNode], cached_results: Dict[str, SimulationResult] = None):
     """
     Handle parameter_pair_comparison analysis.
 
@@ -129,8 +189,8 @@ def handle_parameter_pair_comparison(analysis: Dict[str, Any], all_nodes: Dict[s
             }
 
             # Simulate both
-            result_var1 = simulate_scenario(node_var1, temp_nodes)
-            result_var2 = simulate_scenario(node_var2, temp_nodes)
+            result_var1 = simulate_scenario(node_var1, temp_nodes, cached_results)
+            result_var2 = simulate_scenario(node_var2, temp_nodes, cached_results)
 
             # Print scenario comparison
             print(f"\n{scenario_name}")
@@ -153,7 +213,7 @@ def handle_parameter_pair_comparison(analysis: Dict[str, Any], all_nodes: Dict[s
                     print(f"  {line}")
 
 
-def handle_parameter_sweep(analysis: Dict[str, Any], all_nodes: Dict[str, ScenarioNode]):
+def handle_parameter_sweep(analysis: Dict[str, Any], all_nodes: Dict[str, ScenarioNode], cached_results: Dict[str, SimulationResult] = None):
     """
     Handle parameter_sweep analysis.
 
@@ -205,7 +265,7 @@ def handle_parameter_sweep(analysis: Dict[str, Any], all_nodes: Dict[str, Scenar
             variant_node = create_variant_node(base_node, var_overrides, f"{var_name} @ {parameter}={param_value}")
 
             temp_nodes = {**all_nodes, variant_node.name: variant_node}
-            result = simulate_scenario(variant_node, temp_nodes)
+            result = simulate_scenario(variant_node, temp_nodes, cached_results)
             results[param_value][var_name] = result
 
     # Print graphs for each variation
@@ -239,7 +299,7 @@ def handle_parameter_sweep(analysis: Dict[str, Any], all_nodes: Dict[str, Scenar
         print_sweep_impact_analysis(results, test_variations, parameter, param_values)
 
 
-def handle_milestone_snapshots(analysis: Dict[str, Any], all_nodes: Dict[str, ScenarioNode]):
+def handle_milestone_snapshots(analysis: Dict[str, Any], all_nodes: Dict[str, ScenarioNode], cached_results: Dict[str, SimulationResult] = None):
     """
     Handle milestone_snapshots analysis.
 
@@ -261,7 +321,7 @@ def handle_milestone_snapshots(analysis: Dict[str, Any], all_nodes: Dict[str, Sc
         label = scenario_info.get("label")
         node_name = scenario_info.get("node")
         node = all_nodes[node_name]
-        result = simulate_scenario(node, all_nodes)
+        result = simulate_scenario(node, all_nodes, cached_results)
         results[label] = result
 
     # Print yearly portfolio growth graph
@@ -276,7 +336,7 @@ def handle_milestone_snapshots(analysis: Dict[str, Any], all_nodes: Dict[str, Sc
         print_milestone_summary(results)
 
 
-def handle_tree_exploration(analysis: Dict[str, Any], all_nodes: Dict[str, ScenarioNode]):
+def handle_tree_exploration(analysis: Dict[str, Any], all_nodes: Dict[str, ScenarioNode], cached_results: Dict[str, SimulationResult] = None):
     """
     Handle tree_exploration analysis.
 
@@ -323,7 +383,7 @@ def handle_tree_exploration(analysis: Dict[str, Any], all_nodes: Dict[str, Scena
     # Simulate all scenarios
     results = {}
     for name in scenario_names:
-        result = simulate_scenario(all_nodes[name], all_nodes)
+        result = simulate_scenario(all_nodes[name], all_nodes, cached_results)
         results[name] = result
 
     # Print yearly portfolio growth graph
@@ -702,17 +762,50 @@ def print_assumptions():
 
 def main():
     analysis_file = Path(__file__).parent / "analysis.json"
+    cache_file = Path(__file__).parent / "simulation_cache.json"
 
     print("\n" + "="*120)
     print("SCENARIO ANALYSIS RUNNER".center(120))
     print("="*120)
 
-    # Load analyses and scenario tree
+    # Load analyses
     analyses = load_analyses(analysis_file)
-    all_nodes = load_scenario_nodes()
-
     print(f"\nLoaded {len(analyses)} analysis/analyses from {analysis_file.name}")
-    print(f"Loaded {len(all_nodes)} scenario nodes from scenario_nodes.json")
+
+    # Try to load cache first (fast path)
+    cached_results = load_cache(cache_file)
+
+    if cached_results:
+        print(f"✓ Using cached simulation results from {cache_file.name}")
+        cache_meta = json.load(open(cache_file))
+        print(f"  Generated: {cache_meta.get('generated_at', 'unknown')}")
+        print(f"  Scenarios: {cache_meta.get('num_scenarios', len(cached_results))}")
+
+        # Convert cached dicts to SimulationResult objects
+        all_cached_results = {
+            name: dict_to_simulation_result(data)
+            for name, data in cached_results.items()
+        }
+
+        # For handlers that need scenario nodes (tree_exploration), load them
+        all_nodes = load_scenario_nodes()
+        print(f"Loaded {len(all_nodes)} scenario nodes from scenario_nodes.json")
+
+    else:
+        print(f"⚠️  No cache found at {cache_file.name}")
+        print("   Run: python scenario_analysis/run_simulations.py")
+        print("   Falling back to inline simulation (slower)...\n")
+
+        # Fallback: load nodes and simulate inline
+        all_nodes = load_scenario_nodes()
+        print(f"Loaded {len(all_nodes)} scenario nodes from scenario_nodes.json")
+
+        # Simulate all scenarios
+        all_cached_results = {}
+        for name, node in all_nodes.items():
+            resolved = node.resolve(all_nodes)
+            result = simulate(resolved, years=20)
+            all_cached_results[name] = result
 
     # Print assumptions
     print_assumptions()
@@ -735,7 +828,8 @@ def main():
 
         try:
             handler = handlers[analysis_type]
-            handler(analysis, all_nodes)
+            # Pass cached results instead of nodes (handlers will use them)
+            handler(analysis, all_nodes, all_cached_results)
         except Exception as e:
             print(f"\n❌ Error running analysis '{analysis_id}': {e}")
             import traceback

@@ -1,0 +1,1494 @@
+{
+  "generated_at": "2026-04-12T08:52:19.653433",
+  "num_scenarios": 8,
+  "results": {
+    "Alon - Buy Apartment": {
+      "scenario_name": "Alon - Buy Apartment",
+      "retirement_year": null,
+      "year_data": [
+        {
+          "year": 1,
+          "income": 540000,
+          "expenses": 442515.94688039797,
+          "net_savings": 97484.05311960203,
+          "portfolio": 1362358.2557755823,
+          "required_capital": 11062898.672009949,
+          "mortgage_active": true
+        },
+        {
+          "year": 2,
+          "income": 540000,
+          "expenses": 442515.94688039797,
+          "net_savings": 97484.05311960203,
+          "portfolio": 1007834.4243399436,
+          "required_capital": 11062898.672009949,
+          "mortgage_active": true
+        },
+        {
+          "year": 3,
+          "income": 540000,
+          "expenses": 442515.94688039797,
+          "net_savings": 97484.05311960203,
+          "portfolio": 1160584.401332523,
+          "required_capital": 11062898.672009949,
+          "mortgage_active": true
+        },
+        {
+          "year": 4,
+          "income": 540000,
+          "expenses": 442515.94688039797,
+          "net_savings": 97484.05311960203,
+          "portfolio": 1320971.877174731,
+          "required_capital": 11062898.672009949,
+          "mortgage_active": true
+        },
+        {
+          "year": 5,
+          "income": 540000,
+          "expenses": 442515.94688039797,
+          "net_savings": 97484.05311960203,
+          "portfolio": 1489378.7268090497,
+          "required_capital": 11062898.672009949,
+          "mortgage_active": true
+        },
+        {
+          "year": 6,
+          "income": 540000,
+          "expenses": 442515.94688039797,
+          "net_savings": 97484.05311960203,
+          "portfolio": 1666205.9189250844,
+          "required_capital": 11062898.672009949,
+          "mortgage_active": true
+        },
+        {
+          "year": 7,
+          "income": 540000,
+          "expenses": 442515.94688039797,
+          "net_savings": 97484.05311960203,
+          "portfolio": 1851874.4706469206,
+          "required_capital": 11062898.672009949,
+          "mortgage_active": true
+        },
+        {
+          "year": 8,
+          "income": 540000,
+          "expenses": 442515.94688039797,
+          "net_savings": 97484.05311960203,
+          "portfolio": 2046826.449954849,
+          "required_capital": 11062898.672009949,
+          "mortgage_active": true
+        },
+        {
+          "year": 9,
+          "income": 540000,
+          "expenses": 442515.94688039797,
+          "net_savings": 97484.05311960203,
+          "portfolio": 2251526.0282281735,
+          "required_capital": 11062898.672009949,
+          "mortgage_active": true
+        },
+        {
+          "year": 10,
+          "income": 540000,
+          "expenses": 442515.94688039797,
+          "net_savings": 97484.05311960203,
+          "portfolio": 2466460.5854151645,
+          "required_capital": 11062898.672009949,
+          "mortgage_active": true
+        },
+        {
+          "year": 11,
+          "income": 540000,
+          "expenses": 442515.94688039797,
+          "net_savings": 97484.05311960203,
+          "portfolio": 2692141.870461505,
+          "required_capital": 11062898.672009949,
+          "mortgage_active": true
+        },
+        {
+          "year": 12,
+          "income": 540000,
+          "expenses": 442515.94688039797,
+          "net_savings": 97484.05311960203,
+          "portfolio": 2929107.2197601628,
+          "required_capital": 11062898.672009949,
+          "mortgage_active": true
+        },
+        {
+          "year": 13,
+          "income": 540000,
+          "expenses": 442515.94688039797,
+          "net_savings": 97484.05311960203,
+          "portfolio": 3177920.836523753,
+          "required_capital": 11062898.672009949,
+          "mortgage_active": true
+        },
+        {
+          "year": 14,
+          "income": 540000,
+          "expenses": 442515.94688039797,
+          "net_savings": 97484.05311960203,
+          "portfolio": 3439175.1341255233,
+          "required_capital": 11062898.672009949,
+          "mortgage_active": true
+        },
+        {
+          "year": 15,
+          "income": 540000,
+          "expenses": 442515.94688039797,
+          "net_savings": 97484.05311960203,
+          "portfolio": 3713492.1466073818,
+          "required_capital": 11062898.672009949,
+          "mortgage_active": true
+        },
+        {
+          "year": 16,
+          "income": 540000,
+          "expenses": 442515.94688039797,
+          "net_savings": 97484.05311960203,
+          "portfolio": 4001525.009713333,
+          "required_capital": 11062898.672009949,
+          "mortgage_active": true
+        },
+        {
+          "year": 17,
+          "income": 540000,
+          "expenses": 442515.94688039797,
+          "net_savings": 97484.05311960203,
+          "portfolio": 4303959.515974582,
+          "required_capital": 11062898.672009949,
+          "mortgage_active": true
+        },
+        {
+          "year": 18,
+          "income": 540000,
+          "expenses": 442515.94688039797,
+          "net_savings": 97484.05311960203,
+          "portfolio": 4621515.747548893,
+          "required_capital": 11062898.672009949,
+          "mortgage_active": true
+        },
+        {
+          "year": 19,
+          "income": 540000,
+          "expenses": 442515.94688039797,
+          "net_savings": 97484.05311960203,
+          "portfolio": 4954949.79070192,
+          "required_capital": 11062898.672009949,
+          "mortgage_active": true
+        },
+        {
+          "year": 20,
+          "income": 540000,
+          "expenses": 442515.94688039797,
+          "net_savings": 97484.05311960203,
+          "portfolio": 5305055.536012598,
+          "required_capital": 11062898.672009949,
+          "mortgage_active": true
+        }
+      ]
+    },
+    "Alon - Buy Apartment + Exit": {
+      "scenario_name": "Alon - Buy Apartment + Exit",
+      "retirement_year": 13,
+      "year_data": [
+        {
+          "year": 1,
+          "income": 420000,
+          "expenses": 442515.94688039797,
+          "net_savings": -22515.94688039797,
+          "portfolio": 1446358.2557755823,
+          "required_capital": 11062898.672009949,
+          "mortgage_active": true
+        },
+        {
+          "year": 2,
+          "income": 420000,
+          "expenses": 442515.94688039797,
+          "net_savings": -22515.94688039797,
+          "portfolio": 6745034.424339944,
+          "required_capital": 11062898.672009949,
+          "mortgage_active": true
+        },
+        {
+          "year": 3,
+          "income": 420000,
+          "expenses": 442515.94688039797,
+          "net_savings": -22515.94688039797,
+          "portfolio": 7058644.401332523,
+          "required_capital": 11062898.672009949,
+          "mortgage_active": true
+        },
+        {
+          "year": 4,
+          "income": 420000,
+          "expenses": 442515.94688039797,
+          "net_savings": -22515.94688039797,
+          "portfolio": 7387934.877174731,
+          "required_capital": 11062898.672009949,
+          "mortgage_active": true
+        },
+        {
+          "year": 5,
+          "income": 420000,
+          "expenses": 442515.94688039797,
+          "net_savings": -22515.94688039797,
+          "portfolio": 7733689.87680905,
+          "required_capital": 11062898.672009949,
+          "mortgage_active": true
+        },
+        {
+          "year": 6,
+          "income": 420000,
+          "expenses": 442515.94688039797,
+          "net_savings": -22515.94688039797,
+          "portfolio": 8096732.626425085,
+          "required_capital": 11062898.672009949,
+          "mortgage_active": true
+        },
+        {
+          "year": 7,
+          "income": 420000,
+          "expenses": 442515.94688039797,
+          "net_savings": -22515.94688039797,
+          "portfolio": 8477927.51352192,
+          "required_capital": 11062898.672009949,
+          "mortgage_active": true
+        },
+        {
+          "year": 8,
+          "income": 420000,
+          "expenses": 442515.94688039797,
+          "net_savings": -22515.94688039797,
+          "portfolio": 8878182.144973598,
+          "required_capital": 11062898.672009949,
+          "mortgage_active": true
+        },
+        {
+          "year": 9,
+          "income": 420000,
+          "expenses": 442515.94688039797,
+          "net_savings": -22515.94688039797,
+          "portfolio": 9298449.507997861,
+          "required_capital": 11062898.672009949,
+          "mortgage_active": true
+        },
+        {
+          "year": 10,
+          "income": 420000,
+          "expenses": 442515.94688039797,
+          "net_savings": -22515.94688039797,
+          "portfolio": 9739730.239173336,
+          "required_capital": 11062898.672009949,
+          "mortgage_active": true
+        },
+        {
+          "year": 11,
+          "income": 420000,
+          "expenses": 442515.94688039797,
+          "net_savings": -22515.94688039797,
+          "portfolio": 10203075.006907584,
+          "required_capital": 11062898.672009949,
+          "mortgage_active": true
+        },
+        {
+          "year": 12,
+          "income": 420000,
+          "expenses": 442515.94688039797,
+          "net_savings": -22515.94688039797,
+          "portfolio": 10689587.013028545,
+          "required_capital": 11062898.672009949,
+          "mortgage_active": true
+        },
+        {
+          "year": 13,
+          "income": 420000,
+          "expenses": 442515.94688039797,
+          "net_savings": -22515.94688039797,
+          "portfolio": 11200424.619455555,
+          "required_capital": 11062898.672009949,
+          "mortgage_active": true
+        },
+        {
+          "year": 14,
+          "income": 420000,
+          "expenses": 442515.94688039797,
+          "net_savings": -22515.94688039797,
+          "portfolio": 11736804.106203916,
+          "required_capital": 11062898.672009949,
+          "mortgage_active": true
+        },
+        {
+          "year": 15,
+          "income": 420000,
+          "expenses": 442515.94688039797,
+          "net_savings": -22515.94688039797,
+          "portfolio": 12300002.567289693,
+          "required_capital": 11062898.672009949,
+          "mortgage_active": true
+        },
+        {
+          "year": 16,
+          "income": 420000,
+          "expenses": 442515.94688039797,
+          "net_savings": -22515.94688039797,
+          "portfolio": 12891360.95142976,
+          "required_capital": 11062898.672009949,
+          "mortgage_active": true
+        },
+        {
+          "year": 17,
+          "income": 420000,
+          "expenses": 442515.94688039797,
+          "net_savings": -22515.94688039797,
+          "portfolio": 13512287.25477683,
+          "required_capital": 11062898.672009949,
+          "mortgage_active": true
+        },
+        {
+          "year": 18,
+          "income": 420000,
+          "expenses": 442515.94688039797,
+          "net_savings": -22515.94688039797,
+          "portfolio": 14164259.873291254,
+          "required_capital": 11062898.672009949,
+          "mortgage_active": true
+        },
+        {
+          "year": 19,
+          "income": 420000,
+          "expenses": 442515.94688039797,
+          "net_savings": -22515.94688039797,
+          "portfolio": 14848831.122731399,
+          "required_capital": 11062898.672009949,
+          "mortgage_active": true
+        },
+        {
+          "year": 20,
+          "income": 420000,
+          "expenses": 442515.94688039797,
+          "net_savings": -22515.94688039797,
+          "portfolio": 15567630.934643552,
+          "required_capital": 11062898.672009949,
+          "mortgage_active": true
+        }
+      ]
+    },
+    "Alon - Low Income + \u20aa2M Exit": {
+      "scenario_name": "Alon - Low Income + \u20aa2M Exit",
+      "retirement_year": null,
+      "year_data": [
+        {
+          "year": 1,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 3570000.0,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 2,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 2698500.0,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 3,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 2833425.0,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 4,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 2975096.25,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 5,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 3123851.0625,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 6,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 3280043.615625,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 7,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 3444045.7964062504,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 8,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 3616248.086226563,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 9,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 3797060.490537891,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 10,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 3986913.5150647857,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 11,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 4186259.1908180253,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 12,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 4395572.1503589265,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 13,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 4615350.757876873,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 14,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 4846118.295770717,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 15,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 5088424.210559253,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 16,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 5342845.421087216,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 17,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 5609987.692141577,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 18,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 5890487.076748656,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 19,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 6185011.430586089,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 20,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 6494262.002115394,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        }
+      ]
+    },
+    "Alon - Low Income + \u20aa3M Exit": {
+      "scenario_name": "Alon - Low Income + \u20aa3M Exit",
+      "retirement_year": 16,
+      "year_data": [
+        {
+          "year": 1,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 4620000.0,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 2,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 3801000.0,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 3,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 3991050.0,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 4,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 4190602.5,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 5,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 4400132.625,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 6,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 4620139.256250001,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 7,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 4851146.219062501,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 8,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 5093703.530015626,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 9,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 5348388.706516407,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 10,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 5615808.141842228,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 11,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 5896598.5489343405,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 12,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 6191428.476381058,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 13,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 6500999.900200111,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 14,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 6826049.895210117,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 15,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 7167352.389970623,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 16,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 7525720.009469154,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 17,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 7902006.009942613,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 18,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 8297106.310439744,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 19,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 8711961.625961732,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 20,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 9147559.707259819,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        }
+      ]
+    },
+    "Alon Baseline": {
+      "scenario_name": "Alon Baseline",
+      "retirement_year": 16,
+      "year_data": [
+        {
+          "year": 1,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 1722000.0,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 2,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 1535100.0,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 3,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 1863855.0,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 4,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 2209047.75,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 5,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 2571500.1375,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 6,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 2952075.144375,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 7,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 3351678.9015937503,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 8,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 3771262.846673438,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 9,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 4211825.98900711,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 10,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 4674417.288457465,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 11,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 5160138.152880339,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 12,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 5670145.060524357,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 13,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 6205652.313550575,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 14,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 6767934.929228104,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 15,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 7358331.675689509,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 16,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 7978248.259473985,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 17,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 8629160.672447685,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 18,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 9312618.70607007,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 19,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 10030249.641373573,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 20,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 10783762.123442251,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        }
+      ]
+    },
+    "Alon Baseline + \u20aa2M Exit": {
+      "scenario_name": "Alon Baseline + \u20aa2M Exit",
+      "retirement_year": 9,
+      "year_data": [
+        {
+          "year": 1,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 3822000.0,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 2,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 4265100.0,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 3,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 4730355.0,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 4,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 5218872.75,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 5,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 5731816.3875,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 6,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 6270407.206875,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 7,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 6835927.567218751,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 8,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 7429723.945579689,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 9,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 8053210.142858674,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 10,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 8707870.650001608,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 11,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 9395264.182501689,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 12,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 10117027.391626773,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 13,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 10874878.761208113,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 14,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 11670622.69926852,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 15,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 12506153.834231947,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 16,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 13383461.525943544,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 17,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 14304634.60224072,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 18,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 15271866.332352757,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 19,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 16287459.648970395,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 20,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 17353832.631418917,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        }
+      ]
+    },
+    "Alon Baseline + \u20aa3M Exit": {
+      "scenario_name": "Alon Baseline + \u20aa3M Exit",
+      "retirement_year": 6,
+      "year_data": [
+        {
+          "year": 1,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 4872000.0,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 2,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 5367600.0,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 3,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 5887980.0,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 4,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 6434379.0,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 5,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 7008097.95,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 6,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 7610502.8475,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 7,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 8243027.989875001,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 8,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 8907179.38936875,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 9,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 9604538.358837187,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 10,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 10336765.276779046,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 11,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 11105603.540617999,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 12,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 11912883.7176489,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 13,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 12760527.903531345,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 14,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 13650554.298707912,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 15,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 14585082.013643308,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 16,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 15566336.114325473,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 17,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 16596652.920041747,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 18,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 17678485.566043835,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 19,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 18814409.844346028,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 20,
+          "income": 540000,
+          "expenses": 300000,
+          "net_savings": 240000,
+          "portfolio": 20007130.33656333,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        }
+      ]
+    },
+    "Alon Baseline - Low Income (\u20aa25K)": {
+      "scenario_name": "Alon Baseline - Low Income (\u20aa25K)",
+      "retirement_year": null,
+      "year_data": [
+        {
+          "year": 1,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 1470000.0,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 2,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 1018500.0,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 3,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 1069425.0,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 4,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 1122896.25,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 5,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 1179041.0625,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 6,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 1237993.115625,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 7,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 1299892.77140625,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 8,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 1364887.4099765627,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 9,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 1433131.7804753908,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 10,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 1504788.3694991604,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 11,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 1580027.7879741185,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 12,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 1659029.1773728244,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 13,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 1741980.6362414658,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 14,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 1829079.6680535392,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 15,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 1920533.6514562164,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 16,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 2016560.3340290273,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 17,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 2117388.3507304788,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 18,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 2223257.768267003,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 19,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 2334420.656680353,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        },
+        {
+          "year": 20,
+          "income": 300000,
+          "expenses": 300000,
+          "net_savings": 0,
+          "portfolio": 2451141.6895143706,
+          "required_capital": 7500000.0,
+          "mortgage_active": false
+        }
+      ]
+    }
+  }
+}
