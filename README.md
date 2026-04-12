@@ -23,7 +23,28 @@ The engine:
 - ✅ Compares multiple scenarios and generates structured insights
 - ✅ Configurable scenario parameter display in output
 - ✅ 100% configuration-driven (no code changes needed)
-- ✅ Pure functions, fully testable (29 unit tests, all passing)
+- ✅ Pure functions, fully testable (42 unit tests, all passing)
+
+---
+
+## Workflow at a Glance
+
+```
+Define Scenarios         Run Simulations           Analyze & Compare
+       ↓                        ↓                          ↓
+scenarios.json           python main.py            Year-by-year tables
+    or         +   →          or         +   →     Retirement timing
+scenario_nodes.json      scenario_analysis/       Portfolio comparisons
+                         run_analysis.py          Insights
+                         
+Edit JSON Config                                No Python Code Changes!
+(No Code Changes!)
+```
+
+**Workflow:**
+1. **Edit** configuration files (`scenarios.json`, `scenario_nodes.json`, `analysis.json`)
+2. **Run** simulations (`python main.py` or `python scenario_analysis/run_analysis.py`)
+3. **See** results (tables, comparisons, retirement timing, insights)
 
 ---
 
