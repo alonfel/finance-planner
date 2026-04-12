@@ -335,7 +335,110 @@ But for most cases, one of the four types above handles your needs!
 
 ---
 
+## Adding New Scenarios (Best Practices)
+
+### When to Use `scenarios.json` vs `scenario_nodes.json`
+
+| Scenario Type | File | Use When |
+|---|---|---|
+| **Standalone scenario** | `scenarios.json` | Defining a base scenario with no inheritance (simple one-off) |
+| **Scenario variation** | `scenario_nodes.json` | Creating a variant by inheriting from and overriding another scenario |
+| **Complex inheritance** | `scenario_nodes.json` | Building multi-level trees (grandchild, great-grandchild, etc.) |
+
+### Simple Scenario (scenarios.json)
+
+```json
+{
+  "name": "High Earner",
+  "monthly_income": 100000,
+  "monthly_expenses": 40000,
+  "currency": "ILS",
+  "initial_portfolio": 500000,
+  "age": 35,
+  "mortgage": null,
+  "events": [
+    {"year": 3, "portfolio_injection": 5000000, "description": "Stock offering"}
+  ]
+}
+```
+
+### Scenario Variation (scenario_nodes.json)
+
+Instead of copying an entire scenario, use inheritance:
+
+```json
+{
+  "name": "High Earner + Apartment",
+  "parent": "Alon Baseline",
+  "monthly_income": 100000,
+  "mortgage": {
+    "principal": 3000000,
+    "annual_rate": 0.03,
+    "duration_years": 20
+  },
+  "event_mode": "append",
+  "events": []
+}
+```
+
+**Benefits of inheritance:**
+- DRY (Don't Repeat Yourself) — no duplication of inherited fields
+- Clarity — see exactly what changed from parent
+- Testing — small, incremental changes are easier to reason about
+- Variations — create many similar scenarios with minimal definitions
+
+### Multi-Level Trees (scenario_nodes.json)
+
+```json
+{
+  "name": "Base",
+  "base_scenario": "Baseline"
+},
+{
+  "name": "With Apartment",
+  "parent": "Base",
+  "mortgage": { ... }
+},
+{
+  "name": "With Apartment + Career Pivot",
+  "parent": "With Apartment",
+  "monthly_income": 45000
+}
+```
+
+Grandchild inherits from parent, which inherits from root.
+
 ## Common Tasks
+
+### Add a New Analysis (**Recommended: Edit JSON Only**)
+
+**DO NOT create new Python scripts.** Instead, edit `scenario_analysis/analysis.json`:
+
+```json
+{
+  "id": "unique_analysis_id",
+  "title": "Analysis Title",
+  "type": "parameter_sweep",
+  "base_scenario": "Alon Baseline",
+  "parameter": "monthly_income",
+  "range": { "min": 25000, "max": 50000, "step": 5000 },
+  "test_variations": [
+    { "name": "No Exit", "events": [] },
+    { "name": "₪2M Exit", "events": [{"year": 2, "portfolio_injection": 2000000}] }
+  ],
+  "metrics": ["retirement_year", "portfolio_final"],
+  "outputs": ["detailed_tables", "comparison_table"]
+}
+```
+
+Run: `python scenario_analysis/run_analysis.py`
+
+**Why?**
+- ✅ No code duplication across scripts
+- ✅ All analyses in one place
+- ✅ Changes to output format apply to all analyses
+- ✅ Easy to add, remove, or modify analyses
+- ❌ Don't create Python scripts for new analyses
 
 ### Change Simulation Period
 Edit `settings.json`:

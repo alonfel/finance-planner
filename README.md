@@ -46,30 +46,17 @@ python main.py
 - Validation checks
 - Comparison report and insights
 
-**Comprehensive analysis of all scenarios:**
+**Configuration-driven analysis (NEW!):**
 ```bash
-python scenario_analysis/compare_all_scenarios.py
+python scenario_analysis/run_analysis.py
 ```
-- All scenarios simulated
-- Quick overview table
-- All pairwise scenario comparisons with insights
-
-**Personal scenario analysis:**
-```bash
-python scenario_analysis/compare_your_baseline_vs_exit_vs_friend.py
-```
-- Year-by-year snapshots at milestones (1, 5, 10, 15, 20 years)
-- Compare baseline vs. exit scenarios vs. friend's scenario
-- Portfolio value, retirement year, and annual savings metrics
-- Strategic insights and key differences
-
-**Explore scenario trees:**
-```bash
-python scenario_analysis/explore_tree.py
-```
-- Tree structure visualization
-- Simulation results for each node
-- Pairwise comparisons showing inheritance impacts
+- Runs all analyses defined in `scenario_analysis/analysis.json`
+- **No code changes needed** — just edit the JSON to add analyses
+- Supported analysis types:
+  - Parameter pair comparison (e.g., income ₪45K vs ₪25K)
+  - Parameter sweep (e.g., income range ₪25K-₪50K with/without exit)
+  - Milestone snapshots (e.g., years 1, 5, 10, 15, 20)
+  - Scenario tree exploration (structure, simulations, pairwise comparisons)
 
 **Run tests:**
 ```bash
@@ -81,12 +68,18 @@ Edit configuration files — **no Python code changes**:
 
 **Change income/expenses/mortgage:**
 ```bash
-Edit: scenarios.json
+Edit: scenarios.json  (for flat scenarios)
+Or:   scenario_analysis/scenario_nodes.json  (for scenario trees)
 ```
 
 **Change simulation period:**
 ```bash
 Edit: settings.json  (change "years": 20)
+```
+
+**Add a new analysis:**
+```bash
+Edit: scenario_analysis/analysis.json  (add analysis block, no Python!)
 ```
 
 ---
@@ -317,22 +310,65 @@ python main.py
 Look for output like: `✓ Retirement achieved in year 10 (expected: 2035, age: 50)`
 
 ### Question: "Should I buy the apartment?"
-Create two scenarios: with and without mortgage, run `main.py` to compare.
-
-### Question: "What if I get a stock offering in 2 years?"
-Add an event to your scenario in `scenarios.json`:
+Create two scenario nodes in `scenario_analysis/scenario_nodes.json`:
 ```json
-"events": [
-  {"year": 2, "portfolio_injection": 3000000, "description": "Stock offering"}
-]
+{
+  "name": "Without Apartment",
+  "parent": "Alon Baseline"
+},
+{
+  "name": "With Apartment",
+  "parent": "Alon Baseline",
+  "mortgage": { "principal": 2250000, "annual_rate": 0.04, "duration_years": 25 }
+}
 ```
-Compare timing (year 2 vs year 10 vs year 29) to see impact on retirement.
+Then add an analysis to `analysis.json` to compare them.
 
-### Question: "What if I earn more?"
-Edit `scenarios.json`, change income, run again. See how retirement timeline changes.
+### Question: "What if income varies from ₪30K to ₪60K, with and without a ₪2M exit?"
+Edit `scenario_analysis/analysis.json` and add:
+```json
+{
+  "id": "income_sensitivity_30_to_60k",
+  "type": "parameter_sweep",
+  "base_scenario": "Alon Baseline",
+  "parameter": "monthly_income",
+  "range": { "min": 30000, "max": 60000, "step": 5000 },
+  "test_variations": [
+    { "name": "No Exit", "events": [] },
+    { "name": "₪2M Exit", "events": [{"year": 2, "portfolio_injection": 2000000}] }
+  ],
+  "metrics": ["retirement_year", "portfolio_final"],
+  "outputs": ["detailed_tables", "comparison_table"]
+}
+```
+Run: `python scenario_analysis/run_analysis.py`
 
-### Question: "How sensitive is this to investment returns?"
-Edit `settings.json`, change `"return_rate"`, run again.
+### Question: "What if I create a scenario tree for different life paths?"
+Edit `scenario_analysis/scenario_nodes.json`:
+```json
+{
+  "name": "Base: No Mortgage",
+  "base_scenario": "Baseline"
+},
+{
+  "name": "Path A: Buy Apartment",
+  "parent": "Base: No Mortgage",
+  "mortgage": { ... }
+},
+{
+  "name": "Path A + Exit",
+  "parent": "Path A: Buy Apartment",
+  "monthly_income": 35000,
+  "events": [{"year": 2, "portfolio_injection": 5000000}]
+}
+```
+Add `tree_exploration` analysis in `analysis.json` to visualize the tree.
+
+### Question: "How sensitive is retirement to investment returns?"
+Edit `settings.json`, change `"return_rate"` from 0.07 to 0.06 (or another value), run:
+```bash
+python main.py
+```
 
 ---
 
@@ -341,25 +377,79 @@ Edit `settings.json`, change `"return_rate"`, run again.
 - ✅ **Events** — one-time portfolio injections/withdrawals (stock offerings, emergencies)
 - ✅ **Age tracking** — see retirement year and retirement age
 - ✅ **Global settings** — return_rate and withdrawal_rate in settings.json
-- ✅ **Scenario Trees** — inheritance-based scenario composition (new!)
+- ✅ **Scenario Trees** — inheritance-based scenario composition
   - Define base scenarios, extend with child nodes
   - Control event composition ("append" or "replace")
   - Explore "what-if" variations efficiently
+- ✅ **Configuration-Driven Analysis** — no Python code needed
+  - Define analyses in `analysis.json`
+  - Support for parameter comparisons, sweeps, milestones, tree exploration
+  - Unified output formatting and insights
 
-## Scenario Trees (New!)
+## Adding New Scenarios
 
-Build complex financial scenarios through **inheritance** instead of flat definitions:
-
+**For simple scenarios:** Edit `scenarios.json`
+```json
+{
+  "name": "My Scenario",
+  "monthly_income": 50000,
+  "monthly_expenses": 30000,
+  "mortgage": null,
+  "events": [
+    {"year": 2, "portfolio_injection": 1000000, "description": "Bonus"}
+  ]
+}
 ```
-Baseline (₪45K income)
-├─ Buy Apartment (add mortgage)
-│  └─ Buy Apartment + Exit (change income, add exit proceeds)
-└─ Other variations...
+
+**For scenario variations (inheritance):** Edit `scenario_analysis/scenario_nodes.json`
+```json
+{
+  "name": "My Variation",
+  "parent": "Alon Baseline",
+  "monthly_income": 55000,
+  "event_mode": "append",
+  "events": []
+}
 ```
 
-**Key advantage:** Define once, extend incrementally. Compounding effects are explicit and testable.
+**Scenario trees** (inheritance-based composition) let you:
+- Define a base scenario once
+- Create child nodes that override specific fields
+- Control event composition (append vs. replace)
+- Easily explore "what-if" variations
 
 See [SCENARIO_TREE_GUIDE.md](SCENARIO_TREE_GUIDE.md) for detailed examples.
+
+## Adding New Analyses
+
+**Edit `scenario_analysis/analysis.json`** — no Python code needed!
+
+```json
+{
+  "id": "my_analysis",
+  "title": "My Custom Analysis",
+  "type": "parameter_sweep",
+  "base_scenario": "Alon Baseline",
+  "parameter": "monthly_income",
+  "range": { "min": 30000, "max": 60000, "step": 5000 },
+  "test_variations": [
+    { "name": "Without Exit", "events": [] },
+    { "name": "With ₪3M Exit", "events": [{"year": 2, "portfolio_injection": 3000000}] }
+  ],
+  "metrics": ["retirement_year", "portfolio_final"],
+  "outputs": ["detailed_tables", "comparison_table"]
+}
+```
+
+Then run: `python scenario_analysis/run_analysis.py`
+
+**Supported analysis types:**
+- `parameter_pair_comparison` — Compare scenarios at 2 param values
+- `parameter_sweep` — Vary parameter across range
+- `milestone_snapshots` — Show snapshots at specific years
+- `tree_exploration` — Visualize tree and pairwise comparisons
+
+For new analysis types, add a handler to `run_analysis.py`.
 
 ## Future Extensions
 
@@ -423,26 +513,25 @@ python -m unittest tests.test_simulation.TestMortgage -v
 | `README.md` | This file — project overview |
 | `CLAUDE.md` | How to work with this codebase in Claude Code |
 | `ARCHITECTURE.md` | Technical design and extension patterns |
-| `SCENARIO_TREE_GUIDE.md` | Scenario trees: complete usage guide (new!) |
-| `scenario_analysis/` | **Folder:** Scenario tree analysis scripts and configs |
+| `SCENARIO_TREE_GUIDE.md` | Scenario trees: complete usage guide |
+| `scenario_analysis/` | **Folder:** Configuration-driven analysis system |
+| `scenario_analysis/run_analysis.py` | Generic analysis runner (interprets analysis.json) |
+| `scenario_analysis/analysis.json` | **CONFIG:** Analysis definitions (edit this to add analyses) |
 | `scenario_analysis/scenario_nodes.py` | Load scenario trees from `scenario_nodes.json` |
-| `scenario_analysis/scenario_nodes.json` | **CONFIG:** Scenario tree definitions |
-| `scenario_analysis/compare_your_baseline_vs_exit_vs_friend.py` | Your personal scenario comparison |
-| `scenario_analysis/compare_with_without_exit.py` | Exit impact analysis |
-| `scenario_analysis/explore_tree.py` | Interactive scenario tree exploration |
+| `scenario_analysis/scenario_nodes.json` | **CONFIG:** Scenario tree definitions (EDIT for new scenarios) |
 | `tests/test_simulation.py` | 42 core unit tests (all passing) |
-| `tests/test_income_exit_clusters.py` | Income variation analysis |
-| `tests/test_scenario_clusters.py` | Multi-scenario cluster exploration |
 
 ---
 
 ## Questions?
 
-1. **How do I change the scenario?** → Edit `scenarios.json`
-2. **How do I change simulation period?** → Edit `settings.json`
-3. **How do I add a new scenario?** → Add to `scenarios.json` array
-4. **How do I extend this?** → See `ARCHITECTURE.md` → Extension Patterns
-5. **How do I understand the code?** → See `CLAUDE.md` or `ARCHITECTURE.md`
+1. **How do I change a scenario?** → Edit `scenarios.json` (flat) or `scenario_analysis/scenario_nodes.json` (tree)
+2. **How do I add a new scenario?** → Add to `scenarios.json` (simple) or `scenario_analysis/scenario_nodes.json` (with inheritance)
+3. **How do I add a new analysis?** → Edit `scenario_analysis/analysis.json` (no Python code!)
+4. **How do I change simulation period?** → Edit `settings.json` (change `"years"`)
+5. **How do I run an analysis?** → `python scenario_analysis/run_analysis.py`
+6. **How do I extend this?** → See `ARCHITECTURE.md` → Extension Patterns
+7. **How do I understand the code?** → See `CLAUDE.md` or `ARCHITECTURE.md`
 
 ---
 
