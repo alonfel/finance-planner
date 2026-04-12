@@ -530,6 +530,45 @@ def print_milestone_summary(results: Dict):
 # ============================================================================
 
 
+def print_assumptions():
+    """Display key assumptions used in all analyses."""
+    print(f"\n{'='*120}")
+    print("IMPORTANT ASSUMPTIONS".center(120))
+    print(f"{'='*120}\n")
+
+    print("Scenario Parameters:")
+    print("  • Base Income: ₪45,000/month")
+    print("  • Base Expenses: ₪25,000/month")
+    print("  • Monthly Savings: ₪20,000")
+    print("  • Initial Portfolio: ₪1,400,000 (₪900K + ₪500K)")
+    print("  • Current Age: 41 years old")
+
+    print("\nSimulation Assumptions:")
+    print("  • Time Horizon: 20 years")
+    print("  • Investment Return Rate: 5% annually")
+    print("  • Safe Withdrawal Rate: 4% (retirement threshold)")
+    print("  • Currency: Israeli Shekel (₪)")
+
+    print("\nLife Events (Baseline):")
+    print("  • Year 2: Surrogacy expense -₪500,000 (one-time)")
+
+    print("\nExit Events (when applicable):")
+    print("  • ₪2M Exit: Company exit proceeds ₪2,000,000 (year 1)")
+    print("  • ₪3M Exit: Company exit proceeds ₪3,000,000 (year 1)")
+
+    print("\nRetirement Definition:")
+    print("  • Portfolio ≥ (Annual Expenses / Withdrawal Rate)")
+    print("  • Example: ₪300K expenses ÷ 0.04 = ₪7.5M threshold")
+
+    print("\nMortgage (when applicable):")
+    print("  • Principal: ₪2,250,000")
+    print("  • Interest Rate: 4% annually")
+    print("  • Duration: 25 years")
+    print("  • Monthly Payment: ~₪11,323")
+
+    print("\n" + "="*120 + "\n")
+
+
 def main():
     analysis_file = Path(__file__).parent / "analysis.json"
 
@@ -542,7 +581,10 @@ def main():
     all_nodes = load_scenario_nodes()
 
     print(f"\nLoaded {len(analyses)} analysis/analyses from {analysis_file.name}")
-    print(f"Loaded {len(all_nodes)} scenario nodes from scenario_nodes.json\n")
+    print(f"Loaded {len(all_nodes)} scenario nodes from scenario_nodes.json")
+
+    # Print assumptions
+    print_assumptions()
 
     # Dispatch to handlers based on analysis type
     handlers = {
