@@ -9,6 +9,10 @@ Shows year-by-year snapshots at milestones: 1, 5, 10, 15, 20 years
 Compares: portfolio, retirement year, annual savings
 """
 
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from models import Scenario, Event, Mortgage
 from simulation import simulate
 

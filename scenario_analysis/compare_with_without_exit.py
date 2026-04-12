@@ -7,8 +7,12 @@ This shows:
 - At what income levels exit matters most
 """
 
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from models import ScenarioNode, Event
-from scenario_nodes import load_scenario_nodes
+from scenario_analysis.scenario_nodes import load_scenario_nodes
 from simulation import simulate
 
 def create_scenario_clusters():

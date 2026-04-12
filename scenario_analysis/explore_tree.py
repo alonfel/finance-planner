@@ -8,7 +8,11 @@ Demonstrates how to:
 4. Understand compounding effects of incremental changes
 """
 
-from scenario_nodes import load_scenario_nodes
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from scenario_analysis.scenario_nodes import load_scenario_nodes
 from simulation import simulate
 from comparison import build_insights, format_insights
 

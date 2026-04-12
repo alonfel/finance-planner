@@ -8,7 +8,12 @@ validating the tree structure (no cycles, all parents exist, all roots have base
 """
 
 import json
+import sys
 from pathlib import Path
+
+# Add parent directory to path for root-level imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from models import ScenarioNode, Mortgage, Event
 from scenarios import load_scenarios
 
