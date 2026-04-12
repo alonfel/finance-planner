@@ -27,6 +27,18 @@ python analysis/run_analysis.py
 python analysis/run_analysis.py
 ```
 
+### Switching Profiles
+```bash
+# Run default profile (Daniel)
+python analysis/run_simulations.py
+
+# Run Alon's profile (with pension scenarios)
+FINANCE_PROFILE=alon python analysis/run_simulations.py
+FINANCE_PROFILE=alon python analysis/run_analysis.py
+```
+
+Each profile has its own `data/profiles/{name}/` directory with separate simulations and results.
+
 ### Running Tests
 ```bash
 python -m unittest discover -s tests -p "test_*.py" -v
@@ -67,16 +79,17 @@ finance_planner/
 ## File Structure
 
 ### Core Modules
-- **domain/models.py** — Event, Mortgage, Scenario, ScenarioNode dataclasses
-- **domain/simulation.py** — Core simulate() engine + YearData, SimulationResult
+- **domain/models.py** — Event, Mortgage, Pension, Scenario, ScenarioNode dataclasses
+- **domain/simulation.py** — Core simulate() engine + YearData (with pension tracking), SimulationResult
 - **domain/insights.py** — Comparison logic + structured insight objects
-- **infrastructure/parsers.py** — Consolidated dict→model parsing
-- **infrastructure/loaders.py** — load_scenarios, load_settings, load_scenario_nodes
+- **infrastructure/parsers.py** — Consolidated dict→model parsing (now includes parse_pension)
+- **infrastructure/loaders.py** — load_scenarios, load_settings, load_scenario_nodes (supports FINANCE_PROFILE env var)
+- **infrastructure/data_layer.py** — Profile management + environment variable support
 - **infrastructure/cache.py** — Serialization/deserialization for decoupled analysis
 - **presentation/constants.py** — Currency symbols, formatting helpers
 - **presentation/formatters.py** — print_scenario_header, print_year_summary
-- **analysis/run_simulations.py** — Batch simulation runner
-- **analysis/run_analysis.py** — Configuration-driven analysis dispatcher
+- **analysis/run_simulations.py** — Batch simulation runner (profile-aware)
+- **analysis/run_analysis.py** — Configuration-driven analysis dispatcher (profile-aware)
 - **main.py** — Entry point orchestrator
 
 ### Configuration Files
@@ -93,6 +106,62 @@ finance_planner/
 
 ---
 
+## Creating a New Profile
+
+**See [PROFILE_SETUP.md](PROFILE_SETUP.md) for complete guide to creating new profiles from scratch.**
+
+Quick reference:
+1. Create directory: `data/profiles/{name}/`
+2. Add config files: `settings.json`, `scenarios.json`, `scenario_nodes.json`, `analyses/config.json`
+3. Run: `python analysis/run_simulations.py` → `python analysis/run_analysis.py`
+
+The guide includes:
+- Complete file format reference with examples
+- Step-by-step walkthrough for "John's Consulting Profile"
+- Data requirements checklist
+- Common patterns (mortgages, events, inheritance, **pension**)
+- Troubleshooting
+
+---
+
+## Pension Modeling
+
+Scenarios can now include **optional pension wealth** that accumulates separately from the investment portfolio.
+
+### Pension Fields (in scenarios.json)
+```json
+"pension": {
+  "initial_value": 2000000,           # Accumulated pension value today (₪)
+  "monthly_contribution": 9000,       # Monthly addition to pension fund (₪)
+  "annual_growth_rate": 0.06,         # Pension fund return rate (6% typical)
+  "accessible_at_age": 67             # Age when pension can count toward retirement (Israeli standard: 67)
+}
+```
+
+### Pension Behavior in Simulations
+
+- **Accumulates independently** from liquid portfolio: each year grows by `(pension + contributions) * (1 + growth_rate)`
+- **Locked until access age**: before `accessible_at_age`, pension does NOT count toward retirement threshold
+- **Unlocks at access age**: from that year onward, pension value is added to liquid portfolio for retirement check
+- **Realistic modeling**: captures Israeli mandatory pension (Keren Pensia) that's illiquid until retirement age
+
+### Example: Alon's Pension (2026)
+
+| Year | Age | Liquid Portfolio | Pension Value | Pension Accessible? |
+|------|-----|------------------|----------------|---------------------|
+| 1 | 41 | ₪1.7M | ₪2.2M | ❌ Locked |
+| 10 | 50 | ₪5.4M | ₪5.1M | ❌ Locked |
+| 20 | 60 | ₪12.0M | ₪10.6M | ❌ Locked |
+| 27 | 67 | ₪19.0M | ₪16.9M | ✅ **Unlocked** |
+
+**Effect on retirement:** Alon can retire at year 14 (age 54) on liquid portfolio alone. Pension becomes valuable at age 67 when it unlocks, providing additional security.
+
+### YearData Now Includes
+- `pension_value: float` — Accumulated pension at year-end
+- `pension_accessible: bool` — Whether pension counts toward retirement this year
+
+---
+
 ## Common Tasks
 
 ### Simulate a Scenario
@@ -103,6 +172,32 @@ from domain.simulation import simulate
 scenario = Scenario(name="Test", monthly_income=50_000, monthly_expenses=30_000)
 result = simulate(scenario, years=20)
 print(f"Retires at year {result.retirement_year}")
+```
+
+### Simulate with Pension
+```python
+from domain.models import Scenario, Pension
+from domain.simulation import simulate
+
+pension = Pension(
+    initial_value=2_000_000,
+    monthly_contribution=9_000,
+    annual_growth_rate=0.06,
+    accessible_at_age=67
+)
+
+scenario = Scenario(
+    name="With Pension",
+    monthly_income=50_000,
+    monthly_expenses=30_000,
+    pension=pension,
+    age=41
+)
+
+result = simulate(scenario, years=30)
+for yd in result.year_data:
+    if yd.year in [1, 20, 27]:  # Year 27 is age 67 (pension unlocks)
+        print(f"Year {yd.year}: Portfolio={yd.portfolio:,.0f}, Pension={yd.pension_value:,.0f}, Accessible={yd.pension_accessible}")
 ```
 
 ### Compare Two Scenarios
@@ -150,7 +245,7 @@ result = simulate(resolved, years=20)
 **Philosophy:** Data/config in JSON. Logic immutable. Users don't edit Python.
 
 ### Edit These Files
-- ✅ scenarios.json
+- ✅ scenarios.json (includes pension field if needed)
 - ✅ scenario_nodes.json
 - ✅ analysis.json
 - ✅ settings.json
@@ -207,9 +302,15 @@ python -m unittest discover -s tests -p "test_*.py" -v
 
 ### Stale cache
 ```bash
-rm scenario_analysis/simulation_cache.json
-python analysis/run_simulations.py
-python analysis/run_analysis.py
+# Default profile
+rm data/profiles/default/analyses/cache/simulation_cache.json
+
+# Or any profile
+FINANCE_PROFILE=alon rm data/profiles/alon/analyses/cache/simulation_cache.json
+
+# Then re-simulate
+FINANCE_PROFILE=alon python analysis/run_simulations.py
+FINANCE_PROFILE=alon python analysis/run_analysis.py
 ```
 
 ---

@@ -29,15 +29,36 @@ Mortgage(
 
 **Design note:** Monthly payment computed in `__post_init__` using standard amortization formula. Handles zero-interest edge case gracefully.
 
+### Pension
+Represents a locked retirement savings account that accumulates separately from liquid investments.
+
+```python
+Pension(
+    initial_value=2_000_000,           # Accumulated pension today (₪)
+    monthly_contribution=9_000,        # Monthly addition (₪)
+    annual_growth_rate=0.06,           # Pension fund return (6% typical)
+    accessible_at_age=67               # Age when pension unlocks (Israeli standard: 67)
+)
+```
+
+**Behavior in simulation:**
+- Accumulates independently: each year grows by `(pension + monthly_contributions) * (1 + growth_rate)`
+- **Locked until `accessible_at_age`:** does NOT count toward retirement threshold before then
+- **Unlocked at age:** from that year onward, pension value is added to liquid portfolio for retirement check
+- Realistic for Israeli mandatory pension (Keren Pensia) — illiquid until retirement age (67)
+
+**Design note:** Pension is optional on Scenario (defaults to None). Simulation checks `if scenario.pension` before applying pension logic, maintaining backward compatibility.
+
 ### Scenario
-Complete financial scenario definition: income, expenses, optional mortgage, events.
+Complete financial scenario definition: income, expenses, optional mortgage, optional pension, events.
 
 ```python
 Scenario(
     name="Buy Apartment",
     monthly_income=45_000,
     monthly_expenses=25_000,
-    mortgage=mortgage_obj,
+    mortgage=mortgage_obj,              # Optional: fixed-rate mortgage
+    pension=pension_obj,                # Optional: locked retirement savings
     initial_portfolio=0.0,
     return_rate=0.07,        # 7% annual portfolio return
     withdrawal_rate=0.04,    # 4% rule for retirement
@@ -46,6 +67,8 @@ Scenario(
     events=[event1, event2]
 )
 ```
+
+**Pension integration:** If present, pension accumulates separately and counts toward retirement only after `pension.accessible_at_age`.
 
 ### ScenarioNode
 Inheritance-based scenario composition. Nodes form a tree where each child overrides parent fields.
@@ -82,9 +105,15 @@ YearData(
     net_savings=240_000,              # income - expenses
     portfolio=1_722_000,              # End-of-year after growth
     required_capital=7_500_000,       # Needed to sustain retirement
-    mortgage_active=False
+    mortgage_active=False,
+    pension_value=2_234_480,          # Accumulated pension at year-end
+    pension_accessible=False           # Whether pension counts toward retirement
 )
 ```
+
+**Pension fields** (added in v2):
+- `pension_value` — Accumulated pension fund value after growth and contributions
+- `pension_accessible` — True if scenario has pension AND current age ≥ pension.accessible_at_age
 
 ### SimulationResult
 Complete simulation output for one scenario.
@@ -104,15 +133,18 @@ Core simulation loop:
    - Apply annual income/expenses
    - Add mortgage payment if active (years 1..duration)
    - Apply one-time events (stock offerings, bonuses, etc.)
-   - Grow portfolio at return_rate
-   - Detect retirement (portfolio ≥ required_capital)
+   - Grow pension fund if present: `(pension + monthly_contributions) * (1 + growth_rate)`
+   - Grow portfolio at return_rate: `(portfolio + savings) * (1 + return_rate)`
+   - Detect retirement: portfolio ≥ required_capital (or portfolio + accessible_pension ≥ required_capital)
    - Record YearData
 
 2. **Key decisions:**
    - Portfolio grows AFTER adding savings: `(portfolio + savings) * (1 + return_rate)`
+   - Pension grows INDEPENDENTLY and is only added to capital check if accessible
    - Required capital uses current year's expenses (drops after mortgage ends)
-   - Retirement is first crossing (one-way check)
+   - Retirement is first crossing (one-way check): portfolio alone before age unlock, then portfolio+pension
    - Return rate compounded annually (nominal, not inflation-adjusted)
+   - Pension is "locked" and does NOT count toward retirement threshold until accessible_at_age is reached
 
 **Pure function:** Same input always produces same output. No side effects.
 
@@ -137,12 +169,12 @@ Convenience: `format_insights(build_insights(result_a, result_b))`
 
 ## Usage Example
 
+### Without Pension
 ```python
 from domain.models import Scenario, Mortgage, Event
 from domain.simulation import simulate
 from domain.insights import build_insights, format_insights
 
-# Define scenario
 scenario = Scenario(
     name="Baseline",
     monthly_income=45_000,
@@ -151,12 +183,31 @@ scenario = Scenario(
     events=[Event(year=2, portfolio_injection=2_000_000, description="Exit")]
 )
 
-# Simulate
 result = simulate(scenario, years=20)
+```
 
-# Analyze
-insights = build_insights(result_a, result_b)
-print(format_insights(insights))
+### With Pension
+```python
+from domain.models import Scenario, Mortgage, Pension, Event
+from domain.simulation import simulate
+
+scenario = Scenario(
+    name="With Pension",
+    monthly_income=45_000,
+    monthly_expenses=25_000,
+    mortgage=Mortgage(principal=2_250_000, annual_rate=0.04, duration_years=25),
+    pension=Pension(initial_value=2_000_000, monthly_contribution=9_000, 
+                    annual_growth_rate=0.06, accessible_at_age=67),
+    age=41,
+    events=[Event(year=2, portfolio_injection=2_000_000, description="Exit")]
+)
+
+result = simulate(scenario, years=30)
+
+# Pension is locked until year 27 (age 67), then unlocks
+for yd in result.year_data:
+    if yd.year == 27:
+        print(f"Pension unlocks: {yd.pension_accessible}, value: {yd.pension_value:,.0f}")
 ```
 
 ## Testing
