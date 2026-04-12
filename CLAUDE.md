@@ -14,45 +14,27 @@ Outputs:
 - Validation checks
 - Scenario comparison and insights
 
-### Running Comprehensive Analysis
+### Running Scenario Analysis (Configuration-Driven)
 ```bash
-python scenario_analysis/compare_all_scenarios.py
+python scenario_analysis/run_analysis.py
 ```
 
-Outputs:
-- All scenarios simulated
-- Quick overview table
-- All pairwise scenario comparisons with insights
+**Key feature:** No code changes needed! Edit `scenario_analysis/analysis.json` to define new analyses.
 
-### Comparing Your Scenarios (Personal Analysis)
-```bash
-python scenario_analysis/compare_your_baseline_vs_exit_vs_friend.py
-```
+Default analyses:
+- **Income Sensitivity** — Compare ₪45K vs ₪25K income across your three core scenarios
+- **Exit Impact** — Show how ₪2M exit event impacts retirement across income range ₪25K-₪50K
+- **Personal Comparison** — Snapshot milestones (years 1, 5, 10, 15, 20) for baseline vs exit variants
+- **Tree Exploration** — Visualize scenario tree structure, simulations, and pairwise comparisons
 
-Outputs:
-- Year-by-year snapshots at milestones (1, 5, 10, 15, 20 years)
-- Your baseline (no exit), You + ₪2M exit, You + ₪3M exit, and Friend's scenario
-- Detailed metrics: portfolio value, retirement year, annual savings
-- Side-by-side comparison table
-- Key differences and strategic insights
-
-### Exploring Scenario Trees (New!)
-```bash
-python scenario_analysis/explore_tree.py
-```
-
-Outputs:
-- Tree structure visualization
-- Simulation results for each node
-- Pairwise comparisons showing inheritance impacts
-- How-to examples for creating variations
+**To add a new analysis:** Edit `analysis.json` and add a new analysis block. No Python code changes needed.
 
 ### Running Tests
 ```bash
 python -m unittest discover -s tests -p "test_*.py" -v
 ```
 
-All 52 tests should pass (36 core + 16 ScenarioNode tests).
+All 42 tests should pass (core + ScenarioNode tests).
 
 ---
 
@@ -145,13 +127,12 @@ finance_planner/
 ├── CLAUDE.md              # This file
 ├── ARCHITECTURE.md        # Technical design & extension patterns
 ├── SCENARIO_TREE_GUIDE.md # Scenario trees guide
-├── scenario_analysis/     # Scenario tree analysis and comparisons
+├── scenario_analysis/     # Configuration-driven analysis system
 │   ├── __init__.py
-│   ├── scenario_nodes.py  # Load scenario trees from JSON
-│   ├── scenario_nodes.json # Scenario tree definitions (EDIT THIS)
-│   ├── compare_your_baseline_vs_exit_vs_friend.py # Personal scenario comparison
-│   ├── compare_with_without_exit.py # Exit impact analysis
-│   └── explore_tree.py    # Interactive tree exploration
+│   ├── run_analysis.py    # Generic analysis runner (interprets analysis.json)
+│   ├── analysis.json      # Analysis definitions (EDIT THIS to add analyses)
+│   ├── scenario_nodes.json # Scenario tree definitions (EDIT THIS to add nodes)
+│   └── scenario_nodes.py  # Load scenario trees from JSON
 └── tests/
     ├── __init__.py
     ├── test_simulation.py  # 42 core unit tests
@@ -285,6 +266,72 @@ See [SCENARIO_TREE_GUIDE.md](SCENARIO_TREE_GUIDE.md) for:
 - How inheritance chains resolve
 - Sensitivity analysis examples
 - Design decisions and rationale
+
+---
+
+## Configuration-Driven Analysis (analysis.json)
+
+Instead of separate Python scripts for different analyses, the system uses a single **generic runner** (`run_analysis.py`) that interprets `analysis.json`. This means:
+
+✅ **Add new analyses** by editing `analysis.json` (no code)
+✅ **Organize all analyses** in one place
+✅ **Same output logic** for all analysis types
+❌ **No Python changes** unless adding a new analysis type
+
+### How It Works
+
+1. **Edit `analysis.json`** — describe what to analyze
+2. **Run `run_analysis.py`** — it loads all analyses and executes them
+3. **See results** — formatted output with tables, comparisons, and insights
+
+### Example: Adding a New Analysis
+
+Say you want to analyze income range ₪30K-₪45K instead of ₪25K-₪50K:
+
+**Before (old way):** Create a new Python script, copy-paste logic, rename variables
+**Now (new way):** Edit `analysis.json`:
+
+```json
+{
+  "id": "exit_impact_limited_range",
+  "title": "Exit Impact: Income Range ₪30K-₪45K",
+  "type": "parameter_sweep",
+  "base_scenario": "Alon Baseline",
+  "parameter": "monthly_income",
+  "range": {
+    "min": 30000,
+    "max": 45000,
+    "step": 2500
+  },
+  "test_variations": [
+    { "name": "Without Exit", "events": [] },
+    { "name": "With ₪2M Exit", "events": [{"year": 2, "portfolio_injection": 2000000}] }
+  ],
+  "metrics": ["retirement_year", "portfolio_final"],
+  "outputs": ["detailed_tables", "comparison_table"]
+}
+```
+
+Then run: `python scenario_analysis/run_analysis.py`
+
+### Supported Analysis Types
+
+| Type | What It Does | Example |
+|------|-------------|---------|
+| `parameter_pair_comparison` | Compare scenarios at 2 different param values | Income ₪45K vs ₪25K |
+| `parameter_sweep` | Vary a parameter across a range | Income ₪25K-₪50K, test with/without exit |
+| `milestone_snapshots` | Show scenario snapshots at specific years | Milestones: 1, 5, 10, 15, 20 |
+| `tree_exploration` | Visualize tree structure and comparisons | Show inheritance, pairwise diffs |
+
+### Adding a New Analysis Type
+
+If you need a new type of analysis (not listed above), you'll need to:
+
+1. Add a handler function in `run_analysis.py` (e.g., `handle_my_new_type()`)
+2. Register it in the `handlers` dict
+3. Add analyses in `analysis.json` that use your new type
+
+But for most cases, one of the four types above handles your needs!
 
 ---
 

@@ -1,0 +1,132 @@
+{
+  "analyses": [
+    {
+      "id": "income_sensitivity",
+      "title": "Income Sensitivity: ₪45K vs ₪25K",
+      "description": "Compare how retirement timeline and portfolio growth change when income decreases from ₪45K to ₪25K",
+      "type": "parameter_pair_comparison",
+      "scenarios": [
+        "Alon Baseline",
+        "Alon - Low Income + ₪2M Exit",
+        "Alon - Low Income + ₪3M Exit"
+      ],
+      "variations": {
+        "high_income": {
+          "monthly_income": 45000
+        },
+        "low_income": {
+          "monthly_income": 25000
+        }
+      },
+      "pairs": [
+        {
+          "var1": "high_income",
+          "var2": "low_income"
+        }
+      ],
+      "metrics": [
+        "retirement_year",
+        "age_at_retirement",
+        "portfolio_year_10",
+        "portfolio_final",
+        "annual_savings"
+      ],
+      "outputs": [
+        "pair_comparison",
+        "summary_table",
+        "insights"
+      ]
+    },
+    {
+      "id": "exit_impact",
+      "title": "Exit Impact: Income Range ₪25K-₪50K",
+      "description": "Show how ₪2M exit in year 2 impacts retirement timeline across income levels",
+      "type": "parameter_sweep",
+      "base_scenario": "Alon Baseline",
+      "parameter": "monthly_income",
+      "range": {
+        "min": 25000,
+        "max": 50000,
+        "step": 2500
+      },
+      "test_variations": [
+        {
+          "name": "Without Exit",
+          "events": []
+        },
+        {
+          "name": "With ₪2M Exit",
+          "events": [
+            {
+              "year": 2,
+              "portfolio_injection": 2000000,
+              "description": "Exit proceeds"
+            }
+          ]
+        }
+      ],
+      "metrics": [
+        "retirement_year",
+        "portfolio_final"
+      ],
+      "outputs": [
+        "detailed_tables",
+        "comparison_table",
+        "impact_analysis"
+      ]
+    },
+    {
+      "id": "personal_comparison",
+      "title": "Your Baseline vs Exit Variants",
+      "description": "Snapshot comparison at key milestones: baseline (no exit) vs ₪2M exit vs ₪3M exit",
+      "type": "milestone_snapshots",
+      "scenarios": [
+        {
+          "label": "Baseline (no exit)",
+          "node": "Alon Baseline"
+        },
+        {
+          "label": "You + ₪2M exit",
+          "node": "Alon - Low Income + ₪2M Exit"
+        },
+        {
+          "label": "You + ₪3M exit",
+          "node": "Alon - Low Income + ₪3M Exit"
+        }
+      ],
+      "milestones": [
+        1,
+        5,
+        10,
+        15,
+        20
+      ],
+      "metrics": [
+        "portfolio",
+        "retirement_year",
+        "annual_savings",
+        "age"
+      ],
+      "outputs": [
+        "milestone_table",
+        "comparison_summary"
+      ]
+    },
+    {
+      "id": "scenario_tree_exploration",
+      "title": "Scenario Tree: Structure & Pairwise Comparisons",
+      "description": "Explore inheritance relationships and understand compounding effects",
+      "type": "tree_exploration",
+      "scenarios": [
+        "Alon Baseline",
+        "Alon - Buy Apartment",
+        "Alon - Buy Apartment + Exit"
+      ],
+      "outputs": [
+        "tree_structure",
+        "simulations",
+        "pairwise_comparisons"
+      ]
+    }
+  ]
+}
