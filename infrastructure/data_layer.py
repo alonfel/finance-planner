@@ -8,6 +8,7 @@ Future enhancement: Replace all file I/O with database queries without changing 
 
 import json
 import shutil
+import os
 from pathlib import Path
 from datetime import datetime
 from typing import Optional, Dict, Any
@@ -16,6 +17,9 @@ from typing import Optional, Dict, Any
 # Root data directory
 DATA_DIR = Path(__file__).parent.parent / "data"
 DEFAULT_PROFILE = "default"
+
+# Read profile from environment variable, or use default
+ACTIVE_PROFILE = os.environ.get("FINANCE_PROFILE", DEFAULT_PROFILE)
 
 
 def get_profile_dir(profile: str = DEFAULT_PROFILE) -> Path:

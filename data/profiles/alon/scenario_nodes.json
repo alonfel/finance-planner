@@ -1,0 +1,36 @@
+{
+  "nodes": [
+    {
+      "name": "Alon - Baseline",
+      "base_scenario": "Alon - Baseline",
+      "return_rate": 0.05,
+      "withdrawal_rate": 0.04,
+      "event_mode": "append",
+      "events": []
+    },
+    {
+      "name": "Alon - Baseline + Pension",
+      "base_scenario": "Alon - Baseline + Pension",
+      "return_rate": 0.05,
+      "withdrawal_rate": 0.04,
+      "event_mode": "append",
+      "events": []
+    },
+    {
+      "name": "Alon - IPO Year 2",
+      "base_scenario": "Alon - IPO Year 2",
+      "return_rate": 0.05,
+      "withdrawal_rate": 0.04,
+      "event_mode": "append",
+      "events": []
+    },
+    {
+      "name": "Alon - IPO Year 2 + Pension",
+      "base_scenario": "Alon - IPO Year 2 + Pension",
+      "return_rate": 0.05,
+      "withdrawal_rate": 0.04,
+      "event_mode": "append",
+      "events": []
+    }
+  ]
+}

@@ -15,7 +15,7 @@ def year_data_to_dict(year_data: YearData) -> Dict[str, Any]:
         year_data: YearData object
 
     Returns:
-        Dictionary with year, income, expenses, net_savings, portfolio, required_capital, mortgage_active
+        Dictionary with year, income, expenses, net_savings, portfolio, required_capital, mortgage_active, pension_value, pension_accessible
     """
     return {
         "year": year_data.year,
@@ -25,6 +25,8 @@ def year_data_to_dict(year_data: YearData) -> Dict[str, Any]:
         "portfolio": year_data.portfolio,
         "required_capital": year_data.required_capital,
         "mortgage_active": year_data.mortgage_active,
+        "pension_value": year_data.pension_value,
+        "pension_accessible": year_data.pension_accessible,
     }
 
 
@@ -66,6 +68,8 @@ def dict_to_simulation_result(data: Dict[str, Any]) -> SimulationResult:
             portfolio=yd["portfolio"],
             required_capital=yd["required_capital"],
             mortgage_active=yd["mortgage_active"],
+            pension_value=yd.get("pension_value", 0.0),
+            pension_accessible=yd.get("pension_accessible", False),
         )
         year_data_list.append(yd_obj)
 

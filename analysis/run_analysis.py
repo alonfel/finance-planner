@@ -27,7 +27,7 @@ from infrastructure.data_layer import (
     get_analysis_config_path,
     get_cache_path,
     save_run_result,
-    DEFAULT_PROFILE,
+    ACTIVE_PROFILE,
 )
 
 
@@ -723,8 +723,8 @@ def print_assumptions():
 
 def main():
     # Use profile-based data layer (fixes path mismatch bug)
-    analysis_file = get_analysis_config_path(DEFAULT_PROFILE)
-    cache_file = get_cache_path(DEFAULT_PROFILE)
+    analysis_file = get_analysis_config_path(ACTIVE_PROFILE)
+    cache_file = get_cache_path(ACTIVE_PROFILE)
 
     print("\n" + "="*120)
     print("SCENARIO ANALYSIS RUNNER".center(120))
@@ -800,7 +800,7 @@ def main():
     # Save run result with metadata
     analyses_run = [a.get("id", "unknown") for a in analyses]
     cache_generated_at = cache_meta.get("generated_at", "unknown") if 'cache_meta' in locals() else "inline"
-    save_run_result(DEFAULT_PROFILE, {
+    save_run_result(ACTIVE_PROFILE, {
         "analyses_run": analyses_run,
         "cache_generated_at": cache_generated_at,
         "num_scenarios": len(all_cached_results),

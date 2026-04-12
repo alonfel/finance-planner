@@ -1,6 +1,6 @@
 """Parsers for converting JSON dictionaries to domain objects."""
 
-from domain.models import Scenario, ScenarioNode, Mortgage, Event
+from domain.models import Scenario, ScenarioNode, Mortgage, Event, Pension
 
 
 def parse_mortgage(d: dict) -> Mortgage | None:
@@ -20,6 +20,27 @@ def parse_mortgage(d: dict) -> Mortgage | None:
         annual_rate=d["annual_rate"],
         duration_years=d["duration_years"],
         currency=d.get("currency", "ILS"),
+    )
+
+
+def parse_pension(d: dict) -> Pension | None:
+    """Parse a pension dict into a Pension object, or None if not present.
+
+    Args:
+        d: Dictionary with keys 'initial_value', 'monthly_contribution', 'annual_growth_rate',
+           optional 'accessible_at_age'
+
+    Returns:
+        Pension object or None
+    """
+    if not d:
+        return None
+
+    return Pension(
+        initial_value=d["initial_value"],
+        monthly_contribution=d["monthly_contribution"],
+        annual_growth_rate=d["annual_growth_rate"],
+        accessible_at_age=d.get("accessible_at_age", 67),
     )
 
 
@@ -47,7 +68,7 @@ def parse_scenario(d: dict, default_return_rate: float = 0.07, default_withdrawa
 
     Args:
         d: Dictionary with required keys 'name', 'monthly_income', 'monthly_expenses',
-           optional keys for mortgage, events, return_rate, withdrawal_rate, currency, age, initial_portfolio
+           optional keys for mortgage, pension, events, return_rate, withdrawal_rate, currency, age, initial_portfolio
         default_return_rate: Default return rate if not in dict
         default_withdrawal_rate: Default withdrawal rate if not in dict
 
@@ -55,6 +76,7 @@ def parse_scenario(d: dict, default_return_rate: float = 0.07, default_withdrawa
         Scenario object
     """
     mortgage = parse_mortgage(d.get("mortgage"))
+    pension = parse_pension(d.get("pension"))
     events = parse_events(d.get("events", []))
 
     return Scenario(
@@ -62,6 +84,7 @@ def parse_scenario(d: dict, default_return_rate: float = 0.07, default_withdrawa
         monthly_income=d["monthly_income"],
         monthly_expenses=d["monthly_expenses"],
         mortgage=mortgage,
+        pension=pension,
         initial_portfolio=d.get("initial_portfolio", 0.0),
         return_rate=d.get("return_rate", default_return_rate),
         withdrawal_rate=d.get("withdrawal_rate", default_withdrawal_rate),

@@ -13,16 +13,17 @@ from infrastructure.data_layer import (
     get_scenarios_path,
     get_scenario_nodes_path,
     DEFAULT_PROFILE,
+    ACTIVE_PROFILE,
 )
 
 
 # Auto-migrate legacy files to profile-based structure (one-shot, idempotent)
 migrate_to_data_layer(DEFAULT_PROFILE)
 
-# Default file paths (now point to profile-based data layer)
-_SETTINGS_FILE = get_settings_path(DEFAULT_PROFILE)
-_SCENARIOS_FILE = get_scenarios_path(DEFAULT_PROFILE)
-_SCENARIO_NODES_FILE = get_scenario_nodes_path(DEFAULT_PROFILE)
+# Default file paths (now point to profile-based data layer, using active profile)
+_SETTINGS_FILE = get_settings_path(ACTIVE_PROFILE)
+_SCENARIOS_FILE = get_scenarios_path(ACTIVE_PROFILE)
+_SCENARIO_NODES_FILE = get_scenario_nodes_path(ACTIVE_PROFILE)
 
 
 @dataclass
@@ -150,13 +151,15 @@ def load_scenario_nodes(path: Path = _SCENARIO_NODES_FILE) -> dict[str, Scenario
         ValueError: if the tree has cycles, missing parents, or other validation errors
     """
     # Load scenarios from the same profile's scenarios file
-    all_scenarios = load_scenarios(get_scenarios_path(DEFAULT_PROFILE))
+    all_scenarios = load_scenarios(get_scenarios_path(ACTIVE_PROFILE))
 
     with open(path) as f:
         data = json.load(f)
 
     nodes = {}
-    for node_dict in data.get("scenario_nodes", []):
+    # Support both "scenario_nodes" (legacy) and "nodes" (new) keys
+    node_list = data.get("scenario_nodes") or data.get("nodes", [])
+    for node_dict in node_list:
         node = parse_scenario_node(node_dict, all_scenarios)
         nodes[node.name] = node
 

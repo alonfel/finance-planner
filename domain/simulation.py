@@ -13,6 +13,8 @@ class YearData:
     portfolio: float  # End-of-year portfolio value after growth
     required_capital: float  # Annual expenses / withdrawal_rate
     mortgage_active: bool  # Whether mortgage payment was included this year
+    pension_value: float = 0.0  # End-of-year pension fund value
+    pension_accessible: bool = False  # Whether pension can count toward retirement
 
 
 @dataclass
@@ -35,6 +37,7 @@ def simulate(scenario: Scenario, years: int = 40) -> SimulationResult:
         SimulationResult with year-by-year data and retirement year
     """
     portfolio = scenario.initial_portfolio
+    pension = scenario.pension.initial_value if scenario.pension else 0.0
     retirement_year: Optional[int] = None
     year_data_list: list[YearData] = []
 
@@ -59,15 +62,27 @@ def simulate(scenario: Scenario, years: int = 40) -> SimulationResult:
             if event.year == year_num:
                 portfolio += event.portfolio_injection
 
+        # Pension growth (if pension exists)
+        pension_accessible = False
+        if scenario.pension is not None:
+            current_age = scenario.age + year_num - 1
+            pension_accessible = (current_age >= scenario.pension.accessible_at_age)
+            # Grow pension fund with contributions
+            pension = (pension + scenario.pension.monthly_contribution * 12) * (1 + scenario.pension.annual_growth_rate)
+
         # Portfolio growth
         portfolio = (portfolio + net_savings) * (1 + scenario.return_rate)
 
         # Compute required capital for retirement
         required_capital = annual_expenses / scenario.withdrawal_rate
 
-        # Detect retirement (first year where portfolio >= required_capital)
-        if retirement_year is None and portfolio >= required_capital:
-            retirement_year = year_num
+        # Detect retirement: count pension only if accessible
+        if retirement_year is None:
+            effective_capital = portfolio
+            if pension_accessible:
+                effective_capital += pension
+            if effective_capital >= required_capital:
+                retirement_year = year_num
 
         # Record year data
         year_data_list.append(
@@ -79,6 +94,8 @@ def simulate(scenario: Scenario, years: int = 40) -> SimulationResult:
                 portfolio=portfolio,
                 required_capital=required_capital,
                 mortgage_active=mortgage_active,
+                pension_value=pension,
+                pension_accessible=pension_accessible,
             )
         )
 

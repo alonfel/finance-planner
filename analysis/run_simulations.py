@@ -23,7 +23,7 @@ from typing import Dict, Any
 from infrastructure.loaders import load_scenario_nodes
 from domain.simulation import simulate
 from infrastructure.cache import simulation_result_to_dict, save_cache, load_cache
-from infrastructure.data_layer import get_cache_path, DEFAULT_PROFILE
+from infrastructure.data_layer import get_cache_path, ACTIVE_PROFILE
 
 
 def run_all_simulations(all_nodes: Dict, years: int = 20) -> Dict[str, Dict[str, Any]]:
@@ -55,7 +55,7 @@ def run_all_simulations(all_nodes: Dict, years: int = 20) -> Dict[str, Dict[str,
 
 def main():
     # Cache file location from profile-based data layer
-    cache_file = get_cache_path(DEFAULT_PROFILE)
+    cache_file = get_cache_path(ACTIVE_PROFILE)
     cache_file.parent.mkdir(parents=True, exist_ok=True)
 
     print("\n" + "=" * 80)

@@ -34,12 +34,22 @@ class Mortgage:
 
 
 @dataclass
+class Pension:
+    """Represents a pension fund with initial value, contributions, growth rate, and access age."""
+    initial_value: float  # Accumulated pension value today
+    monthly_contribution: float  # Monthly addition to pension fund
+    annual_growth_rate: float  # Annual growth rate of pension fund
+    accessible_at_age: int = 67  # Age when pension can count toward retirement
+
+
+@dataclass
 class Scenario:
     """Represents a financial scenario with income, expenses, optional mortgage, and one-time events."""
     name: str
     monthly_income: float
     monthly_expenses: float
     mortgage: Optional[Mortgage] = None
+    pension: Optional[Pension] = None
     initial_portfolio: float = 0.0
     return_rate: float = 0.07  # Annual portfolio return rate
     withdrawal_rate: float = 0.04  # Safe withdrawal rate (4% rule)
