@@ -1,16 +1,28 @@
 <template>
-  <div class="chart-container">
-    <Line :data="chartData" :options="chartOptions" />
+  <div class="chart-wrapper">
+    <div class="chart-controls">
+      <label class="scale-toggle">
+        <input
+          type="checkbox"
+          v-model="useLogScale"
+        />
+        <span>Log Scale (better for growth visibility)</span>
+      </label>
+    </div>
+    <div class="chart-container">
+      <Line :data="chartData" :options="chartOptions" />
+    </div>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { Line } from 'vue-chartjs'
 import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
+  LogarithmicScale,
   PointElement,
   LineElement,
   Title,
@@ -21,12 +33,15 @@ import {
 ChartJS.register(
   CategoryScale,
   LinearScale,
+  LogarithmicScale,
   PointElement,
   LineElement,
   Title,
   Tooltip,
   Legend
 )
+
+const useLogScale = ref(true)
 
 const props = defineProps({
   yearData: {
@@ -134,13 +149,15 @@ const chartOptions = computed(() => ({
       }
     },
     y: {
-      beginAtZero: true,
+      type: useLogScale.value ? 'logarithmic' : 'linear',
+      ...(useLogScale.value ? { min: 0.01 } : { beginAtZero: true, min: 0 }),
       grid: {
         color: 'rgba(0, 0, 0, 0.05)'
       },
       ticks: {
         font: { size: 11 },
         callback: function(value) {
+          if (value === 0) return '₪0'
           return '₪' + value.toFixed(0) + 'M'
         }
       }
@@ -150,9 +167,46 @@ const chartOptions = computed(() => ({
 </script>
 
 <style scoped>
+.chart-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.chart-controls {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  padding: 12px 15px;
+  background: #f9f9f9;
+  border-radius: 4px;
+  border: 1px solid #e0e0e0;
+}
+
+.scale-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #555;
+  user-select: none;
+}
+
+.scale-toggle input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #667eea;
+}
+
+.scale-toggle span {
+  font-weight: 500;
+}
+
 .chart-container {
   position: relative;
   height: 400px;
-  margin: 20px 0;
+  margin: 0;
 }
 </style>
