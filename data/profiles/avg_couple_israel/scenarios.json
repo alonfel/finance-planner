@@ -1,0 +1,23 @@
+{
+  "scenarios": [
+    {
+      "name": "Baseline",
+      "monthly_income": {
+        "Partner A (age 33) salary": 12000,
+        "Partner B (age 35) salary": 10000
+      },
+      "monthly_expenses": {
+        "mortgage": 8000,
+        "food": 3000,
+        "utilities": 1500,
+        "childcare": 5000,
+        "other": 2500
+      },
+      "initial_portfolio": 300000,
+      "age": 32,
+      "currency": "ILS",
+      "retirement_income_needed": 18000,
+      "notes": "Average Israeli couple, early 30s, building wealth with active mortgage (₪1.5M balance remaining)"
+    }
+  ]
+}

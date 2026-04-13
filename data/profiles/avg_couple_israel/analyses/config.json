@@ -1,0 +1,27 @@
+{
+  "analyses": [
+    {
+      "id": "income_sensitivity",
+      "title": "Scenario Comparison: Income & Expense Sensitivity Analysis",
+      "description": "Comparing baseline scenario with higher income and lower expense variations",
+      "type": "milestone_snapshots",
+      "scenarios": [
+        {
+          "label": "Baseline",
+          "node": "Baseline"
+        },
+        {
+          "label": "Higher Income (+30%)",
+          "node": "Higher Income (+30%)"
+        },
+        {
+          "label": "Lower Expenses (-15%)",
+          "node": "Lower Expenses (-15%)"
+        }
+      ],
+      "milestones": [1, 5, 10, 15, 20, 25, 30],
+      "metrics": ["retirement_year", "portfolio_final"],
+      "outputs": ["milestone_table", "comparison_summary"]
+    }
+  ]
+}

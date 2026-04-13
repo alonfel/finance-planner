@@ -1,0 +1,10 @@
+{
+  "run_at": "2026-04-13T11:55:27",
+  "profile": "avg_couple_israel",
+  "analyses_run": [
+    "baseline_comparison",
+    "retirement_analysis"
+  ],
+  "cache_generated_at": "2026-04-13T11:55:22.125613",
+  "num_scenarios": 3
+}

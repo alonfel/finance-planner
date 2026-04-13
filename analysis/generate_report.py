@@ -654,6 +654,357 @@ def generate_comprehensive_financial_report():
     return "\n".join(report_lines)
 
 
+def generate_detailed_scenario_analysis():
+    """Generate detailed 20-year analysis for all scenarios with savings vs returns breakdown."""
+    cache_path = get_cache_path()
+
+    if not cache_path.exists():
+        print(f"Error: Cache file not found at {cache_path}")
+        return None
+
+    with open(cache_path) as f:
+        cache = json.load(f)
+
+    results = cache.get("results", {})
+
+    # Load actual scenario data for parameters
+    from infrastructure.loaders import load_scenarios
+    try:
+        scenarios = load_scenarios()
+        base_scenario = next(iter(scenarios.values())) if scenarios else None
+        if not base_scenario:
+            raise ValueError("No scenarios found")
+
+        base_income = base_scenario.monthly_income.total
+        base_expenses = base_scenario.monthly_expenses.total
+        monthly_savings = base_income - base_expenses
+        annual_savings = monthly_savings * 12
+        initial_portfolio = base_scenario.initial_portfolio
+        return_rate = base_scenario.return_rate
+        start_age = base_scenario.age
+    except Exception as e:
+        print(f"Error loading scenario data: {e}")
+        return None
+
+    report_lines = []
+
+    # Header
+    report_lines.append("╔" + "═" * 130 + "╗")
+    report_lines.append("║" + "ALL SCENARIOS - 20-YEAR DETAILED ANALYSIS".center(130) + "║")
+    report_lines.append("║" + "SAVINGS vs INVESTMENT RETURNS BREAKDOWN".center(130) + "║")
+    report_lines.append("╚" + "═" * 130 + "╝")
+    report_lines.append("")
+    report_lines.append(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    report_lines.append("")
+
+    # Parameters
+    report_lines.append("SIMULATION PARAMETERS")
+    report_lines.append("=" * 130)
+    report_lines.append("")
+    report_lines.append(f"  Initial Portfolio:           {format_currency(initial_portfolio)}")
+    report_lines.append(f"  Monthly Savings:             {format_currency(monthly_savings)}")
+    report_lines.append(f"  Annual Savings:              {format_currency(annual_savings)}")
+    report_lines.append(f"  Investment Return Rate:      {return_rate*100:.1f}% annually")
+    report_lines.append(f"  Starting Age:                {start_age}")
+    report_lines.append("")
+    report_lines.append("")
+
+    # Process each scenario
+    for scenario_name in sorted(results.keys()):
+        scenario_data = results[scenario_name]
+        year_data = scenario_data.get('year_data', [])
+
+        if not year_data:
+            continue
+
+        # Scenario header
+        report_lines.append("=" * 130)
+        report_lines.append(f"SCENARIO: {scenario_name}")
+        report_lines.append("=" * 130)
+        report_lines.append("")
+
+        # Detailed year-by-year table
+        report_lines.append("YEAR-BY-YEAR BREAKDOWN (20 YEARS)")
+        report_lines.append("-" * 130)
+        report_lines.append(f"{'Year':<6} {'Age':<5} {'Portfolio':<18} {'YoY Delta':<18} {'Savings Contrib':<18} {'Returns Contrib':<18} {'% From Returns':<16}")
+        report_lines.append("-" * 130)
+
+        total_savings_contributed = 0
+        total_returns_generated = 0
+
+        for i, yd in enumerate(year_data[:20]):
+            year = yd['year']
+            age = yd.get('age', start_age + year)
+            portfolio = yd['portfolio']
+
+            if i == 0:
+                yoy_delta = portfolio - initial_portfolio
+                # For year 1: returns apply to initial portfolio + portion of savings
+                returns_contributed = yoy_delta - annual_savings
+                savings_contributed = annual_savings
+            else:
+                prev_portfolio = year_data[i-1]['portfolio']
+                yoy_delta = portfolio - prev_portfolio
+                # For subsequent years: returns apply to previous portfolio + savings
+                returns_contributed = yoy_delta - annual_savings
+                savings_contributed = annual_savings
+
+            total_savings_contributed += savings_contributed
+            total_returns_generated += returns_contributed
+
+            pct_from_returns = (returns_contributed / yoy_delta * 100) if yoy_delta > 0 else 0
+
+            report_lines.append(
+                f"{year:<6} {age:<5} {format_currency(portfolio):<18} {format_currency(yoy_delta):<18} "
+                f"{format_currency(savings_contributed):<18} {format_currency(returns_contributed):<18} {pct_from_returns:>6.1f}%{' ' * 8}"
+            )
+
+        report_lines.append("")
+        report_lines.append("")
+
+        # Summary statistics
+        report_lines.append("20-YEAR CUMULATIVE SUMMARY")
+        report_lines.append("-" * 130)
+        report_lines.append(f"  Total Savings Contributed:        {format_currency(total_savings_contributed)}")
+        report_lines.append(f"  Total Returns Generated:          {format_currency(total_returns_generated)}")
+        report_lines.append(f"  Final Portfolio (Year 20):        {format_currency(year_data[19]['portfolio'])}")
+        report_lines.append(f"  Returns-to-Savings Ratio:         {total_returns_generated / total_savings_contributed:.2f}x")
+        report_lines.append("")
+
+        # Phase analysis
+        report_lines.append("WEALTH ACCELERATION PHASES")
+        report_lines.append("-" * 130)
+
+        phases = [
+            ("PHASE 1", "Early Years", 1, 5, "Savings dominate growth"),
+            ("PHASE 2", "Mid Years", 6, 10, "Transition point"),
+            ("PHASE 3", "Late Years", 11, 15, "Returns exceed savings"),
+            ("PHASE 4", "Mature Years", 16, 20, "Compound power dominates"),
+        ]
+
+        for phase_name, phase_label, start_yr, end_yr, description in phases:
+            phase_data = [yd for yd in year_data if start_yr <= yd['year'] <= end_yr]
+            if not phase_data:
+                continue
+
+            phase_savings = sum(annual_savings for _ in phase_data)
+
+            # Calculate returns for this phase
+            phase_returns = 0
+            for yd in phase_data:
+                year_idx = yd['year'] - 1  # Convert 1-indexed year to 0-indexed
+                if year_idx == 0:
+                    # Year 1: delta - savings = returns (includes growth on initial portfolio)
+                    delta = yd['portfolio'] - initial_portfolio
+                else:
+                    # Subsequent years: delta is year_data[idx] - year_data[idx-1]
+                    delta = yd['portfolio'] - year_data[year_idx - 1]['portfolio']
+
+                returns_in_year = delta - annual_savings
+                phase_returns += returns_in_year
+
+            total_phase_growth = phase_savings + phase_returns
+            pct_savings = (phase_savings / total_phase_growth * 100) if total_phase_growth > 0 else 0
+            pct_returns = (phase_returns / total_phase_growth * 100) if total_phase_growth > 0 else 0
+
+            report_lines.append(f"{phase_name}: {phase_label} (Years {start_yr}-{end_yr}) - {description}")
+            report_lines.append(f"  Savings Contribution:     {format_currency(phase_savings)} ({pct_savings:.1f}% of growth)")
+            report_lines.append(f"  Returns Contribution:     {format_currency(phase_returns)} ({pct_returns:.1f}% of growth)")
+            if phase_savings > 0:
+                report_lines.append(f"  Returns/Savings Ratio:    {phase_returns/phase_savings:.2f}x")
+
+        report_lines.append("")
+
+        retirement_year = scenario_data.get('retirement_year')
+        if retirement_year:
+            report_lines.append(f"✓ RETIREMENT ACHIEVED: Year {retirement_year} (Age {start_age + retirement_year})")
+        else:
+            report_lines.append(f"✗ RETIREMENT: Not achieved within 20 years")
+
+        report_lines.append("")
+        report_lines.append("")
+
+    return "\n".join(report_lines)
+
+
+def generate_detailed_baseline_analysis():
+    """Generate detailed 20-year baseline analysis with savings vs returns breakdown (legacy function)."""
+    cache_path = get_cache_path()
+
+    if not cache_path.exists():
+        print(f"Error: Cache file not found at {cache_path}")
+        return None
+
+    with open(cache_path) as f:
+        cache = json.load(f)
+
+    results = cache.get("results", {})
+
+    # Find baseline scenario
+    baseline_data = None
+    baseline_name = None
+    for name, data in sorted(results.items()):
+        if "Baseline" in name:
+            baseline_data = data
+            baseline_name = name
+            break
+
+    if not baseline_data:
+        print("Error: No Baseline scenario found")
+        return None
+
+    # Load actual scenario data for parameters
+    from infrastructure.loaders import load_scenarios
+    try:
+        scenarios = load_scenarios()
+        base_scenario = next(iter(scenarios.values())) if scenarios else None
+        if not base_scenario:
+            raise ValueError("No scenarios found")
+
+        base_income = base_scenario.monthly_income.total
+        base_expenses = base_scenario.monthly_expenses.total
+        monthly_savings = base_income - base_expenses
+        annual_savings = monthly_savings * 12
+        initial_portfolio = base_scenario.initial_portfolio
+        return_rate = base_scenario.return_rate
+        start_age = base_scenario.age
+    except Exception as e:
+        print(f"Error loading scenario data: {e}")
+        return None
+
+    year_data = baseline_data.get('year_data', [])
+    if not year_data:
+        return None
+
+    report_lines = []
+
+    # Header
+    report_lines.append("╔" + "═" * 130 + "╗")
+    report_lines.append("║" + "BASELINE SCENARIO - 20-YEAR DETAILED ANALYSIS".center(130) + "║")
+    report_lines.append("║" + "SAVINGS vs INVESTMENT RETURNS BREAKDOWN".center(130) + "║")
+    report_lines.append("╚" + "═" * 130 + "╝")
+    report_lines.append("")
+    report_lines.append(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    report_lines.append("")
+
+    # Parameters
+    report_lines.append("SIMULATION PARAMETERS")
+    report_lines.append("=" * 130)
+    report_lines.append("")
+    report_lines.append(f"  Initial Portfolio:           {format_currency(initial_portfolio)}")
+    report_lines.append(f"  Monthly Savings:             {format_currency(monthly_savings)}")
+    report_lines.append(f"  Annual Savings:              {format_currency(annual_savings)}")
+    report_lines.append(f"  Investment Return Rate:      {return_rate*100:.1f}% annually")
+    report_lines.append(f"  Starting Age:                {start_age}")
+    report_lines.append("")
+    report_lines.append("")
+
+    # Detailed year-by-year table
+    report_lines.append("YEAR-BY-YEAR BREAKDOWN (20 YEARS)")
+    report_lines.append("=" * 130)
+    report_lines.append("")
+    report_lines.append(f"{'Year':<6} {'Age':<5} {'Portfolio':<18} {'YoY Delta':<18} {'Savings Contrib':<18} {'Returns Contrib':<18} {'% From Returns':<16}")
+    report_lines.append("-" * 130)
+
+    total_savings_contributed = 0
+    total_returns_generated = 0
+
+    for i, yd in enumerate(year_data[:20]):
+        year = yd['year']
+        age = yd.get('age', start_age + year)
+        portfolio = yd['portfolio']
+
+        if i == 0:
+            yoy_delta = portfolio - initial_portfolio
+            # For year 1: returns apply to initial portfolio + portion of savings
+            returns_contributed = yoy_delta - annual_savings
+            savings_contributed = annual_savings
+        else:
+            prev_portfolio = year_data[i-1]['portfolio']
+            yoy_delta = portfolio - prev_portfolio
+            # For subsequent years: returns apply to previous portfolio + savings
+            returns_contributed = yoy_delta - annual_savings
+            savings_contributed = annual_savings
+
+        total_savings_contributed += savings_contributed
+        total_returns_generated += returns_contributed
+
+        pct_from_returns = (returns_contributed / yoy_delta * 100) if yoy_delta > 0 else 0
+
+        report_lines.append(
+            f"{year:<6} {age:<5} {format_currency(portfolio):<18} {format_currency(yoy_delta):<18} "
+            f"{format_currency(savings_contributed):<18} {format_currency(returns_contributed):<18} {pct_from_returns:>6.1f}%{' ' * 8}"
+        )
+
+    report_lines.append("")
+    report_lines.append("")
+
+    # Summary statistics
+    report_lines.append("20-YEAR CUMULATIVE SUMMARY")
+    report_lines.append("=" * 130)
+    report_lines.append("")
+    report_lines.append(f"  Total Savings Contributed:        {format_currency(total_savings_contributed)}")
+    report_lines.append(f"  Total Returns Generated:          {format_currency(total_returns_generated)}")
+    report_lines.append(f"  Final Portfolio (Year 20):        {format_currency(year_data[19]['portfolio'])}")
+    report_lines.append(f"  Returns-to-Savings Ratio:         {total_returns_generated / total_savings_contributed:.2f}x")
+    report_lines.append("")
+    report_lines.append("")
+
+    # Phase analysis
+    report_lines.append("WEALTH ACCELERATION PHASES")
+    report_lines.append("=" * 130)
+    report_lines.append("")
+
+    phases = [
+        ("PHASE 1", "Early Years", 1, 5, "Savings dominate growth"),
+        ("PHASE 2", "Mid Years", 6, 10, "Transition point"),
+        ("PHASE 3", "Late Years", 11, 15, "Returns exceed savings"),
+        ("PHASE 4", "Mature Years", 16, 20, "Compound power dominates"),
+    ]
+
+    for phase_name, phase_label, start_yr, end_yr, description in phases:
+        phase_data = [yd for yd in year_data if start_yr <= yd['year'] <= end_yr]
+        if not phase_data:
+            continue
+
+        phase_savings = sum(annual_savings for _ in phase_data)
+
+        # Calculate returns for this phase
+        phase_returns = 0
+        for yd in phase_data:
+            year_idx = yd['year'] - 1  # Convert 1-indexed year to 0-indexed
+            if year_idx == 0:
+                # Year 1: delta - savings = returns (includes growth on initial portfolio)
+                delta = yd['portfolio'] - initial_portfolio
+            else:
+                # Subsequent years: delta is year_data[idx] - year_data[idx-1]
+                delta = yd['portfolio'] - year_data[year_idx - 1]['portfolio']
+
+            returns_in_year = delta - annual_savings
+            phase_returns += returns_in_year
+
+        total_phase_growth = phase_savings + phase_returns
+        pct_savings = (phase_savings / total_phase_growth * 100) if total_phase_growth > 0 else 0
+        pct_returns = (phase_returns / total_phase_growth * 100) if total_phase_growth > 0 else 0
+
+        report_lines.append(f"{phase_name}: {phase_label} (Years {start_yr}-{end_yr}) - {description}")
+        report_lines.append(f"  Savings Contribution:     {format_currency(phase_savings)} ({pct_savings:.1f}% of growth)")
+        report_lines.append(f"  Returns Contribution:     {format_currency(phase_returns)} ({pct_returns:.1f}% of growth)")
+        if phase_savings > 0:
+            report_lines.append(f"  Returns/Savings Ratio:    {phase_returns/phase_savings:.2f}x")
+        report_lines.append("")
+
+    retirement_year = baseline_data.get('retirement_year')
+    if retirement_year:
+        report_lines.append(f"✓ RETIREMENT ACHIEVED: Year {retirement_year} (Age {start_age + retirement_year})")
+    else:
+        report_lines.append(f"✗ RETIREMENT: Not achieved within 20 years")
+
+    report_lines.append("")
+
+    return "\n".join(report_lines)
+
+
 if __name__ == "__main__":
     # Default: generate both yearly_comparison and insights reports
     if len(sys.argv) == 1:
@@ -699,7 +1050,21 @@ if __name__ == "__main__":
                 print(f"✓ Report saved to: {filepath}")
             else:
                 sys.exit(1)
+        elif report_type == "detailed_baseline":
+            content = generate_detailed_baseline_analysis()
+            if content:
+                filepath = save_report(content, "BASELINE_20YEAR_DETAILED_ANALYSIS.md")
+                print(f"✓ Report saved to: {filepath}")
+            else:
+                sys.exit(1)
+        elif report_type == "detailed_all" or report_type == "detailed_scenarios":
+            content = generate_detailed_scenario_analysis()
+            if content:
+                filepath = save_report(content, "ALL_SCENARIOS_20YEAR_DETAILED_ANALYSIS.md")
+                print(f"✓ Report saved to: {filepath}")
+            else:
+                sys.exit(1)
         else:
             print(f"Unknown report type: {report_type}")
-            print("Available types: yearly_comparison, insights, growth_analysis, comprehensive")
+            print("Available types: yearly_comparison, insights, growth_analysis, comprehensive, detailed_baseline, detailed_all")
             sys.exit(1)

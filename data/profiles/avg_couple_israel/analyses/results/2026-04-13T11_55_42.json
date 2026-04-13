@@ -1,0 +1,9 @@
+{
+  "run_at": "2026-04-13T11:55:42",
+  "profile": "avg_couple_israel",
+  "analyses_run": [
+    "income_sensitivity"
+  ],
+  "cache_generated_at": "2026-04-13T11:55:22.125613",
+  "num_scenarios": 3
+}
