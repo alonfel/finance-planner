@@ -215,13 +215,14 @@ const chartOptions = computed(() => ({
     },
     y: {
       type: useLogScale.value ? 'logarithmic' : 'linear',
-      ...(useLogScale.value ? {} : { beginAtZero: true, min: 0 }),
+      ...(useLogScale.value ? { min: 0.01 } : { beginAtZero: true, min: 0 }),
       grid: {
         color: 'rgba(0, 0, 0, 0.05)'
       },
       ticks: {
         font: { size: 11 },
         callback: function(value) {
+          if (value === 0) return '₪0'
           return '₪' + value.toFixed(0) + 'M'
         }
       }
