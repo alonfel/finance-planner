@@ -97,7 +97,26 @@
       "currency": "ILS",
       "events": [],
       "saved_from": "whatif",
-      "saved_at": "2026-04-13T16:21:45Z"
+      "saved_at": "2026-04-13T16:21:45Z",
+      "is_deleted": true
+    },
+    {
+      "name": "couple with mortage3",
+      "monthly_income": 22000.0,
+      "monthly_expenses": 14000.0,
+      "return_rate": 0.05,
+      "age": 41,
+      "initial_portfolio": 300000.0,
+      "currency": "ILS",
+      "events": [],
+      "saved_from": "whatif",
+      "saved_at": "2026-04-13T16:37:00Z",
+      "mortgage": {
+        "principal": 750000.0,
+        "annual_rate": 0.045,
+        "duration_years": 20,
+        "currency": "ILS"
+      }
     }
   ]
 }

@@ -504,7 +504,7 @@ const refreshOriginalScenario = async () => {
         .map(e => ({ year: e.year, portfolio_injection: e.amount, description: e.description })),
       mortgage: mortgage.value ? {
         principal: mortgage.value.principal,
-        annual_rate: mortgage.value.annual_rate,
+        annual_rate: mortgage.value.annual_rate / 100,
         duration_years: mortgage.value.duration_years,
         currency: mortgage.value.currency || 'ILS'
       } : null
@@ -538,7 +538,7 @@ const runSimulation = async () => {
         .map(e => ({ year: e.year, portfolio_injection: e.amount, description: e.description })),
       mortgage: mortgage.value ? {
         principal: mortgage.value.principal,
-        annual_rate: mortgage.value.annual_rate,
+        annual_rate: mortgage.value.annual_rate / 100,
         duration_years: mortgage.value.duration_years,
         currency: mortgage.value.currency || 'ILS'
       } : null
@@ -636,7 +636,7 @@ const saveScenario = async () => {
         })),
         mortgage: mortgage.value ? {
           principal: mortgage.value.principal,
-          annual_rate: mortgage.value.annual_rate,
+          annual_rate: mortgage.value.annual_rate / 100,
           duration_years: mortgage.value.duration_years,
           currency: mortgage.value.currency || 'ILS'
         } : null
