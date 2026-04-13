@@ -84,6 +84,69 @@
           </div>
         </div>
 
+        <!-- Events section -->
+        <div v-if="originalScenario" class="events-section">
+          <h3>One-Time Events</h3>
+          <div class="events-buttons">
+            <button @click="addEvent('windfall')" class="btn-add-event btn-windfall">
+              + Add Windfall
+            </button>
+            <button @click="addEvent('expense')" class="btn-add-event btn-expense">
+              + Add Expense
+            </button>
+          </div>
+
+          <div v-if="events.length === 0" class="no-events">
+            No events added. Click above to add windfalls or expenses.
+          </div>
+
+          <div v-else class="events-list">
+            <div v-for="(event, index) in events" :key="index" class="event-row">
+              <input
+                v-model="event.enabled"
+                type="checkbox"
+                class="event-toggle"
+                @change="onSliderChange"
+              />
+              <input
+                v-model="event.description"
+                type="text"
+                class="event-description"
+                @input="onSliderChange"
+              />
+              <div class="event-controls">
+                <label>Year</label>
+                <input
+                  v-model.number="event.year"
+                  type="range"
+                  min="1"
+                  max="20"
+                  step="1"
+                  class="event-year-slider"
+                  @input="onSliderChange"
+                />
+                <span class="event-year-value">{{ event.year }}</span>
+              </div>
+              <div class="event-controls">
+                <label>Amount</label>
+                <input
+                  v-model.number="event.amount"
+                  type="range"
+                  min="-3000000"
+                  max="5000000"
+                  step="50000"
+                  class="event-amount-slider"
+                  @input="onSliderChange"
+                />
+                <span class="event-amount-value">{{ formatEventAmount(event.amount) }}</span>
+              </div>
+              <button @click="removeEvent(index)" class="btn-remove-event">
+                🗑
+              </button>
+            </div>
+          </div>
+        </div>
+
         <!-- Comparison display -->
         <div v-if="originalScenario && whatIfResult" class="comparison-display">
           <!-- Chart -->
@@ -166,6 +229,8 @@ const sliders = ref({
   initialPortfolio: 1700000
 })
 
+const events = ref([])
+
 const profileId = computed(() => route.params.profileId)
 const originalStartingAge = computed(() => {
   if (!originalScenario.value || !originalScenario.value.year_data || originalScenario.value.year_data.length === 0) {
@@ -231,6 +296,9 @@ const onScenarioSelect = async () => {
         (firstYear.portfolio / 1.07) - firstYear.net_savings
     }
 
+    // Reset events when selecting new scenario
+    events.value = []
+
     // Run initial simulation
     await runSimulation()
   } catch (err) {
@@ -253,13 +321,36 @@ const runSimulation = async () => {
       return_rate: sliders.value.growthRate / 100,
       starting_age: sliders.value.startingAge,
       initial_portfolio: sliders.value.initialPortfolio,
-      years: 20
+      years: 20,
+      events: events.value
+        .filter(e => e.enabled)
+        .map(e => ({ year: e.year, portfolio_injection: e.amount, description: e.description }))
     })
     whatIfResult.value = response.data
   } catch (err) {
     error.value = 'Failed to run simulation'
     console.error(err)
   }
+}
+
+const addEvent = (type) => {
+  events.value.push({
+    year: 5,
+    amount: type === 'windfall' ? 500000 : -300000,
+    description: type === 'windfall' ? 'Stock Windfall' : 'Major Expense',
+    enabled: true
+  })
+  onSliderChange()
+}
+
+const removeEvent = (index) => {
+  events.value.splice(index, 1)
+  onSliderChange()
+}
+
+const formatEventAmount = (amount) => {
+  const prefix = amount >= 0 ? '+' : '-'
+  return prefix + '₪' + Math.round(Math.abs(amount) / 1000) + 'K'
 }
 
 const formatNumber = (num) => {
@@ -502,5 +593,172 @@ fetchRuns()
 .metric-item .value {
   color: #333;
   font-weight: 600;
+}
+
+.events-section {
+  background: white;
+  padding: 30px;
+  border-radius: 8px;
+  margin-bottom: 30px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.events-section h3 {
+  margin: 0 0 20px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.events-buttons {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.btn-add-event {
+  border: none;
+  padding: 10px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.btn-windfall {
+  background: #27ae60;
+  color: white;
+}
+
+.btn-windfall:hover {
+  background: #229954;
+}
+
+.btn-expense {
+  background: #e74c3c;
+  color: white;
+}
+
+.btn-expense:hover {
+  background: #c0392b;
+}
+
+.no-events {
+  text-align: center;
+  color: #999;
+  padding: 20px;
+  font-size: 14px;
+}
+
+.events-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.event-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 15px;
+  background: #f9f9f9;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
+}
+
+.event-toggle {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+}
+
+.event-description {
+  flex: 1;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  color: #333;
+  min-width: 150px;
+}
+
+.event-description:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.event-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.event-controls label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #666;
+  min-width: 40px;
+}
+
+.event-year-slider,
+.event-amount-slider {
+  width: 80px;
+  height: 4px;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background: linear-gradient(to right, #667eea 0%, #667eea 50%, #ddd 50%, #ddd 100%);
+  border-radius: 2px;
+  outline: none;
+}
+
+.event-year-slider::-webkit-slider-thumb,
+.event-amount-slider::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #667eea;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(102, 126, 234, 0.3);
+}
+
+.event-year-slider::-moz-range-thumb,
+.event-amount-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #667eea;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 1px 3px rgba(102, 126, 234, 0.3);
+}
+
+.event-year-value,
+.event-amount-value {
+  font-weight: 500;
+  color: #667eea;
+  font-size: 13px;
+  min-width: 60px;
+  text-align: right;
+}
+
+.btn-remove-event {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px;
+  transition: transform 0.2s;
+}
+
+.btn-remove-event:hover {
+  transform: scale(1.2);
 }
 </style>

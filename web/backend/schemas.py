@@ -68,6 +68,11 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str
 
+class EventSchema(BaseModel):
+    year: int
+    portfolio_injection: float
+    description: str = ""
+
 class SimulateRequest(BaseModel):
     monthly_income: float
     monthly_expenses: float
@@ -75,6 +80,7 @@ class SimulateRequest(BaseModel):
     starting_age: int
     initial_portfolio: float
     years: int = 20
+    events: List[EventSchema] = []
 
 class SimulateResponse(BaseModel):
     scenario_name: str

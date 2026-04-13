@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from domain.models import Scenario
+from domain.models import Scenario, Event
 from domain.simulation import simulate
 from domain.breakdown import IncomeBreakdown, ExpenseBreakdown
 from schemas import SimulateRequest, SimulateResponse, YearDataSchema
@@ -19,7 +19,9 @@ def run_simulation(body: SimulateRequest, username: str = Depends(get_current_us
         monthly_expenses=ExpenseBreakdown(components={"expenses": body.monthly_expenses}),
         return_rate=body.return_rate,
         age=body.starting_age,
-        initial_portfolio=body.initial_portfolio
+        initial_portfolio=body.initial_portfolio,
+        events=[Event(year=e.year, portfolio_injection=e.portfolio_injection, description=e.description)
+                for e in body.events]
     )
 
     result = simulate(scenario, years=body.years)
