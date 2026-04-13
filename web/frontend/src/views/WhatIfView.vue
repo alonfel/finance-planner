@@ -637,12 +637,7 @@ fetchRuns()
 if (route.query.scenarioId) {
   selectedScenarioId.value = parseInt(route.query.scenarioId)
 
-  // Pre-fill sliders from query params if provided
-  if (route.query.income) sliders.value.income = parseInt(route.query.income)
-  if (route.query.expenses) sliders.value.expenses = parseInt(route.query.expenses)
-  if (route.query.startingAge) sliders.value.startingAge = parseInt(route.query.startingAge)
-
-  // Load the scenario details and events
+  // Load the scenario details and events (don't use stale query params)
   const loadPreloadedScenario = async () => {
     try {
       const response = await axios.get(`${API_BASE_URL}/scenarios/${selectedScenarioId.value}`)
