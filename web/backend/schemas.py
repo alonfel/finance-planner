@@ -21,6 +21,7 @@ class ScenarioResultSchema(BaseModel):
     scenario_name: str
     retirement_year: Optional[int]
     year_data: List[YearDataSchema]
+    events: List[EventSchema] = []
 
     class Config:
         from_attributes = True

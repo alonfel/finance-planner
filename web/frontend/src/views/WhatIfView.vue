@@ -336,8 +336,17 @@ const onScenarioSelect = async () => {
         (firstYear.portfolio / 1.07) - firstYear.net_savings
     }
 
-    // Reset events when selecting new scenario
-    events.value = []
+    // Load events from the scenario
+    if (response.data.events && response.data.events.length > 0) {
+      events.value = response.data.events.map(e => ({
+        year: e.year,
+        amount: e.portfolio_injection,
+        description: e.description,
+        enabled: true
+      }))
+    } else {
+      events.value = []
+    }
 
     // Run initial simulation
     await runSimulation()
