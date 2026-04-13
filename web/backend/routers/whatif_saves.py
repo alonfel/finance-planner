@@ -1,3 +1,19 @@
+"""
+What-If Scenario Save Router
+
+Handles saving What-If Explorer configurations as new named scenarios.
+Provides persistence to both:
+  - Disk: scenarios.json file with file locking for concurrency
+  - Database: SQLite with new ScenarioResult and YearData rows
+
+Workflow:
+  1. Validate scenario name uniqueness
+  2. Create Scenario object from request parameters
+  3. Run simulation to get year-by-year results
+  4. Append to scenarios.json (with file lock)
+  5. Create/reuse "What-If Saves" SimulationRun
+  6. Store ScenarioResult and YearData in SQLite
+"""
 import json
 from datetime import datetime
 import filelock
@@ -12,14 +28,32 @@ from domain.simulation import simulate
 from domain.breakdown import IncomeBreakdown, ExpenseBreakdown
 from infrastructure.data_layer import get_scenarios_path
 
-WHATIF_SAVES_LABEL = "What-If Saves"
+WHATIF_SAVES_LABEL = "What-If Saves"  # Special run label for all what-if saves in a profile
 router = APIRouter(prefix="/api/v1/profiles", tags=["whatif-saves"])
 
 @router.post("/{profile_id}/saved-scenarios", response_model=SaveScenarioResponse, status_code=201)
 def save_whatif_scenario(profile_id: int, body: SaveScenarioRequest,
                           username: str = Depends(get_current_user),
                           db: Session = Depends(get_db)):
-    """Save a What-If scenario as a new named scenario."""
+    """
+    Save a What-If Explorer configuration as a named scenario.
+
+    Workflow:
+      1. Validate profile exists
+      2. Check scenario name uniqueness
+      3. Create Scenario domain object from request params
+      4. Run simulation to calculate year-by-year results
+      5. Persist to scenarios.json (disk) using file lock
+      6. Create/reuse "What-If Saves" SimulationRun in SQLite
+      7. Store ScenarioResult and YearData rows
+
+    Returns:
+      201 Created with scenario_result_id, run_id, retirement_year, final_portfolio
+
+    Errors:
+      404 - Profile not found
+      409 - Scenario name already exists
+    """
     profile = db.query(Profile).filter(Profile.id == profile_id).first()
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
@@ -78,7 +112,16 @@ def save_whatif_scenario(profile_id: int, body: SaveScenarioRequest,
 
 
 def _assert_name_unique(scenarios_path, name):
-    """Raises 409 if a scenario with this name already exists on disk."""
+    """
+    Validate that a scenario name doesn't already exist in scenarios.json.
+
+    Args:
+        scenarios_path: Path to scenarios.json file
+        name: Scenario name to check
+
+    Raises:
+        HTTPException(409): If name already exists in scenarios file
+    """
     if not scenarios_path.exists():
         return
     with open(scenarios_path) as f:
@@ -88,7 +131,16 @@ def _assert_name_unique(scenarios_path, name):
 
 
 def _append_to_scenarios_json(scenarios_path, body):
-    """Append new scenario to scenarios.json using a file lock for safety."""
+    """
+    Atomically append a new scenario to scenarios.json using FileLock.
+
+    Uses filelock.FileLock to ensure only one process writes at a time,
+    preventing concurrent modification issues on shared filesystems.
+
+    Args:
+        scenarios_path: Path to scenarios.json file
+        body: SaveScenarioRequest with scenario parameters
+    """
     lock_path = str(scenarios_path) + ".lock"
     with filelock.FileLock(lock_path, timeout=5):
         with open(scenarios_path) as f:
@@ -123,7 +175,20 @@ def _append_to_scenarios_json(scenarios_path, body):
 
 
 def _get_or_create_whatif_run(db, profile_id):
-    """Return the existing 'What-If Saves' run for this profile, or create it."""
+    """
+    Get or create the "What-If Saves" SimulationRun for a profile.
+
+    All what-if saved scenarios for a profile are grouped under a single
+    special SimulationRun with label "What-If Saves". This allows users
+    to view all saved what-if scenarios together in the Scenarios view.
+
+    Args:
+        db: SQLAlchemy session
+        profile_id: Profile ID
+
+    Returns:
+        SimulationRun: Existing or newly created what-if saves run
+    """
     run = db.query(SimulationRun).filter(SimulationRun.profile_id == profile_id,
                                           SimulationRun.label == WHATIF_SAVES_LABEL).first()
     if run is None:

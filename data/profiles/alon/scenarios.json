@@ -117,6 +117,75 @@
         "duration_years": 20,
         "currency": "ILS"
       }
+    },
+    {
+      "name": "alon new optimistic",
+      "monthly_income": 45000.0,
+      "monthly_expenses": 22000.0,
+      "return_rate": 0.07,
+      "age": 41,
+      "initial_portfolio": 1700000.0,
+      "currency": "ILS",
+      "events": [
+        {
+          "year": 3,
+          "portfolio_injection": -500000.0,
+          "description": "Surrogacy"
+        },
+        {
+          "year": 2,
+          "portfolio_injection": 1900000.0,
+          "description": "ipo"
+        }
+      ],
+      "saved_from": "whatif",
+      "saved_at": "2026-04-13T17:22:18Z"
+    },
+    {
+      "name": "alon optimistic",
+      "monthly_income": 45000.0,
+      "monthly_expenses": 22000.0,
+      "return_rate": 0.07,
+      "age": 41,
+      "initial_portfolio": 1700000.0,
+      "currency": "ILS",
+      "events": [
+        {
+          "year": 3,
+          "portfolio_injection": -500000.0,
+          "description": "Surrogacy"
+        },
+        {
+          "year": 2,
+          "portfolio_injection": 1900000.0,
+          "description": "ipo"
+        }
+      ],
+      "saved_from": "whatif",
+      "saved_at": "2026-04-13T17:22:22Z"
+    },
+    {
+      "name": "alon_optimistic",
+      "monthly_income": 45000.0,
+      "monthly_expenses": 22000.0,
+      "return_rate": 0.07,
+      "age": 41,
+      "initial_portfolio": 1700000.0,
+      "currency": "ILS",
+      "events": [
+        {
+          "year": 3,
+          "portfolio_injection": -500000.0,
+          "description": "Surrogacy"
+        },
+        {
+          "year": 2,
+          "portfolio_injection": 1950000.0,
+          "description": "ipo"
+        }
+      ],
+      "saved_from": "whatif",
+      "saved_at": "2026-04-13T17:23:17Z"
     }
   ]
 }

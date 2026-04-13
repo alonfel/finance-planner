@@ -15,6 +15,11 @@
   </div>
 </template>
 
+/**
+ * ComparisonChart.vue
+ * Multi-scenario portfolio comparison chart with retirement year indicators.
+ * Displays multiple financial scenarios on a single chart with log/linear scale toggle.
+ */
 <script setup>
 import { computed, ref } from 'vue'
 import { Line } from 'vue-chartjs'
@@ -42,19 +47,22 @@ ChartJS.register(
 )
 
 const props = defineProps({
+  /** Array of scenario objects with year_data and retirement_year */
   scenarios: {
     type: Array,
     required: true
   },
+  /** Year range object (used for year label generation) */
   yearRange: {
     type: Object,
     required: true
   }
 })
 
+/** Toggle for logarithmic vs linear scale (enabled by default for better growth visibility) */
 const useLogScale = ref(true)
 
-// Color palette for multiple scenarios
+/** Color palette: alternating colors for up to 5 scenarios */
 const colors = [
   { border: '#667eea', bg: 'rgba(102, 126, 234, 0.05)' },
   { border: '#27ae60', bg: 'rgba(39, 174, 96, 0.05)' },
@@ -63,6 +71,7 @@ const colors = [
   { border: '#9b59b6', bg: 'rgba(155, 89, 182, 0.05)' }
 ]
 
+/** Computed chart data from scenarios. Generates datasets with retirement year highlighting. */
 const chartData = computed(() => {
   const maxYear = Math.max(...props.scenarios.flatMap(s => s.year_data.map(y => y.year)))
   const labels = Array.from({ length: maxYear }, (_, i) => {
@@ -83,33 +92,15 @@ const chartData = computed(() => {
       borderWidth: 2.5,
       fill: false,
       tension: 0.4,
-      pointBackgroundColor: (context) => {
-        // Highlight retirement year with larger point
-        if (retirementYear && context.dataIndex === retirementYear - 1) {
-          return color.border
-        }
-        return color.border
-      },
-      pointBorderColor: (context) => {
-        // Highlight retirement year with different border
-        if (retirementYear && context.dataIndex === retirementYear - 1) {
-          return '#fff'
-        }
-        return '#fff'
-      },
+      pointBackgroundColor: color.border,
+      pointBorderColor: '#fff',
       pointBorderWidth: (context) => {
-        // Make retirement year point bigger
-        if (retirementYear && context.dataIndex === retirementYear - 1) {
-          return 3
-        }
-        return 2
+        // Emphasize retirement year point with thicker border
+        return retirementYear && context.dataIndex === retirementYear - 1 ? 3 : 2
       },
       pointRadius: (context) => {
-        // Make retirement year point bigger
-        if (retirementYear && context.dataIndex === retirementYear - 1) {
-          return 7
-        }
-        return 4
+        // Make retirement year point larger for visibility
+        return retirementYear && context.dataIndex === retirementYear - 1 ? 7 : 4
       },
       pointHoverRadius: 6
     }
@@ -121,6 +112,7 @@ const chartData = computed(() => {
   }
 })
 
+/** Computed chart options for Chart.js configuration */
 const chartOptions = computed(() => ({
   responsive: true,
   maintainAspectRatio: true,
@@ -215,9 +207,8 @@ const chartOptions = computed(() => ({
           const labels = this.chart.data.labels
           if (labels && labels[index]) {
             const label = labels[index]
-            // Extract year parts from label like "2026\n(+1y)"
             const parts = label.split('\n')
-            return parts[0] // Just show the year
+            return parts[0] // Extract year from "2026\n(+1y)" format
           }
           return ''
         }
@@ -233,23 +224,8 @@ const chartOptions = computed(() => ({
       ticks: {
         font: { size: 11 },
         count: useLogScale.value ? 10 : undefined,
-        stepSize: useLogScale.value ? undefined : undefined,
         callback: function(value) {
-          if (useLogScale.value) {
-            // For log scale, show more granular values
-            if (value >= 1) {
-              return '₪' + value.toFixed(1) + 'M'
-            } else {
-              return '₪' + value.toFixed(2) + 'M'
-            }
-          } else {
-            // For linear scale, show values with decimal precision
-            if (value >= 1) {
-              return '₪' + value.toFixed(1) + 'M'
-            } else {
-              return '₪' + value.toFixed(2) + 'M'
-            }
-          }
+          return '₪' + (value >= 1 ? value.toFixed(1) : value.toFixed(2)) + 'M'
         }
       }
     }

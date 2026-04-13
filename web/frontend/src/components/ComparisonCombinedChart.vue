@@ -15,6 +15,11 @@
   </div>
 </template>
 
+/**
+ * ComparisonCombinedChart.vue
+ * Combined scenario comparison chart with main scenario highlighted.
+ * Displays main scenario plus multiple comparison scenarios on a single chart.
+ */
 <script setup>
 import { computed, ref } from 'vue'
 import { Line } from 'vue-chartjs'
@@ -41,22 +46,25 @@ ChartJS.register(
   Legend
 )
 
+/** Toggle for logarithmic vs linear scale (enabled by default for growth visibility) */
 const useLogScale = ref(true)
 
 const props = defineProps({
+  /** Main scenario object with yearData and retirementYear */
   mainScenario: {
     type: Object,
     required: true
   },
+  /** Array of comparison scenario objects */
   scenarios: {
     type: Array,
     required: true
   }
 })
 
-// Color palette for scenarios
+/** Color palette: primary color for main scenario, then 7 colors for comparisons */
 const colors = [
-  '#667eea', // main
+  '#667eea', // main (indigo)
   '#e74c3c', // red
   '#27ae60', // green
   '#f39c12', // orange
@@ -66,15 +74,14 @@ const colors = [
   '#34495e'  // dark blue
 ]
 
+/** Computed chart data from main and comparison scenarios. Main is emphasized with thicker line. */
 const chartData = computed(() => {
-  // Get all year data - use main scenario's years as reference
   const mainYears = props.mainScenario.yearData || []
   const labels = mainYears.map(d => `Year ${d.year}`)
-
   const datasets = []
   const mainRetirementYear = props.mainScenario.retirementYear
 
-  // Add main scenario
+  // Add main scenario (emphasized with thicker border and larger points)
   if (mainYears.length > 0) {
     datasets.push({
       label: `${props.mainScenario.name} (Current)${mainRetirementYear ? ` - Retire: Year ${mainRetirementYear}` : ''}`,
@@ -84,27 +91,18 @@ const chartData = computed(() => {
       borderWidth: 3,
       fill: false,
       tension: 0.4,
-      pointBackgroundColor: (context) => {
-        // Highlight retirement year
-        if (mainRetirementYear && context.dataIndex === mainRetirementYear - 1) {
-          return colors[0]
-        }
-        return colors[0]
-      },
+      pointBackgroundColor: colors[0],
       pointBorderColor: '#fff',
       pointBorderWidth: 2,
       pointRadius: (context) => {
-        // Make retirement year point bigger
-        if (mainRetirementYear && context.dataIndex === mainRetirementYear - 1) {
-          return 7
-        }
-        return 4
+        // Make retirement year point larger for visibility
+        return mainRetirementYear && context.dataIndex === mainRetirementYear - 1 ? 7 : 4
       },
       pointHoverRadius: 6
     })
   }
 
-  // Add comparison scenarios
+  // Add comparison scenarios with standard styling
   props.scenarios.forEach((scenario, index) => {
     const yearData = scenario.yearData || []
     const retirementYear = scenario.retirementYear
@@ -117,33 +115,31 @@ const chartData = computed(() => {
         borderWidth: 2,
         fill: false,
         tension: 0.4,
-        pointBackgroundColor: (context) => {
-          // Highlight retirement year
-          if (retirementYear && context.dataIndex === retirementYear - 1) {
-            return colors[(index + 1) % colors.length]
-          }
-          return colors[(index + 1) % colors.length]
-        },
+        pointBackgroundColor: colors[(index + 1) % colors.length],
         pointBorderColor: '#fff',
         pointBorderWidth: 2,
         pointRadius: (context) => {
-          // Make retirement year point bigger
-          if (retirementYear && context.dataIndex === retirementYear - 1) {
-            return 7
-          }
-          return 3
+          // Make retirement year point larger
+          return retirementYear && context.dataIndex === retirementYear - 1 ? 7 : 3
         },
         pointHoverRadius: 5
       })
     }
   })
 
-  return {
-    labels,
-    datasets
-  }
+  return { labels, datasets }
 })
 
+/** Helper to get retirement year for a specific dataset index */
+const getRetirementYear = (datasetIndex) => {
+  if (datasetIndex === 0) {
+    return props.mainScenario.retirementYear
+  }
+  const scenarioIdx = datasetIndex - 1
+  return props.scenarios[scenarioIdx]?.retirementYear
+}
+
+/** Computed chart options for Chart.js configuration */
 const chartOptions = computed(() => ({
   responsive: true,
   maintainAspectRatio: true,
@@ -181,39 +177,11 @@ const chartOptions = computed(() => ({
       borderWidth: 1,
       callbacks: {
         label: function(context) {
-          const value = context.parsed.y
-          const scenarioIndex = context.datasetIndex
-          const yearIndex = context.dataIndex
-
-          // Determine which scenario this is and get retirement year
-          let retirementYear = null
-          if (scenarioIndex === 0) {
-            retirementYear = props.mainScenario.retirementYear
-          } else {
-            const scenarioIdx = scenarioIndex - 1
-            if (props.scenarios[scenarioIdx]) {
-              retirementYear = props.scenarios[scenarioIdx].retirementYear
-            }
-          }
-
-          return `${context.dataset.label}: ₪${value.toFixed(2)}M`
+          return `${context.dataset.label}: ₪${context.parsed.y.toFixed(2)}M`
         },
         afterLabel: function(context) {
-          const scenarioIndex = context.datasetIndex
-          const yearIndex = context.dataIndex
-
-          // Determine which scenario this is and get retirement year
-          let retirementYear = null
-          if (scenarioIndex === 0) {
-            retirementYear = props.mainScenario.retirementYear
-          } else {
-            const scenarioIdx = scenarioIndex - 1
-            if (props.scenarios[scenarioIdx]) {
-              retirementYear = props.scenarios[scenarioIdx].retirementYear
-            }
-          }
-
-          if (retirementYear && yearIndex === retirementYear - 1) {
+          const retirementYear = getRetirementYear(context.datasetIndex)
+          if (retirementYear && context.dataIndex === retirementYear - 1) {
             return '🎉 RETIREMENT YEAR'
           }
           return ''
@@ -234,10 +202,7 @@ const chartOptions = computed(() => ({
       },
       ticks: {
         callback: function(value) {
-          if (useLogScale.value) {
-            return '₪' + value.toFixed(1) + 'M'
-          }
-          return '₪' + value.toFixed(0) + 'M'
+          return '₪' + (useLogScale.value && value >= 1 ? value.toFixed(1) : value.toFixed(0)) + 'M'
         }
       },
       min: useLogScale.value ? 0.1 : undefined

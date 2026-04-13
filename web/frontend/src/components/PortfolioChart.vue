@@ -15,6 +15,11 @@
   </div>
 </template>
 
+/**
+ * PortfolioChart.vue
+ * Single scenario portfolio visualization with three data series:
+ * Portfolio Value, Required Capital, and Pension Value.
+ */
 <script setup>
 import { computed, ref } from 'vue'
 import { Line } from 'vue-chartjs'
@@ -41,13 +46,16 @@ ChartJS.register(
   Legend
 )
 
+/** Toggle for logarithmic vs linear scale (enabled by default for growth visibility) */
 const useLogScale = ref(true)
 
 const props = defineProps({
+  /** Array of year data with portfolio, required_capital, pension_value */
   yearData: {
     type: Array,
     required: true
   },
+  /** Year of retirement (optional) for highlighting */
   retirementYear: {
     type: Number,
     default: null
@@ -103,6 +111,7 @@ const chartData = computed(() => ({
   ]
 }))
 
+/** Computed chart options for Chart.js configuration */
 const chartOptions = computed(() => ({
   responsive: true,
   maintainAspectRatio: true,
@@ -159,21 +168,7 @@ const chartOptions = computed(() => ({
         font: { size: 11 },
         count: useLogScale.value ? 10 : undefined,
         callback: function(value) {
-          if (useLogScale.value) {
-            // For log scale, show more granular values
-            if (value >= 1) {
-              return '₪' + value.toFixed(1) + 'M'
-            } else {
-              return '₪' + value.toFixed(2) + 'M'
-            }
-          } else {
-            // For linear scale, show values with decimal precision
-            if (value >= 1) {
-              return '₪' + value.toFixed(1) + 'M'
-            } else {
-              return '₪' + value.toFixed(2) + 'M'
-            }
-          }
+          return '₪' + (value >= 1 ? value.toFixed(1) : value.toFixed(2)) + 'M'
         }
       }
     }
