@@ -7,7 +7,7 @@ from database import get_db
 from schemas import SaveScenarioRequest, SaveScenarioResponse
 from models import Profile, SimulationRun, ScenarioResult, YearData
 from auth import get_current_user
-from domain.models import Scenario, Event
+from domain.models import Scenario, Event, Mortgage
 from domain.simulation import simulate
 from domain.breakdown import IncomeBreakdown, ExpenseBreakdown
 from infrastructure.data_layer import get_scenarios_path
@@ -27,6 +27,15 @@ def save_whatif_scenario(profile_id: int, body: SaveScenarioRequest,
     scenarios_path = get_scenarios_path(profile.name)
     _assert_name_unique(scenarios_path, body.scenario_name)
 
+    mortgage = None
+    if body.mortgage:
+        mortgage = Mortgage(
+            principal=body.mortgage.principal,
+            annual_rate=body.mortgage.annual_rate,
+            duration_years=body.mortgage.duration_years,
+            currency=body.mortgage.currency
+        )
+
     scenario_obj = Scenario(
         name=body.scenario_name,
         monthly_income=IncomeBreakdown(components={"income": body.monthly_income}),
@@ -34,6 +43,7 @@ def save_whatif_scenario(profile_id: int, body: SaveScenarioRequest,
         return_rate=body.return_rate,
         age=body.starting_age,
         initial_portfolio=body.initial_portfolio,
+        mortgage=mortgage,
         events=[Event(year=e.year, portfolio_injection=e.portfolio_injection,
                       description=e.description) for e in body.events]
     )

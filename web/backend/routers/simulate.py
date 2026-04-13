@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from domain.models import Scenario, Event
+from domain.models import Scenario, Event, Mortgage
 from domain.simulation import simulate
 from domain.breakdown import IncomeBreakdown, ExpenseBreakdown
 from schemas import SimulateRequest, SimulateResponse, YearDataSchema
@@ -13,6 +13,15 @@ def run_simulation(body: SimulateRequest, username: str = Depends(get_current_us
     Run a real-time simulation with provided parameters.
     Used by What-If Explorer playground for instant portfolio updates.
     """
+    mortgage = None
+    if body.mortgage:
+        mortgage = Mortgage(
+            principal=body.mortgage.principal,
+            annual_rate=body.mortgage.annual_rate,
+            duration_years=body.mortgage.duration_years,
+            currency=body.mortgage.currency
+        )
+
     scenario = Scenario(
         name="What-If",
         monthly_income=IncomeBreakdown(components={"income": body.monthly_income}),
@@ -20,6 +29,7 @@ def run_simulation(body: SimulateRequest, username: str = Depends(get_current_us
         return_rate=body.return_rate,
         age=body.starting_age,
         initial_portfolio=body.initial_portfolio,
+        mortgage=mortgage,
         events=[Event(year=e.year, portfolio_injection=e.portfolio_injection, description=e.description)
                 for e in body.events]
     )

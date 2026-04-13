@@ -74,6 +74,12 @@ class EventSchema(BaseModel):
     portfolio_injection: float
     description: str = ""
 
+class MortgageSchema(BaseModel):
+    principal: float
+    annual_rate: float
+    duration_years: int
+    currency: str = "ILS"
+
 class SimulateRequest(BaseModel):
     monthly_income: float
     monthly_expenses: float
@@ -82,6 +88,7 @@ class SimulateRequest(BaseModel):
     initial_portfolio: float
     years: int = 20
     events: List[EventSchema] = []
+    mortgage: Optional[MortgageSchema] = None
 
 class SimulateResponse(BaseModel):
     scenario_name: str
@@ -99,6 +106,7 @@ class SaveScenarioRequest(BaseModel):
     initial_portfolio: float
     years: int = 20
     events: List[EventSchema] = []
+    mortgage: Optional[MortgageSchema] = None
 
 class SaveScenarioResponse(BaseModel):
     scenario_result_id: int

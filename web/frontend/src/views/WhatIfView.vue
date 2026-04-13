@@ -133,6 +133,71 @@
               </div>
             </div>
 
+            <!-- Mortgage Section -->
+            <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e0e0e0;">
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px;">
+                <h4 style="margin: 0; font-size: 13px; font-weight: 600; color: #333;">Mortgage</h4>
+                <div class="mortgage-buttons">
+                  <button v-if="!mortgage" @click="addMortgage" class="btn-add-mortgage">+ Add Mortgage</button>
+                  <button v-else @click="removeMortgage" class="btn-remove-mortgage">Remove</button>
+                </div>
+              </div>
+
+              <div v-if="mortgage" class="mortgage-controls">
+                <div class="mortgage-row">
+                  <label>Principal (₪)</label>
+                  <div class="mortgage-control">
+                    <input
+                      v-model.number="mortgage.principal"
+                      type="range"
+                      min="100000"
+                      max="5000000"
+                      step="50000"
+                      class="mortgage-slider"
+                      @input="onSliderChange"
+                    />
+                    <span class="mortgage-value">₪{{ formatNumber(mortgage.principal / 1000000) }}M</span>
+                  </div>
+                </div>
+
+                <div class="mortgage-row">
+                  <label>Annual Rate (%)</label>
+                  <div class="mortgage-control">
+                    <input
+                      v-model.number="mortgage.annual_rate"
+                      type="range"
+                      min="1"
+                      max="8"
+                      step="0.1"
+                      class="mortgage-slider"
+                      @input="onSliderChange"
+                    />
+                    <span class="mortgage-value">{{ mortgage.annual_rate.toFixed(1) }}%</span>
+                  </div>
+                </div>
+
+                <div class="mortgage-row">
+                  <label>Duration (years)</label>
+                  <div class="mortgage-control">
+                    <input
+                      v-model.number="mortgage.duration_years"
+                      type="range"
+                      min="5"
+                      max="30"
+                      step="1"
+                      class="mortgage-slider"
+                      @input="onSliderChange"
+                    />
+                    <span class="mortgage-value">{{ mortgage.duration_years }} yrs</span>
+                  </div>
+                </div>
+
+                <div class="mortgage-info">
+                  <span v-if="mortgage">Monthly Payment: ₪{{ calculateMortgagePayment(mortgage) }}</span>
+                </div>
+              </div>
+            </div>
+
             <!-- Events as part of scenario parameters -->
             <div class="events-in-parameters">
               <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #e0e0e0;">
@@ -315,6 +380,7 @@ const sliders = ref({
 })
 
 const events = ref([])
+const mortgage = ref(null)
 
 const showSaveModal = ref(false)
 const saveScenarioName = ref('')
@@ -398,6 +464,18 @@ const onScenarioSelect = async () => {
       events.value = []
     }
 
+    // Load mortgage from the scenario if it exists
+    if (response.data.mortgage) {
+      mortgage.value = {
+        principal: response.data.mortgage.principal,
+        annual_rate: response.data.mortgage.annual_rate,
+        duration_years: response.data.mortgage.duration_years,
+        currency: response.data.mortgage.currency || 'ILS'
+      }
+    } else {
+      mortgage.value = null
+    }
+
     // Run initial simulation
     await runSimulation()
   } catch (err) {
@@ -423,7 +501,13 @@ const runSimulation = async () => {
       years: 20,
       events: events.value
         .filter(e => e.enabled)
-        .map(e => ({ year: e.year, portfolio_injection: e.amount, description: e.description }))
+        .map(e => ({ year: e.year, portfolio_injection: e.amount, description: e.description })),
+      mortgage: mortgage.value ? {
+        principal: mortgage.value.principal,
+        annual_rate: mortgage.value.annual_rate,
+        duration_years: mortgage.value.duration_years,
+        currency: mortgage.value.currency || 'ILS'
+      } : null
     })
     whatIfResult.value = response.data
   } catch (err) {
@@ -445,6 +529,34 @@ const addEvent = (type) => {
 const removeEvent = (index) => {
   events.value.splice(index, 1)
   onSliderChange()
+}
+
+const addMortgage = () => {
+  mortgage.value = {
+    principal: 1500000,
+    annual_rate: 4.5,
+    duration_years: 20,
+    currency: 'ILS'
+  }
+  onSliderChange()
+}
+
+const removeMortgage = () => {
+  mortgage.value = null
+  onSliderChange()
+}
+
+const calculateMortgagePayment = (m) => {
+  if (!m) return '0'
+  const r = (m.annual_rate / 100) / 12
+  const n = m.duration_years * 12
+  if (r === 0) {
+    return Math.round(m.principal / n).toLocaleString('en-US')
+  }
+  const numerator = r * Math.pow(1 + r, n)
+  const denominator = Math.pow(1 + r, n) - 1
+  const payment = m.principal * (numerator / denominator)
+  return Math.round(payment).toLocaleString('en-US')
 }
 
 const formatEventAmount = (amount) => {
@@ -487,7 +599,13 @@ const saveScenario = async () => {
           year: e.year,
           portfolio_injection: e.amount,
           description: e.description
-        }))
+        })),
+        mortgage: mortgage.value ? {
+          principal: mortgage.value.principal,
+          annual_rate: mortgage.value.annual_rate,
+          duration_years: mortgage.value.duration_years,
+          currency: mortgage.value.currency || 'ILS'
+        } : null
       },
       { headers: { Authorization: `Bearer ${authStore.token}` } }
     )
@@ -1142,5 +1260,117 @@ if (route.query.scenarioId) {
 .btn-confirm-save:disabled {
   background: #aaa;
   cursor: not-allowed;
+}
+
+.mortgage-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-add-mortgage, .btn-remove-mortgage {
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.btn-add-mortgage {
+  background: #3498db;
+  color: white;
+}
+
+.btn-add-mortgage:hover {
+  background: #2980b9;
+}
+
+.btn-remove-mortgage {
+  background: #e74c3c;
+  color: white;
+}
+
+.btn-remove-mortgage:hover {
+  background: #c0392b;
+}
+
+.mortgage-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  background: #f9f9f9;
+  border-radius: 4px;
+  border: 1px solid #e0e0e0;
+}
+
+.mortgage-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mortgage-row label {
+  font-weight: 500;
+  color: #555;
+  font-size: 11px;
+}
+
+.mortgage-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mortgage-slider {
+  flex: 1;
+  min-width: 60px;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(to right, #3498db 0%, #3498db 50%, #ddd 50%, #ddd 100%);
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+}
+
+.mortgage-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #3498db;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(52, 152, 219, 0.3);
+}
+
+.mortgage-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #3498db;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 1px 3px rgba(52, 152, 219, 0.3);
+}
+
+.mortgage-value {
+  font-weight: 600;
+  color: #3498db;
+  font-size: 11px;
+  min-width: 50px;
+  text-align: right;
+}
+
+.mortgage-info {
+  padding: 8px;
+  background: white;
+  border-radius: 3px;
+  border: 1px solid #e0e0e0;
+  font-size: 11px;
+  color: #555;
+  margin-top: 4px;
 }
 </style>
