@@ -1,6 +1,6 @@
 # Claude Code Guidelines for Finance Planner
 
-**Updated:** April 13, 2026 — Fixed pension bridge bug. Simplified Alon profile to 2 core scenarios. All tests passing. See component guides for detailed info.
+**Updated:** April 13, 2026 — Fixed pension bridge bug. Simplified Alon profile to 2 core scenarios. What-If Explorer UI restructured with sidebar layout. Save as Scenario feature fully implemented with persistence. All tests passing. See component guides for detailed info.
 
 ## Quick Start
 
@@ -80,6 +80,63 @@ Access the app at: `http://localhost:5173`
 - Authentication: Login-required access to profiles
 
 See [web/FEATURES.md](web/FEATURES.md) for complete user guide.
+
+---
+
+## Recent Updates (April 13, 2026)
+
+### What-If Explorer UI Restructuring
+
+**Changes:**
+1. **Sidebar Layout** — Left sidebar (280px fixed) contains:
+   - Simulation Run selector
+   - Base Scenario selector
+   - "Save as Scenario" button
+   
+2. **Parameter Controls** — Main content split into:
+   - Parameters section (top, scrollable):
+     - 2-column grid of sliders: Monthly Income, Monthly Expenses, Growth Rate, Starting Age, Initial Portfolio
+     - One-Time Events subsection coupled with parameters
+     - Add/Remove event buttons integrated
+   - Chart section (fixed 350px height):
+     - Portfolio growth comparison chart
+     - Log scale toggle (enabled by default with 0 showing on Y-axis)
+   - Metrics section (scrollable):
+     - Retirement year and final portfolio comparisons
+     - Original vs What-If scenario metrics
+
+3. **Events Feature** — Now coupled with scenario parameters:
+   - Events display in-line with sliders
+   - Can add/remove/toggle events without leaving parameters section
+   - Events saved together with scenario when using "Save as Scenario"
+
+**Files Modified:**
+- `web/frontend/src/views/WhatIfView.vue` — Complete layout restructuring with sidebar and consolidated sections
+- `web/frontend/src/components/ComparisonChart.vue` — Reduced chart height to 280px for proper overflow handling
+
+### Save As Scenario Feature (Fully Implemented)
+
+**Workflow:**
+1. User adjusts sliders and events in What-If Explorer
+2. Clicks "Save as Scenario" button
+3. Modal prompts for scenario name
+4. Backend validates uniqueness, runs simulation in-process
+5. Scenario persisted to:
+   - `scenarios.json` on disk (with `saved_from: "whatif"` marker)
+   - SQLite database under "What-If Saves" run
+6. Scenario immediately available in Scenarios view
+
+**Files Implemented:**
+- `web/backend/routers/whatif_saves.py` — Save endpoint with atomic file locking
+- `web/backend/schemas.py` — SaveScenarioRequest/Response models
+- `web/frontend/src/views/WhatIfView.vue` — Save button and modal UI
+- `web/backend/requirements.txt` — Added `filelock` dependency
+
+**Architecture:**
+- File locking for concurrent save safety
+- Dual persistence (disk + SQLite) for durability and queryability
+- 201 Created status on success, 409 Conflict if name exists
+- Scenario simulation runs on backend (ensures consistency)
 
 ---
 

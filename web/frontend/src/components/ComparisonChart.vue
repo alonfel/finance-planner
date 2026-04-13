@@ -270,7 +270,9 @@ const chartOptions = computed(() => ({
 
 .chart-container {
   position: relative;
-  height: 400px;
+  height: 280px;
   margin: 0;
+  flex: 1;
+  max-height: 280px;
 }
 </style>
