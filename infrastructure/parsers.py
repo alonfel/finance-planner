@@ -68,7 +68,7 @@ def parse_scenario(d: dict, default_return_rate: float = 0.07, default_withdrawa
 
     Args:
         d: Dictionary with required keys 'name', 'monthly_income', 'monthly_expenses',
-           optional keys for mortgage, pension, events, return_rate, withdrawal_rate, currency, age, initial_portfolio
+           optional keys for mortgage, pension, events, return_rate, withdrawal_rate, currency, age, initial_portfolio, retirement_mode
         default_return_rate: Default return rate if not in dict
         default_withdrawal_rate: Default withdrawal rate if not in dict
 
@@ -91,6 +91,7 @@ def parse_scenario(d: dict, default_return_rate: float = 0.07, default_withdrawa
         currency=d.get("currency", "ILS"),
         age=d.get("age", 30),
         events=events,
+        retirement_mode=d.get("retirement_mode", "liquid_only"),
     )
 
 

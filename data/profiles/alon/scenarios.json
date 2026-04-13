@@ -69,6 +69,65 @@
           "description": "Surrogacy"
         }
       ]
+    },
+    {
+      "name": "Alon - Baseline + Pension (Bridged: Retire at 55)",
+      "monthly_income": 45000,
+      "monthly_expenses": 25000,
+      "initial_portfolio": 1400000,
+      "age": 41,
+      "currency": "ILS",
+      "retirement_mode": "pension_bridged",
+      "pension": {
+        "initial_value": 2000000,
+        "monthly_contribution": 9000,
+        "annual_growth_rate": 0.06,
+        "accessible_at_age": 67
+      },
+      "events": []
+    },
+    {
+      "name": "Alon - Baseline + Pension (Bridged: Retire at 60)",
+      "monthly_income": 45000,
+      "monthly_expenses": 25000,
+      "initial_portfolio": 1400000,
+      "age": 41,
+      "currency": "ILS",
+      "retirement_mode": "pension_bridged",
+      "pension": {
+        "initial_value": 2000000,
+        "monthly_contribution": 9000,
+        "annual_growth_rate": 0.06,
+        "accessible_at_age": 67
+      },
+      "events": []
+    },
+    {
+      "name": "Alon - IPO Year 2 + Pension (Bridged)",
+      "monthly_income": 45000,
+      "monthly_expenses": 25000,
+      "initial_portfolio": 1400000,
+      "age": 41,
+      "currency": "ILS",
+      "retirement_mode": "pension_bridged",
+      "pension": {
+        "initial_value": 2000000,
+        "monthly_contribution": 9000,
+        "annual_growth_rate": 0.06,
+        "accessible_at_age": 67
+      },
+      "events": [
+        {
+          "year": 2,
+          "portfolio_injection": 3000000,
+          "description": "Stock offering"
+        },
+        {
+          "year": 3,
+          "portfolio_injection": -500000,
+          "description": "Surrogacy"
+        }
+      ]
     }
   ]
 }

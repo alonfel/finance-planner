@@ -56,6 +56,7 @@ class Scenario:
     currency: str = "ILS"  # Currency code (e.g., "ILS", "USD", "EUR")
     age: int = 30  # Current age (used to calculate retirement age)
     events: list[Event] = field(default_factory=list)  # One-time events
+    retirement_mode: str = "liquid_only"  # "liquid_only" | "pension_bridged" (bridge with pension until accessible)
 
 
 @dataclass

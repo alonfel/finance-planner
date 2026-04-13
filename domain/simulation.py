@@ -76,13 +76,44 @@ def simulate(scenario: Scenario, years: int = 40) -> SimulationResult:
         # Compute required capital for retirement
         required_capital = annual_expenses / scenario.withdrawal_rate
 
-        # Detect retirement: count pension only if accessible
+        # Detect retirement based on mode
         if retirement_year is None:
-            effective_capital = portfolio
-            if pension_accessible:
-                effective_capital += pension
-            if effective_capital >= required_capital:
-                retirement_year = year_num
+            if scenario.retirement_mode == "liquid_only":
+                # Original mode: count pension only if accessible
+                effective_capital = portfolio
+                if pension_accessible:
+                    effective_capital += pension
+                if effective_capital >= required_capital:
+                    retirement_year = year_num
+
+            elif scenario.retirement_mode == "pension_bridged":
+                # New mode: can retire if portfolio bridges to pension unlock
+                current_age = scenario.age + year_num - 1
+
+                if pension_accessible:
+                    # Pension is already unlocked, use traditional check
+                    effective_capital = portfolio + pension
+                    if effective_capital >= required_capital:
+                        retirement_year = year_num
+                elif scenario.pension is not None:
+                    # Pension is locked. Check if we can bridge to unlock
+                    years_to_pension_unlock = scenario.pension.accessible_at_age - current_age
+                    annual_expenses_in_retirement = annual_expenses  # Use current year's expenses for calculation
+
+                    # Can we sustain from portfolio until pension unlocks?
+                    portfolio_needed_to_bridge = annual_expenses_in_retirement * years_to_pension_unlock
+
+                    # At pension unlock, can we sustain from pension + portfolio?
+                    required_capital_at_unlock = annual_expenses_in_retirement / scenario.withdrawal_rate
+
+                    # Simple check: portfolio covers bridge, pension covers after unlock
+                    if (portfolio >= portfolio_needed_to_bridge and
+                        pension >= required_capital_at_unlock):
+                        retirement_year = year_num
+                else:
+                    # No pension, fall back to liquid_only logic
+                    if portfolio >= required_capital:
+                        retirement_year = year_num
 
         # Record year data
         year_data_list.append(
