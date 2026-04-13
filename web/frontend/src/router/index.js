@@ -27,7 +27,7 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
-    path: '/scenarios/:resultId',
+    path: '/profiles/:profileId/scenarios/:resultId',
     name: 'ScenarioDetail',
     component: ScenarioDetailView,
     meta: { requiresAuth: true }
