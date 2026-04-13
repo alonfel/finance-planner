@@ -48,6 +48,39 @@ python -m unittest discover -s tests -p "test_*.py" -v
 
 All 42 tests should pass.
 
+### Running the Web Server
+
+The web application consists of a FastAPI backend and Vue 3 frontend.
+
+**Backend (FastAPI):**
+```bash
+cd web/backend
+pip install -r requirements.txt
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
+
+Server runs at `http://localhost:8000`
+API docs (Swagger UI): `http://localhost:8000/docs`
+
+**Frontend (Vue 3):**
+```bash
+cd web/frontend
+npm install
+npm run dev
+```
+
+Frontend runs at `http://localhost:5173`
+
+Access the app at: `http://localhost:5173`
+
+**Features:**
+- What-If Explorer: Real-time scenario exploration with sliders
+- Save as Scenario: Persist What-If configurations as named scenarios
+- Scenarios View: Browse and compare saved scenarios
+- Authentication: Login-required access to profiles
+
+See [web/FEATURES.md](web/FEATURES.md) for complete user guide.
+
 ---
 
 ## Recent Bug Fixes (April 13, 2026)
@@ -103,6 +136,8 @@ finance_planner/
 | **infrastructure/** | Configuration loading, parsing, caching | [infrastructure/CONFIG.md](infrastructure/CONFIG.md) |
 | **presentation/** | Output formatting, currency display | [presentation/PRESENTATION.md](presentation/PRESENTATION.md) |
 | **analysis/** | Decoupled analysis system, scenario comparisons | [analysis/ANALYSIS.md](analysis/ANALYSIS.md) |
+| **web/backend/** | FastAPI REST API, authentication, data persistence | [web/backend/README.md](web/backend/README.md), [API.md](web/backend/API.md), [ARCHITECTURE.md](web/backend/ARCHITECTURE.md) |
+| **web/features/** | User-facing feature guides and workflows | [web/FEATURES.md](web/FEATURES.md) |
 
 ---
 
@@ -132,6 +167,19 @@ finance_planner/
 
 ### Tests
 - **tests/test_simulation.py** — 42 unit tests (all pure, no mocks)
+
+### Web Backend
+- **web/backend/main.py** — FastAPI app initialization, router registration
+- **web/backend/database.py** — SQLAlchemy ORM setup, session management
+- **web/backend/auth.py** — JWT authentication, login endpoint
+- **web/backend/models.py** — SQLAlchemy ORM models (Profile, SimulationRun, ScenarioResult, YearData)
+- **web/backend/schemas.py** — Pydantic request/response validation models
+- **web/backend/routers/auth.py** — Authentication endpoints
+- **web/backend/routers/profiles.py** — Profile CRUD endpoints
+- **web/backend/routers/scenarios.py** — Scenario retrieval endpoints
+- **web/backend/routers/simulate.py** — One-off What-If simulation (stateless)
+- **web/backend/routers/whatif_saves.py** — Save What-If scenarios to disk + SQLite
+- **web/backend/requirements.txt** — Python dependencies (FastAPI, SQLAlchemy, filelock, etc.)
 
 ### Report Generation
 - **reports/** — Organized folder for all generated reports
