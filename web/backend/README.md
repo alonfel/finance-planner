@@ -69,7 +69,9 @@ web/backend/
 
 ### Database
 
-SQLite database stored in `finance_planner.db` (local development).
+SQLite database stored at `data/finance_planner.db` (relative to project root).
+
+**Full path:** `/Users/alon/Documents/finance_planner/data/finance_planner.db`
 
 Initialized automatically on first run via `init_db()` in `main.py`.
 
