@@ -456,6 +456,41 @@ const logout = () => {
 
 // Initialize on mount
 fetchRuns()
+
+// Check if scenario is pre-loaded from query params (from ScenarioDetailView)
+if (route.query.scenarioId) {
+  selectedScenarioId.value = parseInt(route.query.scenarioId)
+
+  // Pre-fill sliders from query params if provided
+  if (route.query.income) sliders.value.income = parseInt(route.query.income)
+  if (route.query.expenses) sliders.value.expenses = parseInt(route.query.expenses)
+  if (route.query.startingAge) sliders.value.startingAge = parseInt(route.query.startingAge)
+
+  // Load the scenario details and events
+  const loadPreloadedScenario = async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/scenarios/${selectedScenarioId.value}`)
+      originalScenario.value = response.data
+
+      // Load events
+      if (response.data.events && response.data.events.length > 0) {
+        events.value = response.data.events.map(e => ({
+          year: e.year,
+          amount: e.portfolio_injection,
+          description: e.description,
+          enabled: true
+        }))
+      }
+
+      // Run initial simulation
+      await runSimulation()
+    } catch (err) {
+      console.error('Failed to load preloaded scenario:', err)
+    }
+  }
+
+  loadPreloadedScenario()
+}
 </script>
 
 <style scoped>

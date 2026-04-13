@@ -4,6 +4,9 @@
       <div class="header-nav">
         <button @click="goBack" class="btn-back">← Back</button>
         <h1>Scenario Detail</h1>
+        <button v-if="summary" @click="goToWhatIf" class="btn-whatif">
+          ✏️ Edit in What-If
+        </button>
         <button @click="handleLogout" class="btn-logout">Logout</button>
       </div>
     </header>
@@ -60,8 +63,10 @@ const route = useRoute()
 const authStore = useAuthStore()
 
 const resultId = route.params.resultId
+const profileId = route.params.profileId
 const summary = ref(null)
 const yearData = ref([])
+const detailData = ref(null)
 const loading = ref(true)
 
 const API_BASE_URL = 'http://localhost:8000/api/v1'
@@ -74,6 +79,7 @@ onMounted(async () => {
     ])
     summary.value = summaryRes.data
     yearData.value = detailRes.data.year_data
+    detailData.value = detailRes.data
   } catch (error) {
     console.error('Failed to load scenario details:', error)
   } finally {
@@ -92,6 +98,29 @@ const goBack = () => {
 const handleLogout = () => {
   authStore.logout()
   router.push({ name: 'Login' })
+}
+
+const goToWhatIf = () => {
+  if (!detailData.value) return
+
+  // Extract scenario parameters from the detail data
+  const firstYear = detailData.value.year_data?.[0]
+  if (!firstYear) return
+
+  // Navigate to What-If view with pre-filled query params
+  router.push({
+    name: 'WhatIf',
+    params: { profileId },
+    query: {
+      scenarioId: resultId,
+      scenarioName: detailData.value.scenario_name,
+      income: Math.round(firstYear.income / 12),
+      expenses: Math.round(firstYear.expenses / 12),
+      startingAge: firstYear.age - 1,
+      // Store events as JSON in query param
+      events: JSON.stringify(detailData.value.events || [])
+    }
+  })
 }
 </script>
 
@@ -138,8 +167,20 @@ const handleLogout = () => {
   background: #e74c3c;
 }
 
+.btn-whatif {
+  background: #27ae60;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  margin: 0 10px;
+}
+
 .btn-back:hover,
-.btn-logout:hover {
+.btn-logout:hover,
+.btn-whatif:hover {
   opacity: 0.9;
 }
 
