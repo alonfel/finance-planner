@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional
 
 class YearDataSchema(BaseModel):
@@ -88,3 +88,20 @@ class SimulateResponse(BaseModel):
     final_portfolio: float
     total_savings: float
     year_data: List[YearDataSchema]
+
+class SaveScenarioRequest(BaseModel):
+    scenario_name: str = Field(..., min_length=1, max_length=100)
+    monthly_income: float
+    monthly_expenses: float
+    return_rate: float = 0.07
+    starting_age: int
+    initial_portfolio: float
+    years: int = 20
+    events: List[EventSchema] = []
+
+class SaveScenarioResponse(BaseModel):
+    scenario_result_id: int
+    run_id: int
+    scenario_name: str
+    retirement_year: Optional[int]
+    final_portfolio: float

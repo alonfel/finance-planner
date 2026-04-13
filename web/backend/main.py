@@ -4,7 +4,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import init_db
-from routers import auth, profiles, scenarios, simulate
+from routers import auth, profiles, scenarios, simulate, whatif_saves
 
 # Initialize database
 init_db()
@@ -29,6 +29,7 @@ app.include_router(auth.router)
 app.include_router(profiles.router)
 app.include_router(scenarios.router)
 app.include_router(simulate.router)
+app.include_router(whatif_saves.router)
 
 @app.get("/health")
 def health_check():

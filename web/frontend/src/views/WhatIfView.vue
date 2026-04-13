@@ -4,6 +4,9 @@
       <div class="header-left">
         <button @click="goBack" class="btn-back">← Back</button>
         <h1>🔮 What-If Explorer</h1>
+        <button v-if="whatIfResult" @click="showSaveModal = true" class="btn-save-scenario">
+          Save as Scenario
+        </button>
       </div>
       <button @click="logout" class="btn-logout">Logout</button>
     </header>
@@ -194,6 +197,38 @@
         </div>
       </div>
     </div>
+
+    <!-- Save Scenario Modal -->
+    <div v-if="showSaveModal" class="modal-overlay" @click.self="showSaveModal = false">
+      <div class="modal-box">
+        <h2>Save as Scenario</h2>
+        <p class="modal-subtitle">Save current What-If configuration as a named scenario.</p>
+        <label for="scenario-name-input">Scenario Name</label>
+        <input
+          id="scenario-name-input"
+          v-model="saveScenarioName"
+          type="text"
+          placeholder="e.g. High Growth - Conservative Spend"
+          class="modal-text-input"
+          @keyup.enter="saveScenario"
+          autofocus
+        />
+        <div v-if="saveStatus === 'error'" class="modal-error">{{ saveError }}</div>
+        <div v-if="saveStatus === 'success'" class="modal-success">Scenario saved!</div>
+        <div class="modal-actions">
+          <button @click="showSaveModal = false" class="btn-cancel" :disabled="saveStatus === 'saving'">
+            Cancel
+          </button>
+          <button
+            @click="saveScenario"
+            class="btn-confirm-save"
+            :disabled="!saveScenarioName.trim() || saveStatus === 'saving'"
+          >
+            {{ saveStatus === 'saving' ? 'Saving...' : 'Save' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -230,6 +265,11 @@ const sliders = ref({
 })
 
 const events = ref([])
+
+const showSaveModal = ref(false)
+const saveScenarioName = ref('')
+const saveStatus = ref(null)   // null | 'saving' | 'success' | 'error'
+const saveError = ref('')
 
 const profileId = computed(() => route.params.profileId)
 const originalStartingAge = computed(() => {
@@ -359,6 +399,41 @@ const formatNumber = (num) => {
 
 const retirementAge = (retirementYear, startingAge) => {
   return startingAge + retirementYear
+}
+
+const saveScenario = async () => {
+  if (!saveScenarioName.value.trim()) return
+  saveStatus.value = 'saving'
+  saveError.value = ''
+  try {
+    await axios.post(
+      `${API_BASE_URL}/profiles/${profileId.value}/saved-scenarios`,
+      {
+        scenario_name: saveScenarioName.value.trim(),
+        monthly_income: sliders.value.income,
+        monthly_expenses: sliders.value.expenses,
+        return_rate: sliders.value.growthRate / 100,
+        starting_age: sliders.value.startingAge,
+        initial_portfolio: sliders.value.initialPortfolio,
+        years: 20,
+        events: events.value.map(e => ({
+          year: e.year,
+          portfolio_injection: e.amount,
+          description: e.description
+        }))
+      },
+      { headers: { Authorization: `Bearer ${authStore.token}` } }
+    )
+    saveStatus.value = 'success'
+    setTimeout(() => {
+      showSaveModal.value = false
+      saveStatus.value = null
+      saveScenarioName.value = ''
+    }, 1500)
+  } catch (err) {
+    saveStatus.value = 'error'
+    saveError.value = err.response?.data?.detail || 'Failed to save scenario'
+  }
 }
 
 const goBack = () => {
@@ -760,5 +835,139 @@ fetchRuns()
 
 .btn-remove-event:hover {
   transform: scale(1.2);
+}
+
+.btn-save-scenario {
+  background: #27ae60;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s;
+  margin-left: 20px;
+}
+
+.btn-save-scenario:hover {
+  background: #229954;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal-box {
+  background: white;
+  border-radius: 10px;
+  padding: 32px;
+  width: 440px;
+  max-width: 90vw;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+}
+
+.modal-box h2 {
+  margin: 0 0 8px 0;
+  font-size: 20px;
+  color: #333;
+}
+
+.modal-subtitle {
+  color: #666;
+  font-size: 14px;
+  margin-bottom: 20px;
+  margin-top: 0;
+}
+
+.modal-box label {
+  display: block;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.modal-text-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 15px;
+  margin-bottom: 12px;
+}
+
+.modal-text-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+}
+
+.modal-error {
+  color: #e74c3c;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.modal-success {
+  color: #27ae60;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.btn-cancel {
+  background: #f0f0f0;
+  border: 1px solid #ddd;
+  padding: 9px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.btn-cancel:hover {
+  background: #e0e0e0;
+}
+
+.btn-cancel:disabled {
+  background: #f0f0f0;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.btn-confirm-save {
+  background: #27ae60;
+  color: white;
+  border: none;
+  padding: 9px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.btn-confirm-save:hover:not(:disabled) {
+  background: #229954;
+}
+
+.btn-confirm-save:disabled {
+  background: #aaa;
+  cursor: not-allowed;
 }
 </style>
