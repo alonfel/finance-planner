@@ -22,6 +22,7 @@ class ScenarioResultSchema(BaseModel):
     retirement_year: Optional[int]
     year_data: List[YearDataSchema]
     events: List[EventSchema] = []
+    mortgage: Optional[MortgageSchema] = None
 
     class Config:
         from_attributes = True

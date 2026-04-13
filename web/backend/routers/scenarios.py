@@ -15,12 +15,12 @@ from infrastructure.data_layer import get_scenarios_path
 
 router = APIRouter(prefix="/api/v1", tags=["scenarios"])
 
-def _get_scenario_events(profile_name: str, scenario_name: str):
-    """Load events from scenarios.json for a specific scenario."""
+def _get_scenario_data(profile_name: str, scenario_name: str):
+    """Load events and mortgage from scenarios.json for a specific scenario."""
     try:
         scenarios_path = get_scenarios_path(profile_name)
         if not scenarios_path.exists():
-            return []
+            return [], None
 
         with open(scenarios_path) as f:
             data = json.load(f)
@@ -28,8 +28,7 @@ def _get_scenario_events(profile_name: str, scenario_name: str):
         for scenario in data.get("scenarios", []):
             if scenario.get("name") == scenario_name:
                 events = scenario.get("events", [])
-                # Convert to EventSchema format (year, portfolio_injection, description)
-                return [
+                events_list = [
                     {
                         "year": e.get("year"),
                         "portfolio_injection": e.get("portfolio_injection", 0),
@@ -37,9 +36,21 @@ def _get_scenario_events(profile_name: str, scenario_name: str):
                     }
                     for e in events
                 ]
-        return []
+
+                mortgage = scenario.get("mortgage")
+                mortgage_data = None
+                if mortgage:
+                    mortgage_data = {
+                        "principal": mortgage.get("principal"),
+                        "annual_rate": mortgage.get("annual_rate"),
+                        "duration_years": mortgage.get("duration_years"),
+                        "currency": mortgage.get("currency", "ILS")
+                    }
+
+                return events_list, mortgage_data
+        return [], None
     except Exception:
-        return []
+        return [], None
 
 @router.get("/runs/{run_id}/scenarios", response_model=list[ScenarioCardSchema])
 def list_scenarios(
@@ -75,7 +86,7 @@ def get_scenario_detail(
     username: str = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get full scenario result with all year data and original events"""
+    """Get full scenario result with all year data, events, and mortgage"""
     result = db.query(ScenarioResult).filter(
         ScenarioResult.id == result_id
     ).first()
@@ -89,18 +100,20 @@ def get_scenario_detail(
 
     # Get the profile name for this scenario via the SimulationRun
     events = []
+    mortgage = None
     sim_run = db.query(SimulationRun).filter(SimulationRun.id == result.run_id).first()
     if sim_run:
         profile = db.query(Profile).filter(Profile.id == sim_run.profile_id).first()
         if profile:
-            events = _get_scenario_events(profile.name, result.scenario_name)
+            events, mortgage = _get_scenario_data(profile.name, result.scenario_name)
 
     return {
         "id": result.id,
         "scenario_name": result.scenario_name,
         "retirement_year": result.retirement_year,
         "year_data": year_data,
-        "events": events
+        "events": events,
+        "mortgage": mortgage
     }
 
 @router.get("/scenarios/{result_id}/summary", response_model=ScenarioSummarySchema)

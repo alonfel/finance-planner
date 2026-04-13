@@ -93,7 +93,8 @@ def _append_to_scenarios_json(scenarios_path, body):
     with filelock.FileLock(lock_path, timeout=5):
         with open(scenarios_path) as f:
             data = json.load(f)
-        data["scenarios"].append({
+
+        scenario_entry = {
             "name": body.scenario_name,
             "monthly_income": body.monthly_income,
             "monthly_expenses": body.monthly_expenses,
@@ -105,7 +106,18 @@ def _append_to_scenarios_json(scenarios_path, body):
                          "description": e.description} for e in body.events],
             "saved_from": "whatif",
             "saved_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
-        })
+        }
+
+        # Add mortgage if it exists
+        if body.mortgage:
+            scenario_entry["mortgage"] = {
+                "principal": body.mortgage.principal,
+                "annual_rate": body.mortgage.annual_rate,
+                "duration_years": body.mortgage.duration_years,
+                "currency": body.mortgage.currency
+            }
+
+        data["scenarios"].append(scenario_entry)
         with open(scenarios_path, "w") as f:
             json.dump(data, f, indent=2)
 
