@@ -3,11 +3,17 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from database import init_db
+from database import init_db, SessionLocal
+from migration import run_migration
 from routers import auth, profiles, scenarios, simulate, whatif_saves
 
-# Initialize database
+# Initialize database and run migration
 init_db()
+db = SessionLocal()
+try:
+    run_migration(db)
+finally:
+    db.close()
 
 app = FastAPI(
     title="Finance Planner API",

@@ -115,3 +115,52 @@ class SaveScenarioResponse(BaseModel):
     scenario_name: str
     retirement_year: Optional[int]
     final_portfolio: float
+
+
+class ScenarioDefinitionSchema(BaseModel):
+    """Full scenario definition from database"""
+    id: int
+    profile_id: int
+    name: str
+    monthly_income: str  # JSON string
+    monthly_expenses: str  # JSON string
+    initial_portfolio: float
+    age: int
+    currency: str
+    return_rate: float
+    withdrawal_rate: float
+    retirement_mode: str
+    saved_from: Optional[str]
+    saved_at: Optional[str]
+    is_deleted: bool
+
+    class Config:
+        from_attributes = True
+
+
+class PensionSchema(BaseModel):
+    initial_value: float
+    monthly_contribution: float
+    annual_growth_rate: float
+    accessible_at_age: int = 67
+
+
+class ScenarioNodeSchema(BaseModel):
+    """Scenario node for inheritance tree"""
+    id: int
+    profile_id: int
+    name: str
+    base_scenario_id: Optional[int]
+    parent_id: Optional[int]
+    event_mode: str
+    age: Optional[int]
+    initial_portfolio: Optional[float]
+    return_rate: Optional[float]
+    withdrawal_rate: Optional[float]
+    currency: Optional[str]
+    retirement_mode: Optional[str]
+    monthly_income: Optional[str]  # JSON string
+    monthly_expenses: Optional[str]  # JSON string
+
+    class Config:
+        from_attributes = True

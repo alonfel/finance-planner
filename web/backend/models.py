@@ -19,6 +19,9 @@ class Profile(Base):
     created_at = Column(String, nullable=True)
 
     runs = relationship("SimulationRun", back_populates="profile")
+    scenario_definitions = relationship("ScenarioDefinition", back_populates="profile")
+    scenario_nodes = relationship("ScenarioNode", back_populates="profile")
+    settings = relationship("ProfileSettings", back_populates="profile", uselist=False)
 
 class SimulationRun(Base):
     __tablename__ = "simulation_runs"
@@ -32,16 +35,158 @@ class SimulationRun(Base):
     profile = relationship("Profile", back_populates="runs")
     scenario_results = relationship("ScenarioResult", back_populates="run")
 
+class ScenarioDefinition(Base):
+    __tablename__ = "scenario_definitions"
+
+    id = Column(Integer, primary_key=True)
+    profile_id = Column(Integer, ForeignKey("profiles.id"), nullable=False)
+    name = Column(String, nullable=False)
+    monthly_income = Column(String, nullable=False)  # JSON TEXT
+    monthly_expenses = Column(String, nullable=False)  # JSON TEXT
+    initial_portfolio = Column(Float, nullable=False)
+    age = Column(Integer, nullable=False)
+    currency = Column(String, nullable=False, default="ILS")
+    return_rate = Column(Float, nullable=False)
+    withdrawal_rate = Column(Float, nullable=False, default=0.04)
+    retirement_mode = Column(String, nullable=False, default="liquid_only")
+    saved_from = Column(String, nullable=True)
+    saved_at = Column(String, nullable=True)
+    is_deleted = Column(Boolean, nullable=False, default=False)
+
+    profile = relationship("Profile", back_populates="scenario_definitions")
+    events = relationship("ScenarioEvent", back_populates="scenario")
+    mortgage = relationship("ScenarioMortgage", back_populates="scenario", uselist=False)
+    pension = relationship("ScenarioPension", back_populates="scenario", uselist=False)
+    scenario_results = relationship("ScenarioResult", back_populates="definition")
+
+
+class ScenarioEvent(Base):
+    __tablename__ = "scenario_events"
+
+    id = Column(Integer, primary_key=True)
+    scenario_id = Column(Integer, ForeignKey("scenario_definitions.id"), nullable=False)
+    year = Column(Integer, nullable=False)
+    portfolio_injection = Column(Float, nullable=False)
+    description = Column(String, nullable=False, default="")
+
+    scenario = relationship("ScenarioDefinition", back_populates="events")
+
+
+class ScenarioMortgage(Base):
+    __tablename__ = "scenario_mortgages"
+
+    id = Column(Integer, primary_key=True)
+    scenario_id = Column(Integer, ForeignKey("scenario_definitions.id"), unique=True, nullable=False)
+    principal = Column(Float, nullable=False)
+    annual_rate = Column(Float, nullable=False)
+    duration_years = Column(Integer, nullable=False)
+    currency = Column(String, nullable=False, default="ILS")
+
+    scenario = relationship("ScenarioDefinition", back_populates="mortgage")
+
+
+class ScenarioPension(Base):
+    __tablename__ = "scenario_pensions"
+
+    id = Column(Integer, primary_key=True)
+    scenario_id = Column(Integer, ForeignKey("scenario_definitions.id"), unique=True, nullable=False)
+    initial_value = Column(Float, nullable=False)
+    monthly_contribution = Column(Float, nullable=False)
+    annual_growth_rate = Column(Float, nullable=False)
+    accessible_at_age = Column(Integer, nullable=False, default=67)
+
+    scenario = relationship("ScenarioDefinition", back_populates="pension")
+
+
+class ProfileSettings(Base):
+    __tablename__ = "profile_settings"
+
+    id = Column(Integer, primary_key=True)
+    profile_id = Column(Integer, ForeignKey("profiles.id"), unique=True, nullable=False)
+    years = Column(Integer, nullable=False, default=30)
+    return_rate = Column(Float, nullable=False, default=0.05)
+    withdrawal_rate = Column(Float, nullable=False, default=0.04)
+    show_fields = Column(String, nullable=False, default="[]")  # JSON TEXT
+
+    profile = relationship("Profile", back_populates="settings")
+
+
+class ScenarioNode(Base):
+    __tablename__ = "scenario_nodes"
+
+    id = Column(Integer, primary_key=True)
+    profile_id = Column(Integer, ForeignKey("profiles.id"), nullable=False)
+    name = Column(String, nullable=False)
+    base_scenario_id = Column(Integer, ForeignKey("scenario_definitions.id"), nullable=True)
+    parent_id = Column(Integer, ForeignKey("scenario_nodes.id"), nullable=True)
+    event_mode = Column(String, nullable=False, default="append")
+    age = Column(Integer, nullable=True)
+    initial_portfolio = Column(Float, nullable=True)
+    return_rate = Column(Float, nullable=True)
+    withdrawal_rate = Column(Float, nullable=True)
+    currency = Column(String, nullable=True)
+    retirement_mode = Column(String, nullable=True)
+    monthly_income = Column(String, nullable=True)  # JSON TEXT
+    monthly_expenses = Column(String, nullable=True)  # JSON TEXT
+
+    profile = relationship("Profile", back_populates="scenario_nodes")
+    base_scenario = relationship("ScenarioDefinition")
+    parent = relationship("ScenarioNode", remote_side=[id])
+    events = relationship("ScenarioNodeEvent", back_populates="node")
+    mortgage = relationship("ScenarioNodeMortgage", back_populates="node", uselist=False)
+    pension = relationship("ScenarioNodePension", back_populates="node", uselist=False)
+
+
+class ScenarioNodeEvent(Base):
+    __tablename__ = "scenario_node_events"
+
+    id = Column(Integer, primary_key=True)
+    node_id = Column(Integer, ForeignKey("scenario_nodes.id"), nullable=False)
+    year = Column(Integer, nullable=False)
+    portfolio_injection = Column(Float, nullable=False)
+    description = Column(String, nullable=False, default="")
+
+    node = relationship("ScenarioNode", back_populates="events")
+
+
+class ScenarioNodeMortgage(Base):
+    __tablename__ = "scenario_node_mortgages"
+
+    id = Column(Integer, primary_key=True)
+    node_id = Column(Integer, ForeignKey("scenario_nodes.id"), unique=True, nullable=False)
+    principal = Column(Float, nullable=False)
+    annual_rate = Column(Float, nullable=False)
+    duration_years = Column(Integer, nullable=False)
+    currency = Column(String, nullable=False, default="ILS")
+
+    node = relationship("ScenarioNode", back_populates="mortgage")
+
+
+class ScenarioNodePension(Base):
+    __tablename__ = "scenario_node_pensions"
+
+    id = Column(Integer, primary_key=True)
+    node_id = Column(Integer, ForeignKey("scenario_nodes.id"), unique=True, nullable=False)
+    initial_value = Column(Float, nullable=False)
+    monthly_contribution = Column(Float, nullable=False)
+    annual_growth_rate = Column(Float, nullable=False)
+    accessible_at_age = Column(Integer, nullable=False, default=67)
+
+    node = relationship("ScenarioNode", back_populates="pension")
+
+
 class ScenarioResult(Base):
     __tablename__ = "scenario_results"
 
     id = Column(Integer, primary_key=True)
     run_id = Column(Integer, ForeignKey("simulation_runs.id"), nullable=False)
+    scenario_id = Column(Integer, ForeignKey("scenario_definitions.id"), nullable=True)
     scenario_name = Column(String, nullable=False)
     retirement_year = Column(Integer, nullable=True)
     is_deleted = Column(Boolean, nullable=False, default=False)
 
     run = relationship("SimulationRun", back_populates="scenario_results")
+    definition = relationship("ScenarioDefinition", back_populates="scenario_results")
     year_data = relationship("YearData", back_populates="result")
 
 class YearData(Base):

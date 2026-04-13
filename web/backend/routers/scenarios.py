@@ -1,4 +1,3 @@
-import json
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from database import get_db
@@ -7,48 +6,48 @@ from schemas import (
     ScenarioSummarySchema,
     ScenarioCardSchema
 )
-from models import ScenarioResult, YearData, Profile, SimulationRun
+from models import ScenarioResult, YearData, Profile, SimulationRun, ScenarioDefinition, ScenarioEvent, ScenarioMortgage
 from auth import get_current_user
-import sys, os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-from infrastructure.data_layer import get_scenarios_path
 
 router = APIRouter(prefix="/api/v1", tags=["scenarios"])
 
-def _get_scenario_data(profile_name: str, scenario_name: str):
-    """Load events and mortgage from scenarios.json for a specific scenario."""
+def _get_scenario_data(db: Session, scenario_id: int):
+    """Load events and mortgage from database for a specific scenario definition."""
     try:
-        scenarios_path = get_scenarios_path(profile_name)
-        if not scenarios_path.exists():
+        definition = db.query(ScenarioDefinition).filter(
+            ScenarioDefinition.id == scenario_id
+        ).first()
+
+        if not definition:
             return [], None
 
-        with open(scenarios_path) as f:
-            data = json.load(f)
+        # Get events
+        events = db.query(ScenarioEvent).filter(
+            ScenarioEvent.scenario_id == scenario_id
+        ).all()
+        events_list = [
+            {
+                "year": e.year,
+                "portfolio_injection": e.portfolio_injection,
+                "description": e.description
+            }
+            for e in events
+        ]
 
-        for scenario in data.get("scenarios", []):
-            if scenario.get("name") == scenario_name:
-                events = scenario.get("events", [])
-                events_list = [
-                    {
-                        "year": e.get("year"),
-                        "portfolio_injection": e.get("portfolio_injection", 0),
-                        "description": e.get("description", "")
-                    }
-                    for e in events
-                ]
+        # Get mortgage
+        mortgage = db.query(ScenarioMortgage).filter(
+            ScenarioMortgage.scenario_id == scenario_id
+        ).first()
+        mortgage_data = None
+        if mortgage:
+            mortgage_data = {
+                "principal": mortgage.principal,
+                "annual_rate": mortgage.annual_rate,
+                "duration_years": mortgage.duration_years,
+                "currency": mortgage.currency
+            }
 
-                mortgage = scenario.get("mortgage")
-                mortgage_data = None
-                if mortgage:
-                    mortgage_data = {
-                        "principal": mortgage.get("principal"),
-                        "annual_rate": mortgage.get("annual_rate"),
-                        "duration_years": mortgage.get("duration_years"),
-                        "currency": mortgage.get("currency", "ILS")
-                    }
-
-                return events_list, mortgage_data
-        return [], None
+        return events_list, mortgage_data
     except Exception:
         return [], None
 
@@ -98,14 +97,11 @@ def get_scenario_detail(
         YearData.result_id == result_id
     ).order_by(YearData.year).all()
 
-    # Get the profile name for this scenario via the SimulationRun
+    # Get events and mortgage from database if scenario_id is linked
     events = []
     mortgage = None
-    sim_run = db.query(SimulationRun).filter(SimulationRun.id == result.run_id).first()
-    if sim_run:
-        profile = db.query(Profile).filter(Profile.id == sim_run.profile_id).first()
-        if profile:
-            events, mortgage = _get_scenario_data(profile.name, result.scenario_name)
+    if result.scenario_id:
+        events, mortgage = _get_scenario_data(db, result.scenario_id)
 
     return {
         "id": result.id,
@@ -172,31 +168,17 @@ def delete_scenario(
     if not run or run.label != "What-If Saves":
         raise HTTPException(status_code=403, detail="Can only delete What-If Saves scenarios")
 
-    # Mark as deleted
+    # Mark as deleted in both result and definition
     result.is_deleted = True
+    db.add(result)
+
+    # Also mark the definition as deleted if linked
+    if result.scenario_id:
+        definition = db.query(ScenarioDefinition).filter(
+            ScenarioDefinition.id == result.scenario_id
+        ).first()
+        if definition:
+            definition.is_deleted = True
+            db.add(definition)
+
     db.commit()
-
-    # Also mark in scenarios.json on disk
-    profile = db.query(Profile).filter(Profile.id == run.profile_id).first()
-    if profile:
-        _mark_scenario_deleted_in_file(profile.name, result.scenario_name)
-
-def _mark_scenario_deleted_in_file(profile_name: str, scenario_name: str):
-    """Mark scenario as deleted in scenarios.json"""
-    try:
-        scenarios_path = get_scenarios_path(profile_name)
-        if not scenarios_path.exists():
-            return
-
-        with open(scenarios_path) as f:
-            data = json.load(f)
-
-        for scenario in data.get("scenarios", []):
-            if scenario.get("name") == scenario_name:
-                scenario["is_deleted"] = True
-                break
-
-        with open(scenarios_path, "w") as f:
-            json.dump(data, f, indent=2)
-    except Exception:
-        pass
