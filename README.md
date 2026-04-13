@@ -4,6 +4,8 @@ A minimal, clean financial simulation engine that models scenarios (like "buy ap
 
 **No external dependencies. Pure Python. Configuration-driven.**
 
+> **Latest Update (April 13, 2026):** Fixed pension bridge implementation bug. All pension scenarios now correctly accumulate and apply retirement modes. See [CHANGELOG.md](CHANGELOG.md) for details.
+
 ---
 
 ## Overview
@@ -18,8 +20,12 @@ The engine:
 - ✅ Tracks income, expenses, and net savings each year
 - ✅ Applies mortgage payments when active
 - ✅ Models one-time financial events (stock offerings, inheritances, emergencies)
+- ✅ **Accumulates locked pension funds** with independent growth rate
+- ✅ **Two retirement modes:** liquid_only (standard) and pension_bridged (stricter lifetime validation)
 - ✅ Detects retirement (first year portfolio meets retirement goal)
 - ✅ Shows retirement year, calendar year, and retirement age
+- ✅ Named income/expense components for detailed breakdown analysis
+- ✅ Scenario inheritance tree with deep-merge overrides
 - ✅ Compares multiple scenarios and generates structured insights
 - ✅ Configurable scenario parameter display in output
 - ✅ 100% configuration-driven (no code changes needed)

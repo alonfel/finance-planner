@@ -25,9 +25,20 @@ def print_scenario_header(scenario: Scenario, settings: Settings) -> None:
     print(f"{'─'*110}")
 
     if "income_expenses" in fields:
-        net = scenario.monthly_income - scenario.monthly_expenses
-        print(f"  Income:   {currency_symbol} {scenario.monthly_income:>10,.0f}/month")
-        print(f"  Expenses: {currency_symbol} {scenario.monthly_expenses:>10,.0f}/month")
+        income = scenario.monthly_income
+        expenses = scenario.monthly_expenses
+        net = income.total - expenses.total
+
+        print(f"  Income:   {currency_symbol} {income.total:>10,.0f}/month")
+        if len(income.components) > 1:
+            for label, amt in income.components.items():
+                print(f"    {label:<22} {currency_symbol} {amt:>10,.0f}/month")
+
+        print(f"  Expenses: {currency_symbol} {expenses.total:>10,.0f}/month")
+        if len(expenses.components) > 1:
+            for label, amt in expenses.components.items():
+                print(f"    {label:<22} {currency_symbol} {amt:>10,.0f}/month")
+
         print(f"  Net:      {currency_symbol} {net:>10,.0f}/month")
 
     if "mortgage_details" in fields:

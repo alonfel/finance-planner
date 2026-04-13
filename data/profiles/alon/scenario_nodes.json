@@ -2,59 +2,31 @@
   "nodes": [
     {
       "name": "Alon - Baseline",
-      "base_scenario": "Alon - Baseline",
-      "return_rate": 0.05,
-      "withdrawal_rate": 0.04,
-      "event_mode": "append",
-      "events": []
-    },
-    {
-      "name": "Alon - Baseline + Pension",
-      "base_scenario": "Alon - Baseline + Pension",
-      "return_rate": 0.05,
-      "withdrawal_rate": 0.04,
-      "event_mode": "append",
-      "events": []
+      "base_scenario": "Alon - Baseline"
     },
     {
       "name": "Alon - IPO Year 2",
-      "base_scenario": "Alon - IPO Year 2",
-      "return_rate": 0.05,
-      "withdrawal_rate": 0.04,
-      "event_mode": "append",
-      "events": []
+      "parent": "Alon - Baseline",
+      "events": [
+        {
+          "year": 2,
+          "portfolio_injection": 2000000,
+          "description": "Stock offering"
+        }
+      ],
+      "event_mode": "append"
     },
     {
-      "name": "Alon - IPO Year 2 + Pension",
-      "base_scenario": "Alon - IPO Year 2 + Pension",
-      "return_rate": 0.05,
-      "withdrawal_rate": 0.04,
-      "event_mode": "append",
-      "events": []
-    },
-    {
-      "name": "Alon - Baseline + Pension (Bridged: Retire at 55)",
-      "base_scenario": "Alon - Baseline + Pension (Bridged: Retire at 55)",
-      "return_rate": 0.05,
-      "withdrawal_rate": 0.04,
-      "event_mode": "append",
-      "events": []
-    },
-    {
-      "name": "Alon - Baseline + Pension (Bridged: Retire at 60)",
-      "base_scenario": "Alon - Baseline + Pension (Bridged: Retire at 60)",
-      "return_rate": 0.05,
-      "withdrawal_rate": 0.04,
-      "event_mode": "append",
-      "events": []
-    },
-    {
-      "name": "Alon - IPO Year 2 + Pension (Bridged)",
-      "base_scenario": "Alon - IPO Year 2 + Pension (Bridged)",
-      "return_rate": 0.05,
-      "withdrawal_rate": 0.04,
-      "event_mode": "append",
-      "events": []
+      "name": "Alon - IPO Year 3",
+      "parent": "Alon - Baseline",
+      "events": [
+        {
+          "year": 3,
+          "portfolio_injection": 3000000,
+          "description": "Stock offering"
+        }
+      ],
+      "event_mode": "append"
     }
   ]
 }

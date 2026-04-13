@@ -1,42 +1,27 @@
 {
   "analyses": [
     {
-      "id": "alon_pension_impact",
-      "title": "PENSION IMPACT: How 2M NIS in Pension Affects Retirement Timeline",
-      "description": "Comparing baseline scenarios with and without pension to quantify retirement acceleration",
+      "id": "alon_baseline_vs_exit",
+      "title": "Baseline vs Exit: Retirement Timeline Comparison",
+      "description": "Comparing baseline scenario with company exit scenario",
       "type": "milestone_snapshots",
       "scenarios": [
         {
-          "label": "Baseline WITHOUT Pension",
+          "label": "Baseline (No Exit)",
           "node": "Alon - Baseline"
         },
         {
-          "label": "Baseline WITH Pension (2M + 9K/mo @ 6%)",
-          "node": "Alon - Baseline + Pension"
-        },
-        {
-          "label": "IPO Year 2 WITHOUT Pension",
+          "label": "IPO Year 2 (₪2M Exit)",
           "node": "Alon - IPO Year 2"
         },
         {
-          "label": "IPO Year 2 WITH Pension (2M + 9K/mo @ 6%)",
-          "node": "Alon - IPO Year 2 + Pension"
+          "label": "IPO Year 3 (₪3M Exit)",
+          "node": "Alon - IPO Year 3"
         }
       ],
-      "milestones": [5, 10, 15, 20, 25, 27, 30],
+      "milestones": [1, 5, 10, 15, 20],
       "metrics": ["retirement_year", "portfolio_final"],
       "outputs": ["milestone_table", "comparison_summary"]
-    },
-    {
-      "id": "alon_baseline_comparison",
-      "title": "Baseline Scenario: Pension Impact Detailed",
-      "description": "Deep dive into how pension wealth affects the baseline scenario",
-      "type": "tree_exploration",
-      "scenarios": [
-        "Alon - Baseline",
-        "Alon - Baseline + Pension"
-      ],
-      "outputs": ["simulations", "pairwise_comparisons"]
     }
   ]
 }

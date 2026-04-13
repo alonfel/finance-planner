@@ -7,6 +7,7 @@ from domain.models import Scenario
 class YearData:
     """Annual snapshot of financial state during simulation."""
     year: int  # 1-indexed
+    age: int  # Age at end of year
     income: float  # Annual gross income
     expenses: float  # Annual expenses (including mortgage if active)
     net_savings: float  # income - expenses
@@ -43,10 +44,10 @@ def simulate(scenario: Scenario, years: int = 40) -> SimulationResult:
 
     for year_num in range(1, years + 1):
         # Compute annual income
-        annual_income = scenario.monthly_income * 12
+        annual_income = scenario.monthly_income.total * 12
 
         # Compute annual expenses
-        annual_expenses = scenario.monthly_expenses * 12
+        annual_expenses = scenario.monthly_expenses.total * 12
         mortgage_active = False
 
         if scenario.mortgage is not None:
@@ -65,7 +66,7 @@ def simulate(scenario: Scenario, years: int = 40) -> SimulationResult:
         # Pension growth (if pension exists)
         pension_accessible = False
         if scenario.pension is not None:
-            current_age = scenario.age + year_num - 1
+            current_age = scenario.age + year_num
             pension_accessible = (current_age >= scenario.pension.accessible_at_age)
             # Grow pension fund with contributions
             pension = (pension + scenario.pension.monthly_contribution * 12) * (1 + scenario.pension.annual_growth_rate)
@@ -88,7 +89,7 @@ def simulate(scenario: Scenario, years: int = 40) -> SimulationResult:
 
             elif scenario.retirement_mode == "pension_bridged":
                 # Pension-bridged retirement: ensure lifetime sustainability (retirement to age 100)
-                current_age = scenario.age + year_num - 1
+                current_age = scenario.age + year_num
 
                 if pension_accessible:
                     # Pension is already unlocked, use traditional check
@@ -132,9 +133,11 @@ def simulate(scenario: Scenario, years: int = 40) -> SimulationResult:
                         retirement_year = year_num
 
         # Record year data
+        current_age = scenario.age + year_num
         year_data_list.append(
             YearData(
                 year=year_num,
+                age=current_age,
                 income=annual_income,
                 expenses=annual_expenses,
                 net_savings=net_savings,

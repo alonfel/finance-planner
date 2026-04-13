@@ -2,6 +2,8 @@ import dataclasses
 from dataclasses import dataclass, field
 from typing import Optional
 
+from domain.breakdown import IncomeBreakdown, ExpenseBreakdown
+
 
 @dataclass
 class Event:
@@ -46,8 +48,8 @@ class Pension:
 class Scenario:
     """Represents a financial scenario with income, expenses, optional mortgage, and one-time events."""
     name: str
-    monthly_income: float
-    monthly_expenses: float
+    monthly_income: IncomeBreakdown
+    monthly_expenses: ExpenseBreakdown
     mortgage: Optional[Mortgage] = None
     pension: Optional[Pension] = None
     initial_portfolio: float = 0.0
@@ -74,16 +76,18 @@ class ScenarioNode:
     parent_name: Optional[str] = None
 
     # Scalar overrides — None means "inherit from resolved parent"
-    monthly_income: Optional[float] = None
-    monthly_expenses: Optional[float] = None
+    monthly_income: Optional[IncomeBreakdown] = None
+    monthly_expenses: Optional[ExpenseBreakdown] = None
     age: Optional[int] = None
     initial_portfolio: Optional[float] = None
     return_rate: Optional[float] = None
     withdrawal_rate: Optional[float] = None
     currency: Optional[str] = None
+    retirement_mode: Optional[str] = None  # "liquid_only" | "pension_bridged"
 
-    # Mortgage override — replaces resolved parent's mortgage if set
+    # Mortgage and pension overrides — replace resolved parent's if set
     mortgage: Optional[Mortgage] = None
+    pension: Optional[Pension] = None
 
     # Event composition: child controls mode relative to parent
     event_mode: str = "append"                         # "append" | "replace"
@@ -119,14 +123,22 @@ class ScenarioNode:
         for i, node in enumerate(ancestor_chain):
             # Apply scalar overrides
             overrides = {}
-            for field_name in ['monthly_income', 'monthly_expenses', 'age',
-                               'initial_portfolio', 'return_rate', 'withdrawal_rate', 'currency']:
+            for field_name in ['age', 'initial_portfolio', 'return_rate', 'withdrawal_rate', 'currency', 'retirement_mode']:
                 val = getattr(node, field_name)
                 if val is not None:
                     overrides[field_name] = val
 
+            # Handle income/expense with deep merge
+            if node.monthly_income is not None:
+                overrides['monthly_income'] = current_scenario.monthly_income.merge(node.monthly_income)
+            if node.monthly_expenses is not None:
+                overrides['monthly_expenses'] = current_scenario.monthly_expenses.merge(node.monthly_expenses)
+
+            # Handle mortgage and pension overrides
             if node.mortgage is not None:
                 overrides['mortgage'] = node.mortgage
+            if node.pension is not None:
+                overrides['pension'] = node.pension
 
             current_scenario = dataclasses.replace(current_scenario, **overrides)
 

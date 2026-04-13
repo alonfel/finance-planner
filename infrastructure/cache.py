@@ -15,10 +15,11 @@ def year_data_to_dict(year_data: YearData) -> Dict[str, Any]:
         year_data: YearData object
 
     Returns:
-        Dictionary with year, income, expenses, net_savings, portfolio, required_capital, mortgage_active, pension_value, pension_accessible
+        Dictionary with year, age, income, expenses, net_savings, portfolio, required_capital, mortgage_active, pension_value, pension_accessible
     """
     return {
         "year": year_data.year,
+        "age": year_data.age,
         "income": year_data.income,
         "expenses": year_data.expenses,
         "net_savings": year_data.net_savings,
@@ -62,6 +63,7 @@ def dict_to_simulation_result(data: Dict[str, Any]) -> SimulationResult:
     for yd in data.get("year_data", []):
         yd_obj = YearData(
             year=yd["year"],
+            age=yd.get("age", 0),  # Backward compat: use 0 if missing from old cache
             income=yd["income"],
             expenses=yd["expenses"],
             net_savings=yd["net_savings"],

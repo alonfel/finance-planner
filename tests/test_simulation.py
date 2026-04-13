@@ -6,6 +6,7 @@ from pathlib import Path
 
 from domain.models import Mortgage, Scenario, Event, ScenarioNode
 from domain.simulation import simulate
+from domain.breakdown import IncomeBreakdown, ExpenseBreakdown
 
 
 class TestMortgage(unittest.TestCase):
@@ -36,8 +37,8 @@ class TestSimulate(unittest.TestCase):
         """Scenario A (no mortgage) should have positive net savings every year."""
         scenario_a = Scenario(
             name="Test A",
-            monthly_income=20_000,
-            monthly_expenses=13_000,
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
         )
         result = simulate(scenario_a, years=40)
         for year_data in result.year_data:
@@ -48,8 +49,8 @@ class TestSimulate(unittest.TestCase):
         """Scenario B should have negative net savings during mortgage years 1-25."""
         scenario_b = Scenario(
             name="Test B",
-            monthly_income=20_000,
-            monthly_expenses=13_000,
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
             mortgage=Mortgage(principal=1_500_000, annual_rate=0.04, duration_years=25),
         )
         result = simulate(scenario_b, years=40)
@@ -62,8 +63,8 @@ class TestSimulate(unittest.TestCase):
         """Scenario B should have positive net savings after mortgage ends (years 26+)."""
         scenario_b = Scenario(
             name="Test B",
-            monthly_income=20_000,
-            monthly_expenses=13_000,
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
             mortgage=Mortgage(principal=1_500_000, annual_rate=0.04, duration_years=25),
         )
         result = simulate(scenario_b, years=40)
@@ -76,8 +77,8 @@ class TestSimulate(unittest.TestCase):
         """Portfolio should increase every year in Scenario A."""
         scenario_a = Scenario(
             name="Test A",
-            monthly_income=20_000,
-            monthly_expenses=13_000,
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
             initial_portfolio=100_000,
         )
         result = simulate(scenario_a, years=40)
@@ -89,8 +90,8 @@ class TestSimulate(unittest.TestCase):
         """Retirement year should be first year where portfolio >= required_capital."""
         scenario = Scenario(
             name="Test",
-            monthly_income=20_000,
-            monthly_expenses=13_000,
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
             initial_portfolio=0,
         )
         result = simulate(scenario, years=40)
@@ -106,8 +107,8 @@ class TestSimulate(unittest.TestCase):
         """Retirement year should be None if portfolio never reaches required_capital."""
         scenario = Scenario(
             name="Test",
-            monthly_income=1_000,  # Very low income
-            monthly_expenses=5_000,  # High expenses
+            monthly_income=IncomeBreakdown({"income": 1_000}),  # Very low income
+            monthly_expenses=ExpenseBreakdown({"expenses": 5_000}),  # High expenses
             initial_portfolio=0,
         )
         result = simulate(scenario, years=40)
@@ -117,8 +118,8 @@ class TestSimulate(unittest.TestCase):
         """Number of year_data entries should match years requested."""
         scenario = Scenario(
             name="Test",
-            monthly_income=20_000,
-            monthly_expenses=13_000,
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
         )
         # Test with default
         result = simulate(scenario)
@@ -131,8 +132,8 @@ class TestSimulate(unittest.TestCase):
         """Calling simulate twice with same scenario should produce identical results."""
         scenario = Scenario(
             name="Test",
-            monthly_income=20_000,
-            monthly_expenses=13_000,
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
         )
         result1 = simulate(scenario, years=20)
         result2 = simulate(scenario, years=20)
@@ -150,8 +151,8 @@ class TestSimulate(unittest.TestCase):
         """Year field should be 1-indexed."""
         scenario = Scenario(
             name="Test",
-            monthly_income=20_000,
-            monthly_expenses=13_000,
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
         )
         result = simulate(scenario, years=10)
         self.assertEqual(result.year_data[0].year, 1)
@@ -161,13 +162,13 @@ class TestSimulate(unittest.TestCase):
         """Mortgage should increase annual expenses."""
         scenario_no_mortgage = Scenario(
             name="No Mortgage",
-            monthly_income=20_000,
-            monthly_expenses=13_000,
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
         )
         scenario_with_mortgage = Scenario(
             name="With Mortgage",
-            monthly_income=20_000,
-            monthly_expenses=13_000,
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
             mortgage=Mortgage(principal=1_500_000, annual_rate=0.04, duration_years=25),
         )
         result_no = simulate(scenario_no_mortgage, years=1)
@@ -183,8 +184,8 @@ class TestEvents(unittest.TestCase):
         """Positive event (stock offering) should increase portfolio in that year."""
         scenario = Scenario(
             name="With Offering",
-            monthly_income=20_000,
-            monthly_expenses=13_000,
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
             events=[Event(year=2, portfolio_injection=1_000_000, description="Stock offering")],
         )
         result = simulate(scenario, years=5)
@@ -199,8 +200,8 @@ class TestEvents(unittest.TestCase):
         """Negative event (expense) should decrease portfolio in that year."""
         scenario = Scenario(
             name="With Expense",
-            monthly_income=20_000,
-            monthly_expenses=13_000,
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
             initial_portfolio=500_000,
             events=[Event(year=2, portfolio_injection=-100_000, description="Emergency expense")],
         )
@@ -217,8 +218,8 @@ class TestEvents(unittest.TestCase):
         """Multiple events in the same year should all apply."""
         scenario = Scenario(
             name="Multiple Events",
-            monthly_income=20_000,
-            monthly_expenses=13_000,
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
             events=[
                 Event(year=2, portfolio_injection=1_000_000, description="Stock offering"),
                 Event(year=2, portfolio_injection=-300_000, description="Expense"),
@@ -235,8 +236,8 @@ class TestEvents(unittest.TestCase):
         """Events should compound in the same year they occur."""
         scenario = Scenario(
             name="Event Compounding",
-            monthly_income=20_000,
-            monthly_expenses=13_000,
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
             initial_portfolio=100,
             events=[Event(year=1, portfolio_injection=100, description="Injection")],
         )
@@ -251,8 +252,8 @@ class TestEvents(unittest.TestCase):
         """Scenarios without events should work normally (events defaults to [])."""
         scenario = Scenario(
             name="No Events",
-            monthly_income=20_000,
-            monthly_expenses=13_000,
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
         )
         result = simulate(scenario, years=5)
         # Should complete without error
@@ -264,13 +265,13 @@ class TestEvents(unittest.TestCase):
         """Large event injection should accelerate retirement."""
         scenario_no_event = Scenario(
             name="No Event",
-            monthly_income=20_000,
-            monthly_expenses=13_000,
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
         )
         scenario_with_event = Scenario(
             name="With Event",
-            monthly_income=20_000,
-            monthly_expenses=13_000,
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
             events=[Event(year=2, portfolio_injection=2_000_000, description="Inheritance")],
         )
         result_no = simulate(scenario_no_event, years=40)
@@ -290,13 +291,13 @@ class TestComparisonAndInsights(unittest.TestCase):
 
         scenario_a = Scenario(
             name="Baseline",
-            monthly_income=20_000,
-            monthly_expenses=13_000,
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
         )
         scenario_b = Scenario(
             name="Buy Apartment",
-            monthly_income=20_000,
-            monthly_expenses=13_000,
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
             mortgage=Mortgage(principal=1_500_000, annual_rate=0.04, duration_years=25),
         )
         result_a = simulate(scenario_a, years=40)
@@ -314,13 +315,13 @@ class TestComparisonAndInsights(unittest.TestCase):
 
         scenario_a = Scenario(
             name="Baseline",
-            monthly_income=20_000,
-            monthly_expenses=13_000,
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
         )
         scenario_b = Scenario(
             name="Buy Apartment",
-            monthly_income=20_000,
-            monthly_expenses=13_000,
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
             mortgage=Mortgage(principal=1_500_000, annual_rate=0.04, duration_years=25),
         )
         result_a = simulate(scenario_a, years=40)
@@ -336,13 +337,13 @@ class TestComparisonAndInsights(unittest.TestCase):
 
         scenario_a = Scenario(
             name="Baseline",
-            monthly_income=20_000,
-            monthly_expenses=13_000,
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
         )
         scenario_b = Scenario(
             name="Buy Apartment",
-            monthly_income=20_000,
-            monthly_expenses=13_000,
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
             mortgage=Mortgage(principal=1_500_000, annual_rate=0.04, duration_years=25),
         )
         result_a = simulate(scenario_a, years=40)
@@ -362,13 +363,13 @@ class TestBuildInsights(unittest.TestCase):
 
         scenario_a = Scenario(
             name="Baseline",
-            monthly_income=20_000,
-            monthly_expenses=13_000,
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
         )
         scenario_b = Scenario(
             name="Buy Apartment",
-            monthly_income=20_000,
-            monthly_expenses=13_000,
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
             mortgage=Mortgage(principal=1_500_000, annual_rate=0.04, duration_years=25),
         )
         result_a = simulate(scenario_a, years=40)
@@ -385,13 +386,13 @@ class TestBuildInsights(unittest.TestCase):
         # Both scenarios retire
         scenario_a = Scenario(
             name="Baseline",
-            monthly_income=20_000,
-            monthly_expenses=13_000,
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
         )
         scenario_b = Scenario(
             name="Higher Income",
-            monthly_income=30_000,
-            monthly_expenses=13_000,
+            monthly_income=IncomeBreakdown({"income": 30_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
         )
         result_a = simulate(scenario_a, years=40)
         result_b = simulate(scenario_b, years=40)
@@ -408,13 +409,13 @@ class TestBuildInsights(unittest.TestCase):
         # Scenario B with huge mortgage (will never retire in 20 years)
         scenario_a = Scenario(
             name="Baseline",
-            monthly_income=20_000,
-            monthly_expenses=13_000,
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
         )
         scenario_b = Scenario(
             name="Big Mortgage",
-            monthly_income=20_000,
-            monthly_expenses=18_000,
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 18_000}),
             mortgage=Mortgage(principal=5_000_000, annual_rate=0.05, duration_years=30),
         )
         result_a = simulate(scenario_a, years=20)
@@ -432,13 +433,13 @@ class TestBuildInsights(unittest.TestCase):
         # A without mortgage, B without mortgage
         scenario_a = Scenario(
             name="Baseline",
-            monthly_income=20_000,
-            monthly_expenses=13_000,
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
         )
         scenario_b = Scenario(
             name="Also Baseline",
-            monthly_income=20_000,
-            monthly_expenses=13_000,
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
         )
         result_a = simulate(scenario_a, years=40)
         result_b = simulate(scenario_b, years=40)
@@ -454,13 +455,13 @@ class TestBuildInsights(unittest.TestCase):
 
         scenario_a = Scenario(
             name="Baseline",
-            monthly_income=20_000,
-            monthly_expenses=13_000,
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
         )
         scenario_b = Scenario(
             name="Buy Apartment",
-            monthly_income=20_000,
-            monthly_expenses=13_000,
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
             mortgage=Mortgage(principal=1_500_000, annual_rate=0.04, duration_years=25),
         )
         result_a = simulate(scenario_a, years=40)
@@ -478,13 +479,13 @@ class TestBuildInsights(unittest.TestCase):
 
         scenario_a = Scenario(
             name="Baseline",
-            monthly_income=20_000,
-            monthly_expenses=13_000,
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
         )
         scenario_b = Scenario(
             name="Buy Apartment",
-            monthly_income=20_000,
-            monthly_expenses=13_000,
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
             mortgage=Mortgage(principal=1_500_000, annual_rate=0.04, duration_years=25),
         )
         result_a = simulate(scenario_a, years=40)
@@ -502,13 +503,13 @@ class TestBuildInsights(unittest.TestCase):
 
         scenario_a = Scenario(
             name="Baseline",
-            monthly_income=20_000,
-            monthly_expenses=13_000,
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
         )
         scenario_b = Scenario(
             name="Buy Apartment",
-            monthly_income=20_000,
-            monthly_expenses=13_000,
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
             mortgage=Mortgage(principal=1_500_000, annual_rate=0.04, duration_years=25),
         )
         result_a = simulate(scenario_a, years=40)
@@ -531,24 +532,24 @@ class TestScenarioNode(unittest.TestCase):
         """Root node (parent_name=None) resolves identically to old Person behavior."""
         base = Scenario(
             name="Baseline",
-            monthly_income=20_000,
-            monthly_expenses=13_000,
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
             age=41,
         )
         node = ScenarioNode(name="Test Node", base_scenario=base)
         resolved = node.resolve()
 
         self.assertEqual(resolved.name, "Test Node")
-        self.assertEqual(resolved.monthly_income, 20_000)
-        self.assertEqual(resolved.monthly_expenses, 13_000)
+        self.assertEqual(resolved.monthly_income.total, 20_000)
+        self.assertEqual(resolved.monthly_expenses.total, 13_000)
         self.assertEqual(resolved.age, 41)
 
     def test_two_level_chain_inherits_scalars(self):
         """Child node inherits all scalar fields from resolved parent."""
         base = Scenario(
             name="Baseline",
-            monthly_income=20_000,
-            monthly_expenses=13_000,
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
             age=41,
         )
         root = ScenarioNode(name="Root", base_scenario=base)
@@ -557,50 +558,50 @@ class TestScenarioNode(unittest.TestCase):
         all_nodes = {"Root": root, "Child": child}
         resolved = child.resolve(all_nodes)
 
-        self.assertEqual(resolved.monthly_income, 20_000)
-        self.assertEqual(resolved.monthly_expenses, 13_000)
+        self.assertEqual(resolved.monthly_income.total, 20_000)
+        self.assertEqual(resolved.monthly_expenses.total, 13_000)
         self.assertEqual(resolved.age, 41)
 
     def test_two_level_chain_overrides_scalar(self):
         """Child node overrides a scalar field from parent."""
         base = Scenario(
             name="Baseline",
-            monthly_income=20_000,
-            monthly_expenses=13_000,
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
         )
         root = ScenarioNode(name="Root", base_scenario=base)
-        child = ScenarioNode(name="Child", parent_name="Root", monthly_income=30_000)
+        child = ScenarioNode(name="Child", parent_name="Root", monthly_income=IncomeBreakdown({"income": 30_000}))
 
         all_nodes = {"Root": root, "Child": child}
         resolved = child.resolve(all_nodes)
 
-        self.assertEqual(resolved.monthly_income, 30_000)
-        self.assertEqual(resolved.monthly_expenses, 13_000)  # Not overridden
+        self.assertEqual(resolved.monthly_income.total, 30_000)
+        self.assertEqual(resolved.monthly_expenses.total, 13_000)  # Not overridden
 
     def test_three_level_chain_resolves_correctly(self):
         """Grandchild inherits from parent, not from root."""
         base = Scenario(
             name="Baseline",
-            monthly_income=10_000,
-            monthly_expenses=5_000,
+            monthly_income=IncomeBreakdown({"income": 10_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 5_000}),
         )
         root = ScenarioNode(name="Root", base_scenario=base)
-        child = ScenarioNode(name="Child", parent_name="Root", monthly_income=20_000)
+        child = ScenarioNode(name="Child", parent_name="Root", monthly_income=IncomeBreakdown({"income": 20_000}))
         grandchild = ScenarioNode(name="Grandchild", parent_name="Child")  # No override
 
         all_nodes = {"Root": root, "Child": child, "Grandchild": grandchild}
         resolved = grandchild.resolve(all_nodes)
 
         # Should inherit child's overridden income, not root's
-        self.assertEqual(resolved.monthly_income, 20_000)
-        self.assertEqual(resolved.monthly_expenses, 5_000)
+        self.assertEqual(resolved.monthly_income.total, 20_000)
+        self.assertEqual(resolved.monthly_expenses.total, 5_000)
 
     def test_append_mode_accumulates_events(self):
         """event_mode='append' accumulates events from parent and child."""
         base = Scenario(
             name="Baseline",
-            monthly_income=20_000,
-            monthly_expenses=13_000,
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
             events=[Event(year=1, portfolio_injection=100_000, description="Base event")],
         )
         root = ScenarioNode(name="Root", base_scenario=base)
@@ -624,8 +625,8 @@ class TestScenarioNode(unittest.TestCase):
         """event_mode='replace' discards parent events and uses only this node's."""
         base = Scenario(
             name="Baseline",
-            monthly_income=20_000,
-            monthly_expenses=13_000,
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
             events=[Event(year=1, portfolio_injection=100_000, description="Base event")],
         )
         root = ScenarioNode(name="Root", base_scenario=base)
@@ -647,8 +648,8 @@ class TestScenarioNode(unittest.TestCase):
         """Replace in middle level discards root events, then grandchild appends."""
         base = Scenario(
             name="Baseline",
-            monthly_income=20_000,
-            monthly_expenses=13_000,
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
             events=[Event(year=1, portfolio_injection=100_000, description="E1")],
         )
         root = ScenarioNode(name="Root", base_scenario=base)
@@ -677,8 +678,8 @@ class TestScenarioNode(unittest.TestCase):
         """Replace at leaf level discards all ancestor events."""
         base = Scenario(
             name="Baseline",
-            monthly_income=20_000,
-            monthly_expenses=13_000,
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
             events=[Event(year=1, portfolio_injection=100_000, description="E1")],
         )
         root = ScenarioNode(name="Root", base_scenario=base)
@@ -706,8 +707,8 @@ class TestScenarioNode(unittest.TestCase):
         """Resolving a multi-level chain does not mutate any base_scenario."""
         base = Scenario(
             name="Baseline",
-            monthly_income=20_000,
-            monthly_expenses=13_000,
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
             events=[Event(year=1, portfolio_injection=100_000, description="Base")],
         )
         root = ScenarioNode(
@@ -734,11 +735,11 @@ class TestScenarioNode(unittest.TestCase):
         """Calling resolve() twice on the same node returns identical results."""
         base = Scenario(
             name="Baseline",
-            monthly_income=20_000,
-            monthly_expenses=13_000,
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
         )
-        root = ScenarioNode(name="Root", base_scenario=base, monthly_income=30_000)
-        child = ScenarioNode(name="Child", parent_name="Root", monthly_expenses=10_000)
+        root = ScenarioNode(name="Root", base_scenario=base, monthly_income=IncomeBreakdown({"income": 30_000}))
+        child = ScenarioNode(name="Child", parent_name="Root", monthly_expenses=ExpenseBreakdown({"expenses": 10_000}))
 
         all_nodes = {"Root": root, "Child": child}
         resolved1 = child.resolve(all_nodes)
@@ -753,8 +754,8 @@ class TestScenarioNode(unittest.TestCase):
         """Attempting to resolve a node with a cycle raises ValueError."""
         base = Scenario(
             name="Baseline",
-            monthly_income=20_000,
-            monthly_expenses=13_000,
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
         )
         # Create a cycle: A -> B -> A
         node_a = ScenarioNode(name="A", parent_name="B")  # Will point to B
@@ -779,8 +780,8 @@ class TestScenarioNode(unittest.TestCase):
         """Child node's mortgage replaces parent's resolved mortgage."""
         base = Scenario(
             name="Baseline",
-            monthly_income=20_000,
-            monthly_expenses=13_000,
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
             mortgage=Mortgage(principal=1_000_000, annual_rate=0.04, duration_years=20),
         )
         root = ScenarioNode(name="Root", base_scenario=base)
@@ -798,8 +799,8 @@ def test_resolved_node_is_valid_for_simulation(self):
         """A resolved ScenarioNode can be passed to simulate() without error."""
         base = Scenario(
             name="Baseline",
-            monthly_income=20_000,
-            monthly_expenses=13_000,
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
         )
         root = ScenarioNode(name="Root", base_scenario=base)
         child = ScenarioNode(

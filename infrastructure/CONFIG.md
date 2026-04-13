@@ -37,6 +37,46 @@ pension = parse_pension(pension_dict)
 
 **Returns None if dict is empty or None.** Used in parse_scenario to handle optional pension field.
 
+### parse_income_breakdown(value) → IncomeBreakdown
+Converts income value (flat number or dict) to IncomeBreakdown with named components.
+
+```python
+# Option 1: Flat number (backward compatible)
+breakdown = parse_income_breakdown(45_000)
+# Result: IncomeBreakdown({"income": 45_000})
+
+# Option 2: Dict of named components
+breakdown = parse_income_breakdown({
+    "salary": 36_000,
+    "freelance": 5_000,
+    "rental": 4_000
+})
+# Result: IncomeBreakdown({"salary": 36_000, "freelance": 5_000, "rental": 4_000})
+print(breakdown.total)  # 45_000
+```
+
+**Backward compatible:** Plain numbers are wrapped as `{"income": value}` to maintain uniform internal representation.
+
+### parse_expense_breakdown(value) → ExpenseBreakdown
+Converts expense value (flat number or dict) to ExpenseBreakdown with named components.
+
+```python
+# Option 1: Flat number
+breakdown = parse_expense_breakdown(25_000)
+# Result: ExpenseBreakdown({"expenses": 25_000})
+
+# Option 2: Dict of named components
+breakdown = parse_expense_breakdown({
+    "rent": 10_000,
+    "food": 3_500,
+    "utilities": 1_500,
+    "childcare": 4_000,
+    "other": 6_000
+})
+# Result: ExpenseBreakdown({"rent": 10_000, "food": 3_500, ...})
+print(breakdown.total)  # 25_000
+```
+
 ### parse_events(event_list: list) → list[Event]
 ```python
 events_list = [
@@ -52,21 +92,26 @@ Parses a flat scenario dict from scenarios.json. Uses provided defaults for rate
 ```python
 scenario_dict = {
     "name": "Baseline",
-    "monthly_income": 45_000,
-    "monthly_expenses": 25_000,
-    "mortgage": {...},             # optional
-    "pension": {...},              # optional
-    "events": [...],               # optional
-    "return_rate": 0.07,           # optional
-    "withdrawal_rate": 0.04,       # optional
-    "currency": "ILS",             # optional
-    "age": 41,                     # optional
-    "initial_portfolio": 0.0       # optional
+    "monthly_income": 45_000,        # Or dict: {"salary": 36_000, "bonus": 9_000}
+    "monthly_expenses": 25_000,      # Or dict: {"rent": 10_000, "other": 15_000}
+    "mortgage": {...},               # optional, parsed via parse_mortgage()
+    "pension": {...},                # optional, parsed via parse_pension()
+    "events": [...],                 # optional, parsed via parse_events()
+    "return_rate": 0.07,             # optional
+    "withdrawal_rate": 0.04,         # optional
+    "currency": "ILS",               # optional
+    "age": 41,                       # optional
+    "initial_portfolio": 0.0,        # optional
+    "retirement_mode": "liquid_only" # optional, "liquid_only" or "pension_bridged"
 }
 scenario = parse_scenario(scenario_dict, default_return_rate=0.07, default_withdrawal_rate=0.04)
 ```
 
-**Pension field** (added in v2): Optional pension dict is parsed via `parse_pension()`. If not present, scenario.pension is None.
+**Field parsing details:**
+- `monthly_income` — Parsed via `parse_income_breakdown()` (flat number or dict)
+- `monthly_expenses` — Parsed via `parse_expense_breakdown()` (flat number or dict)
+- `pension` — Parsed via `parse_pension()` if present, else None
+- `retirement_mode` — Used as-is; affects how simulation validates retirement (liquid_only vs pension_bridged)
 
 ### parse_scenario_node(d: dict, all_scenarios: dict) → ScenarioNode
 Parses a tree node from scenario_nodes.json. Resolves base_scenario names against all_scenarios dict.
@@ -74,13 +119,20 @@ Parses a tree node from scenario_nodes.json. Resolves base_scenario names agains
 ```python
 node_dict = {
     "name": "Alon - Buy Apartment",
-    "parent": "Alon Baseline",     # Root: use "base_scenario" instead
+    "parent": "Alon Baseline",          # Root: use "base_scenario" instead
     "mortgage": {...},
-    "event_mode": "append",        # or "replace"
+    "pension": {...},                   # Optional: parsed via parse_pension()
+    "retirement_mode": "pension_bridged",  # Optional: "liquid_only" or "pension_bridged"
+    "event_mode": "append",             # or "replace"
     "events": [...]
 }
 node = parse_scenario_node(node_dict, all_scenarios)
 ```
+
+**Pension & Retirement Mode fields** (fixed in April 13, 2026 update):
+- `pension` dict is parsed via `parse_pension()` if present. If not present, node.pension is None.
+- `retirement_mode` string is passed directly ("liquid_only" or "pension_bridged"). Defaults to None (inherited from parent or resolved Scenario default).
+- **Bug fix:** Both fields now properly transferred during ScenarioNode.resolve() inheritance chain walk. Previously they were parsed but not applied to resolved Scenario objects.
 
 ## Loaders (loaders.py)
 

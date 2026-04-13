@@ -2,126 +2,26 @@
   "scenarios": [
     {
       "name": "Alon - Baseline",
-      "monthly_income": 45000,
-      "monthly_expenses": 22000,
-      "initial_portfolio": 1400000,
-      "age": 41,
-      "currency": "ILS",
-      "events": []
-    },
-    {
-      "name": "Alon - Baseline + Pension",
-      "monthly_income": 45000,
-      "monthly_expenses": 22000,
-      "initial_portfolio": 1400000,
-      "age": 41,
-      "currency": "ILS",
-      "pension": {
-        "initial_value": 2000000,
-        "monthly_contribution": 9000,
-        "annual_growth_rate": 0.06,
-        "accessible_at_age": 67
+      "monthly_income": {
+        "ALON_salary": 23500,
+        "ALON_trust fund": 4700, 
+        "ALON_bonus": 2200,
+        "YOGEV_salary": 12000,
+        "YOGEV_trust fund": 1800,
+        "YOGEV_bonus": 1500
       },
-      "events": []
-    },
-    {
-      "name": "Alon - IPO Year 2",
-      "monthly_income": 45000,
-      "monthly_expenses": 22000,
+      "monthly_expenses": {
+        "food": 4000,
+        "resturants": 2000,
+        "childcare": 7000,
+        "vacation": 2000,
+        "home": 4000,
+        "car": 1000
+      },
       "initial_portfolio": 1400000,
       "age": 41,
       "currency": "ILS",
       "events": [
-        {
-          "year": 2,
-          "portfolio_injection": 2000000,
-          "description": "Stock offering"
-        },
-        {
-          "year": 3,
-          "portfolio_injection": -500000,
-          "description": "Surrogacy"
-        }
-      ]
-    },
-    {
-      "name": "Alon - IPO Year 2 + Pension",
-      "monthly_income": 45000,
-      "monthly_expenses": 22000,
-      "initial_portfolio": 1400000,
-      "age": 41,
-      "currency": "ILS",
-      "pension": {
-        "initial_value": 2000000,
-        "monthly_contribution": 9000,
-        "annual_growth_rate": 0.06,
-        "accessible_at_age": 67
-      },
-      "events": [
-        {
-          "year": 2,
-          "portfolio_injection": 2000000,
-          "description": "Stock offering"
-        },
-        {
-          "year": 3,
-          "portfolio_injection": -500000,
-          "description": "Surrogacy"
-        }
-      ]
-    },
-    {
-      "name": "Alon - Baseline + Pension (Bridged: Retire at 55)",
-      "monthly_income": 45000,
-      "monthly_expenses": 22000,
-      "initial_portfolio": 1400000,
-      "age": 41,
-      "currency": "ILS",
-      "retirement_mode": "pension_bridged",
-      "pension": {
-        "initial_value": 2000000,
-        "monthly_contribution": 9000,
-        "annual_growth_rate": 0.06,
-        "accessible_at_age": 67
-      },
-      "events": []
-    },
-    {
-      "name": "Alon - Baseline + Pension (Bridged: Retire at 60)",
-      "monthly_income": 45000,
-      "monthly_expenses": 22000,
-      "initial_portfolio": 1400000,
-      "age": 41,
-      "currency": "ILS",
-      "retirement_mode": "pension_bridged",
-      "pension": {
-        "initial_value": 2000000,
-        "monthly_contribution": 9000,
-        "annual_growth_rate": 0.06,
-        "accessible_at_age": 67
-      },
-      "events": []
-    },
-    {
-      "name": "Alon - IPO Year 2 + Pension (Bridged)",
-      "monthly_income": 45000,
-      "monthly_expenses": 22000,
-      "initial_portfolio": 1400000,
-      "age": 41,
-      "currency": "ILS",
-      "retirement_mode": "pension_bridged",
-      "pension": {
-        "initial_value": 2000000,
-        "monthly_contribution": 9000,
-        "annual_growth_rate": 0.06,
-        "accessible_at_age": 67
-      },
-      "events": [
-        {
-          "year": 2,
-          "portfolio_injection": 2000000,
-          "description": "Stock offering"
-        },
         {
           "year": 3,
           "portfolio_injection": -500000,

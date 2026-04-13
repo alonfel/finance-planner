@@ -22,6 +22,8 @@ from infrastructure.loaders import load_scenario_nodes
 from domain.models import ScenarioNode, Event
 from domain.simulation import simulate, SimulationResult
 from domain.insights import build_insights, format_insights
+from domain.breakdown import IncomeBreakdown, ExpenseBreakdown
+from infrastructure.parsers import parse_income_breakdown, parse_expense_breakdown
 from infrastructure.cache import load_cache, dict_to_simulation_result
 from infrastructure.data_layer import (
     get_analysis_config_path,
@@ -59,8 +61,6 @@ def create_variant_node(
 
     # Apply scalar overrides
     for key in [
-        "monthly_income",
-        "monthly_expenses",
         "age",
         "initial_portfolio",
         "return_rate",
@@ -69,6 +69,12 @@ def create_variant_node(
     ]:
         if key in variant_overrides:
             new_fields[key] = variant_overrides[key]
+
+    # Parse income/expense overrides if present
+    if "monthly_income" in variant_overrides:
+        new_fields["monthly_income"] = parse_income_breakdown(variant_overrides["monthly_income"])
+    if "monthly_expenses" in variant_overrides:
+        new_fields["monthly_expenses"] = parse_expense_breakdown(variant_overrides["monthly_expenses"])
 
     # Apply mortgage override if present
     if "mortgage" in variant_overrides:
@@ -332,7 +338,7 @@ def handle_tree_exploration(analysis: Dict[str, Any], all_nodes: Dict[str, Scena
             if node.mortgage:
                 unique_attrs.append(f"Mortgage ₪{node.mortgage.principal:,.0f}")
             if node.monthly_income is not None:
-                unique_attrs.append(f"Income ₪{node.monthly_income:,.0f}")
+                unique_attrs.append(f"Income ₪{node.monthly_income.total:,.0f}")
             if node.events:
                 unique_attrs.append(f"{len(node.events)} event(s)")
 

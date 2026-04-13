@@ -1,0 +1,9 @@
+{
+  "run_at": "2026-04-13T10:41:39",
+  "profile": "alon",
+  "analyses_run": [
+    "alon_baseline_vs_exit"
+  ],
+  "cache_generated_at": "2026-04-13T10:41:20.860255",
+  "num_scenarios": 2
+}
