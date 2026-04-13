@@ -39,6 +39,7 @@ class ScenarioResult(Base):
     run_id = Column(Integer, ForeignKey("simulation_runs.id"), nullable=False)
     scenario_name = Column(String, nullable=False)
     retirement_year = Column(Integer, nullable=True)
+    is_deleted = Column(Boolean, nullable=False, default=False)
 
     run = relationship("SimulationRun", back_populates="scenario_results")
     year_data = relationship("YearData", back_populates="result")

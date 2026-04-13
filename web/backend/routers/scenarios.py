@@ -49,7 +49,8 @@ def list_scenarios(
 ):
     """Get all scenarios for a simulation run"""
     results = db.query(ScenarioResult).filter(
-        ScenarioResult.run_id == run_id
+        ScenarioResult.run_id == run_id,
+        ScenarioResult.is_deleted == False
     ).all()
 
     cards = []
@@ -138,3 +139,51 @@ def get_scenario_summary(
         "years_simulated": len(year_data),
         "retirement_age": retirement_age
     }
+
+@router.delete("/scenarios/{result_id}", status_code=204)
+def delete_scenario(
+    result_id: int,
+    username: str = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Soft-delete a scenario (only What-If Saves scenarios)"""
+    result = db.query(ScenarioResult).filter(
+        ScenarioResult.id == result_id
+    ).first()
+
+    if not result:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+
+    # Get the run to check if it's a What-If Saves run
+    run = db.query(SimulationRun).filter(SimulationRun.id == result.run_id).first()
+    if not run or run.label != "What-If Saves":
+        raise HTTPException(status_code=403, detail="Can only delete What-If Saves scenarios")
+
+    # Mark as deleted
+    result.is_deleted = True
+    db.commit()
+
+    # Also mark in scenarios.json on disk
+    profile = db.query(Profile).filter(Profile.id == run.profile_id).first()
+    if profile:
+        _mark_scenario_deleted_in_file(profile.name, result.scenario_name)
+
+def _mark_scenario_deleted_in_file(profile_name: str, scenario_name: str):
+    """Mark scenario as deleted in scenarios.json"""
+    try:
+        scenarios_path = get_scenarios_path(profile_name)
+        if not scenarios_path.exists():
+            return
+
+        with open(scenarios_path) as f:
+            data = json.load(f)
+
+        for scenario in data.get("scenarios", []):
+            if scenario.get("name") == scenario_name:
+                scenario["is_deleted"] = True
+                break
+
+        with open(scenarios_path, "w") as f:
+            json.dump(data, f, indent=2)
+    except Exception:
+        pass

@@ -41,9 +41,17 @@
             v-for="scenario in scenarios"
             :key="scenario.id"
             class="scenario-card"
-            @click="goToDetail(scenario.id)"
           >
-            <h3>{{ scenario.scenario_name }}</h3>
+            <div class="scenario-header">
+              <h3 @click="goToDetail(scenario.id)" class="scenario-title">{{ scenario.scenario_name }}</h3>
+              <button
+                @click.stop="confirmDelete(scenario.id, scenario.scenario_name)"
+                class="btn-delete-scenario"
+                title="Delete scenario"
+              >
+                ✕
+              </button>
+            </div>
             <div class="scenario-stats">
               <div class="stat">
                 <span class="stat-label">Retirement Year:</span>
@@ -59,7 +67,24 @@
                 </span>
               </div>
             </div>
-            <div class="scenario-action">View Details →</div>
+            <div class="scenario-action" @click="goToDetail(scenario.id)">View Details →</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Delete Confirmation Modal -->
+      <div v-if="showDeleteModal" class="modal-overlay" @click.self="cancelDelete">
+        <div class="modal-box">
+          <h2>Delete Scenario</h2>
+          <p>Are you sure you want to delete "<strong>{{ deleteTargetName }}</strong>"?</p>
+          <p class="modal-note">This action cannot be undone.</p>
+          <div class="modal-actions">
+            <button @click="cancelDelete" class="btn-cancel" :disabled="deleting">
+              Cancel
+            </button>
+            <button @click="deleteScenario" class="btn-delete-confirm" :disabled="deleting">
+              {{ deleting ? 'Deleting...' : 'Delete' }}
+            </button>
           </div>
         </div>
       </div>
@@ -82,6 +107,10 @@ const runs = ref([])
 const scenarios = ref([])
 const selectedRunId = ref(null)
 const loading = ref(true)
+const showDeleteModal = ref(false)
+const deleteTargetId = ref(null)
+const deleteTargetName = ref('')
+const deleting = ref(false)
 
 const API_BASE_URL = 'http://localhost:8000/api/v1'
 
@@ -145,6 +174,39 @@ const goBack = () => {
 const handleLogout = () => {
   authStore.logout()
   router.push({ name: 'Login' })
+}
+
+const confirmDelete = (scenarioId, scenarioName) => {
+  deleteTargetId.value = scenarioId
+  deleteTargetName.value = scenarioName
+  showDeleteModal.value = true
+}
+
+const cancelDelete = () => {
+  showDeleteModal.value = false
+  deleteTargetId.value = null
+  deleteTargetName.value = ''
+}
+
+const deleteScenario = async () => {
+  if (!deleteTargetId.value) return
+
+  deleting.value = true
+  try {
+    await axios.delete(`${API_BASE_URL}/scenarios/${deleteTargetId.value}`, {
+      headers: { Authorization: `Bearer ${authStore.token}` }
+    })
+
+    // Remove from local list
+    scenarios.value = scenarios.value.filter(s => s.id !== deleteTargetId.value)
+
+    cancelDelete()
+  } catch (error) {
+    console.error('Failed to delete scenario:', error)
+    alert('Failed to delete scenario. Please try again.')
+  } finally {
+    deleting.value = false
+  }
 }
 </script>
 
@@ -262,7 +324,6 @@ const handleLogout = () => {
   padding: 25px;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  cursor: pointer;
   transition: all 0.3s;
 }
 
@@ -271,10 +332,45 @@ const handleLogout = () => {
   transform: translateY(-2px);
 }
 
-.scenario-card h3 {
-  margin: 0 0 15px 0;
+.scenario-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 15px;
+}
+
+.scenario-title {
+  margin: 0;
   color: #333;
   font-size: 18px;
+  cursor: pointer;
+  flex: 1;
+}
+
+.scenario-title:hover {
+  color: #667eea;
+}
+
+.btn-delete-scenario {
+  background: none;
+  border: none;
+  color: #999;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  margin-left: 10px;
+  flex-shrink: 0;
+}
+
+.btn-delete-scenario:hover {
+  color: #e74c3c;
+  transform: scale(1.1);
 }
 
 .scenario-stats {
@@ -312,5 +408,94 @@ const handleLogout = () => {
   color: #667eea;
   font-weight: 500;
   font-size: 14px;
+  cursor: pointer;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal-box {
+  background: white;
+  border-radius: 10px;
+  padding: 32px;
+  width: 400px;
+  max-width: 90vw;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+
+.modal-box h2 {
+  margin: 0 0 15px 0;
+  font-size: 20px;
+  color: #333;
+}
+
+.modal-box p {
+  margin: 0 0 10px 0;
+  color: #666;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.modal-note {
+  color: #999;
+  font-size: 13px !important;
+  margin-bottom: 20px !important;
+  font-style: italic;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 25px;
+}
+
+.btn-cancel {
+  background: #f0f0f0;
+  border: 1px solid #ddd;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  transition: all 0.2s;
+}
+
+.btn-cancel:hover:not(:disabled) {
+  background: #e0e0e0;
+}
+
+.btn-cancel:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-delete-confirm {
+  background: #e74c3c;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.btn-delete-confirm:hover:not(:disabled) {
+  background: #c0392b;
+}
+
+.btn-delete-confirm:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 </style>
