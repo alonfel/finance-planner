@@ -1,0 +1,82 @@
+{
+  "Daniel - Baseline": {
+    "name": "Daniel - Baseline",
+    "description": "Current trajectory: 35k income, 24k expenses, mortgage until year 10",
+    "monthly_income": 35000,
+    "monthly_expenses": 24000,
+    "yearly_events": {
+      "1-10": {
+        "name": "Mortgage Payments",
+        "amount": -102000
+      },
+      "11+": {
+        "name": "Post-Mortgage Freedom",
+        "amount": 0
+      }
+    }
+  },
+  "Daniel - Conservative (Lower Returns)": {
+    "name": "Daniel - Conservative (Lower Returns)",
+    "description": "Same income/expenses but 5% investment return instead of 7%",
+    "monthly_income": 35000,
+    "monthly_expenses": 24000,
+    "yearly_events": {
+      "1-10": {
+        "name": "Mortgage Payments",
+        "amount": -102000
+      },
+      "11+": {
+        "name": "Post-Mortgage Freedom",
+        "amount": 0
+      }
+    }
+  },
+  "Daniel - Aggressive Savings": {
+    "name": "Daniel - Aggressive Savings",
+    "description": "Reduce expenses to 20k, keep higher investment returns",
+    "monthly_income": 35000,
+    "monthly_expenses": 20000,
+    "yearly_events": {
+      "1-10": {
+        "name": "Mortgage Payments",
+        "amount": -102000
+      },
+      "11+": {
+        "name": "Post-Mortgage Freedom",
+        "amount": 0
+      }
+    }
+  },
+  "Daniel - Higher Expenses": {
+    "name": "Daniel - Higher Expenses",
+    "description": "Expenses at upper range: 26k/month",
+    "monthly_income": 35000,
+    "monthly_expenses": 26000,
+    "yearly_events": {
+      "1-10": {
+        "name": "Mortgage Payments",
+        "amount": -102000
+      },
+      "11+": {
+        "name": "Post-Mortgage Freedom",
+        "amount": 0
+      }
+    }
+  },
+  "Daniel - Accelerated Mortgage Payoff": {
+    "name": "Daniel - Accelerated Mortgage Payoff",
+    "description": "Pay off mortgage in 8 years with extra payments (11.5k/month)",
+    "monthly_income": 35000,
+    "monthly_expenses": 24000,
+    "yearly_events": {
+      "1-8": {
+        "name": "Accelerated Mortgage Payments",
+        "amount": -138000
+      },
+      "9+": {
+        "name": "Post-Mortgage Freedom",
+        "amount": 0
+      }
+    }
+  }
+}

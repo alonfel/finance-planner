@@ -1,0 +1,13 @@
+{
+  "inflation_rate": 0.025,
+  "investment_return": 0.07,
+  "starting_balance": 1400000,
+  "simulation_years": 30,
+  "currency": "ILS",
+  "display_options": {
+    "show_yearly_summary": true,
+    "show_monthly_breakdown": false,
+    "show_validation": true,
+    "highlight_retirement": true
+  }
+}

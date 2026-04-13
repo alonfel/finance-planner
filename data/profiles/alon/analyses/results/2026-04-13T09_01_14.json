@@ -1,0 +1,10 @@
+{
+  "run_at": "2026-04-13T09:01:14",
+  "profile": "alon",
+  "analyses_run": [
+    "alon_pension_impact",
+    "alon_baseline_comparison"
+  ],
+  "cache_generated_at": "2026-04-13T09:01:10.255372",
+  "num_scenarios": 7
+}

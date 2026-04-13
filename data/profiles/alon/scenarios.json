@@ -3,7 +3,7 @@
     {
       "name": "Alon - Baseline",
       "monthly_income": 45000,
-      "monthly_expenses": 25000,
+      "monthly_expenses": 22000,
       "initial_portfolio": 1400000,
       "age": 41,
       "currency": "ILS",
@@ -12,7 +12,7 @@
     {
       "name": "Alon - Baseline + Pension",
       "monthly_income": 45000,
-      "monthly_expenses": 25000,
+      "monthly_expenses": 22000,
       "initial_portfolio": 1400000,
       "age": 41,
       "currency": "ILS",
@@ -27,14 +27,14 @@
     {
       "name": "Alon - IPO Year 2",
       "monthly_income": 45000,
-      "monthly_expenses": 25000,
+      "monthly_expenses": 22000,
       "initial_portfolio": 1400000,
       "age": 41,
       "currency": "ILS",
       "events": [
         {
           "year": 2,
-          "portfolio_injection": 3000000,
+          "portfolio_injection": 2000000,
           "description": "Stock offering"
         },
         {
@@ -47,7 +47,7 @@
     {
       "name": "Alon - IPO Year 2 + Pension",
       "monthly_income": 45000,
-      "monthly_expenses": 25000,
+      "monthly_expenses": 22000,
       "initial_portfolio": 1400000,
       "age": 41,
       "currency": "ILS",
@@ -60,7 +60,7 @@
       "events": [
         {
           "year": 2,
-          "portfolio_injection": 3000000,
+          "portfolio_injection": 2000000,
           "description": "Stock offering"
         },
         {
@@ -73,7 +73,7 @@
     {
       "name": "Alon - Baseline + Pension (Bridged: Retire at 55)",
       "monthly_income": 45000,
-      "monthly_expenses": 25000,
+      "monthly_expenses": 22000,
       "initial_portfolio": 1400000,
       "age": 41,
       "currency": "ILS",
@@ -89,7 +89,7 @@
     {
       "name": "Alon - Baseline + Pension (Bridged: Retire at 60)",
       "monthly_income": 45000,
-      "monthly_expenses": 25000,
+      "monthly_expenses": 22000,
       "initial_portfolio": 1400000,
       "age": 41,
       "currency": "ILS",
@@ -105,7 +105,7 @@
     {
       "name": "Alon - IPO Year 2 + Pension (Bridged)",
       "monthly_income": 45000,
-      "monthly_expenses": 25000,
+      "monthly_expenses": 22000,
       "initial_portfolio": 1400000,
       "age": 41,
       "currency": "ILS",
@@ -119,7 +119,7 @@
       "events": [
         {
           "year": 2,
-          "portfolio_injection": 3000000,
+          "portfolio_injection": 2000000,
           "description": "Stock offering"
         },
         {

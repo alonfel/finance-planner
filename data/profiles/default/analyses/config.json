@@ -1,111 +1,61 @@
 {
   "analyses": [
     {
-      "id": "income_sensitivity",
-      "title": "Income Sensitivity: ₪45K vs ₪25K",
-      "description": "Compare how retirement timeline and portfolio growth change when income decreases from ₪45K to ₪25K",
-      "type": "parameter_pair_comparison",
+      "id": "daniel_600k_injection_impact",
+      "title": "CRITICAL: Impact of ₪600K Injection in Year 2",
+      "description": "How an additional ₪600K (bonus, inheritance, business proceeds) accelerates retirement",
+      "type": "milestone_snapshots",
       "scenarios": [
-        "Alon Baseline",
-        "Alon - Low Income + ₪2M Exit",
-        "Alon - Low Income + ₪3M Exit"
-      ],
-      "variations": {
-        "high_income": {
-          "monthly_income": 45000
-        },
-        "low_income": {
-          "monthly_income": 25000
-        }
-      },
-      "pairs": [
         {
-          "var1": "high_income",
-          "var2": "low_income"
-        }
-      ],
-      "metrics": [
-        "retirement_year",
-        "age_at_retirement",
-        "portfolio_year_10",
-        "portfolio_final",
-        "annual_savings"
-      ],
-      "outputs": [
-        "pair_comparison",
-        "summary_table",
-        "insights"
-      ]
-    },
-    {
-      "id": "exit_impact",
-      "title": "Exit Impact: Income Range ₪25K-₪50K",
-      "description": "Show how ₪2M exit in year 2 impacts retirement timeline across income levels",
-      "type": "parameter_sweep",
-      "base_scenario": "Alon Baseline",
-      "parameter": "monthly_income",
-      "range": {
-        "min": 25000,
-        "max": 50000,
-        "step": 2500
-      },
-      "test_variations": [
-        {
-          "name": "Without Exit",
-          "events": []
+          "label": "Baseline WITHOUT ₪600K",
+          "node": "Daniel - Baseline"
         },
         {
-          "name": "With ₪2M Exit",
-          "events": [
-            {
-              "year": 2,
-              "portfolio_injection": 2000000,
-              "description": "Exit proceeds"
-            }
-          ]
+          "label": "Baseline WITH ₪600K (Year 2)",
+          "node": "Daniel - Baseline + ₪600K Injection"
+        },
+        {
+          "label": "Aggressive WITHOUT ₪600K",
+          "node": "Daniel - Aggressive Path"
+        },
+        {
+          "label": "Aggressive WITH ₪600K (Year 2)",
+          "node": "Daniel - Aggressive + ₪600K Injection"
         }
       ],
+      "milestones": [1, 2, 5, 10, 15, 20, 25, 30],
       "metrics": [
         "retirement_year",
         "portfolio_final"
       ],
       "outputs": [
-        "detailed_tables",
-        "comparison_table",
-        "impact_analysis"
+        "milestone_table",
+        "comparison_summary"
       ]
     },
     {
-      "id": "personal_comparison",
-      "title": "Your Baseline vs Exit Variants",
-      "description": "Snapshot comparison at key milestones: baseline (no exit) vs ₪2M exit vs ₪3M exit",
+      "id": "daniel_baseline_overview",
+      "title": "Daniel's Financial Snapshot: Core Scenarios (5% Returns)",
+      "description": "Compare baseline with aggressive savings at realistic 5% investment returns",
       "type": "milestone_snapshots",
       "scenarios": [
         {
-          "label": "Baseline (no exit)",
-          "node": "Alon Baseline"
+          "label": "Baseline (Current Path)",
+          "node": "Daniel - Baseline"
         },
         {
-          "label": "You + ₪2M exit",
-          "node": "Alon - Low Income + ₪2M Exit"
+          "label": "Aggressive Savings (-₪4K)",
+          "node": "Daniel - Aggressive Path"
         },
         {
-          "label": "You + ₪3M exit",
-          "node": "Alon - Low Income + ₪3M Exit"
+          "label": "Higher Expenses (+₪2K)",
+          "node": "Daniel - Higher Expense Reality"
         }
       ],
-      "milestones": [
-        1,
-        5,
-        10,
-        15,
-        20
-      ],
+      "milestones": [1, 5, 10, 15, 20, 25, 30],
       "metrics": [
-        "portfolio",
         "retirement_year",
-        "annual_savings",
-        "age"
+        "portfolio_final"
       ],
       "outputs": [
         "milestone_table",
@@ -113,50 +63,61 @@
       ]
     },
     {
-      "id": "scenario_tree_exploration",
-      "title": "Scenario Tree: Structure & Pairwise Comparisons",
-      "description": "Explore inheritance relationships and understand compounding effects",
+      "id": "daniel_savings_impact",
+      "title": "Impact of Expense Management (5% Returns)",
+      "description": "How different expense levels (20K-26K) affect retirement timeline",
+      "type": "parameter_pair_comparison",
+      "scenarios": [
+        "Daniel - Baseline"
+      ],
+      "variations": {
+        "aggressive_expense": {
+          "monthly_expenses": 20000
+        },
+        "baseline_expense": {
+          "monthly_expenses": 24000
+        },
+        "higher_expense": {
+          "monthly_expenses": 26000
+        }
+      },
+      "pairs": [
+        {
+          "var1": "baseline_expense",
+          "var2": "aggressive_expense"
+        },
+        {
+          "var1": "baseline_expense",
+          "var2": "higher_expense"
+        }
+      ],
+      "metrics": [
+        "retirement_year",
+        "age_at_retirement",
+        "portfolio_final",
+        "annual_savings"
+      ],
+      "outputs": [
+        "insights"
+      ]
+    },
+    {
+      "id": "daniel_complete_exploration",
+      "title": "Complete Scenario Exploration (All 7 Scenarios)",
+      "description": "Overview of all Daniel scenarios including ₪600K injection variants",
       "type": "tree_exploration",
       "scenarios": [
-        "Alon Baseline",
-        "Alon - Buy Apartment",
-        "Alon - Buy Apartment + Exit"
+        "Daniel - Baseline",
+        "Daniel - Aggressive Path",
+        "Daniel - Higher Expense Reality",
+        "Daniel - Baseline + ₪600K Injection",
+        "Daniel - Aggressive + ₪600K Injection",
+        "Daniel - Conservative Path",
+        "Daniel - Fast Mortgage Payoff"
       ],
       "outputs": [
-        "tree_structure",
         "simulations",
         "pairwise_comparisons"
-      ]
-    },
-    {
-      "id": "baseline_exit_variants",
-      "title": "Baseline (No Apartment) + Exit Variants",
-      "description": "Compare baseline at ₪45K with 3 exit scenarios: no exit, ₪2M exit, ₪3M exit",
-      "type": "milestone_snapshots",
-      "scenarios": [
-        {
-          "label": "No Exit",
-          "node": "Alon Baseline"
-        },
-        {
-          "label": "+₪2M Exit",
-          "node": "Alon Baseline + ₪2M Exit"
-        },
-        {
-          "label": "+₪3M Exit",
-          "node": "Alon Baseline + ₪3M Exit"
-        }
-      ],
-      "milestones": [1, 5, 10, 15, 20],
-      "metrics": [
-        "portfolio",
-        "retirement_year",
-        "annual_savings",
-        "age"
-      ],
-      "outputs": [
-        "milestone_table",
-        "comparison_summary"
       ]
     }
   ]

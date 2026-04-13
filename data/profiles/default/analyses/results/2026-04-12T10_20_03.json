@@ -1,0 +1,13 @@
+{
+  "run_at": "2026-04-12T10:20:03",
+  "profile": "default",
+  "analyses_run": [
+    "daniel_baseline_overview",
+    "daniel_savings_impact",
+    "daniel_mortgage_strategy",
+    "daniel_scenario_exploration",
+    "daniel_retirement_range"
+  ],
+  "cache_generated_at": "2026-04-12T10:19:57.719886",
+  "num_scenarios": 5
+}

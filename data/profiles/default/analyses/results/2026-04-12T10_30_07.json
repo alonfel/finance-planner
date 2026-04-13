@@ -1,0 +1,12 @@
+{
+  "run_at": "2026-04-12T10:30:07",
+  "profile": "default",
+  "analyses_run": [
+    "daniel_600k_injection_impact",
+    "daniel_baseline_overview",
+    "daniel_savings_impact",
+    "daniel_complete_exploration"
+  ],
+  "cache_generated_at": "2026-04-12T10:30:04.194061",
+  "num_scenarios": 7
+}

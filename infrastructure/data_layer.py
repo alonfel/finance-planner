@@ -22,45 +22,59 @@ DEFAULT_PROFILE = "default"
 ACTIVE_PROFILE = os.environ.get("FINANCE_PROFILE", DEFAULT_PROFILE)
 
 
-def get_profile_dir(profile: str = DEFAULT_PROFILE) -> Path:
+def get_profile_dir(profile: str = None) -> Path:
     """Get the root directory for a profile.
 
     Args:
-        profile: Profile name (default: "default")
+        profile: Profile name (default: ACTIVE_PROFILE env var or "default")
 
     Returns:
         Path to data/profiles/{profile}/
     """
+    if profile is None:
+        profile = ACTIVE_PROFILE
     return DATA_DIR / "profiles" / profile
 
 
-def get_settings_path(profile: str = DEFAULT_PROFILE) -> Path:
+def get_settings_path(profile: str = None) -> Path:
     """Get the settings.json path for a profile."""
+    if profile is None:
+        profile = ACTIVE_PROFILE
     return get_profile_dir(profile) / "settings.json"
 
 
-def get_scenarios_path(profile: str = DEFAULT_PROFILE) -> Path:
+def get_scenarios_path(profile: str = None) -> Path:
     """Get the scenarios.json path for a profile."""
+    if profile is None:
+        profile = ACTIVE_PROFILE
     return get_profile_dir(profile) / "scenarios.json"
 
 
-def get_scenario_nodes_path(profile: str = DEFAULT_PROFILE) -> Path:
+def get_scenario_nodes_path(profile: str = None) -> Path:
     """Get the scenario_nodes.json path for a profile."""
+    if profile is None:
+        profile = ACTIVE_PROFILE
     return get_profile_dir(profile) / "scenario_nodes.json"
 
 
-def get_analysis_config_path(profile: str = DEFAULT_PROFILE) -> Path:
+def get_analysis_config_path(profile: str = None) -> Path:
     """Get the analysis config (config.json) path for a profile."""
+    if profile is None:
+        profile = ACTIVE_PROFILE
     return get_profile_dir(profile) / "analyses" / "config.json"
 
 
-def get_cache_path(profile: str = DEFAULT_PROFILE) -> Path:
+def get_cache_path(profile: str = None) -> Path:
     """Get the simulation cache path for a profile."""
+    if profile is None:
+        profile = ACTIVE_PROFILE
     return get_profile_dir(profile) / "analyses" / "cache" / "simulation_cache.json"
 
 
-def get_results_dir(profile: str = DEFAULT_PROFILE) -> Path:
+def get_results_dir(profile: str = None) -> Path:
     """Get the run results directory for a profile."""
+    if profile is None:
+        profile = ACTIVE_PROFILE
     return get_profile_dir(profile) / "analyses" / "results"
 
 

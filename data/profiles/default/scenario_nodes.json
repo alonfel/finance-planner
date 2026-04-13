@@ -1,114 +1,84 @@
 {
   "scenario_nodes": [
     {
-      "name": "Alon Baseline",
-      "base_scenario": "Baseline",
-      "monthly_income": 45000,
-      "monthly_expenses": 25000,
-      "age": 41,
+      "name": "Daniel - Baseline",
+      "base_scenario": "Daniel - Baseline",
+      "monthly_income": 35000,
+      "monthly_expenses": 24000,
+      "age": 38,
       "return_rate": 0.05,
       "event_mode": "append",
       "events": []
     },
     {
-      "name": "Alon - Buy Apartment",
-      "parent": "Alon Baseline",
-      "mortgage": {
-        "principal": 2250000,
-        "annual_rate": 0.04,
-        "duration_years": 25,
-        "currency": "ILS"
-      },
-      "event_mode": "append",
-      "events": [
-        {
-          "year": 1,
-          "portfolio_injection": -200000,
-          "description": "Down payment legal fees"
-        }
-      ]
-    },
-    {
-      "name": "Alon - Buy Apartment + Exit",
-      "parent": "Alon - Buy Apartment",
+      "name": "Daniel - Conservative Path",
+      "base_scenario": "Daniel - Conservative (Lower Returns)",
       "monthly_income": 35000,
-      "event_mode": "replace",
-      "events": [
-        {
-          "year": 2,
-          "portfolio_injection": 5000000,
-          "description": "Company exit proceeds"
-        }
-      ]
+      "monthly_expenses": 24000,
+      "age": 38,
+      "return_rate": 0.05,
+      "event_mode": "append",
+      "events": []
     },
     {
-      "name": "Alon Baseline - Low Income (₪25K)",
-      "parent": "Alon Baseline",
-      "monthly_income": 25000,
-      "event_mode": "replace",
-      "events": [
-        {
-          "year": 2,
-          "portfolio_injection": -500000,
-          "description": "Child 2 surrogacy expense"
-        }
-      ]
+      "name": "Daniel - Aggressive Path",
+      "base_scenario": "Daniel - Aggressive Savings",
+      "monthly_income": 35000,
+      "monthly_expenses": 20000,
+      "age": 38,
+      "return_rate": 0.05,
+      "event_mode": "append",
+      "events": []
     },
     {
-      "name": "Alon - Low Income + ₪2M Exit",
-      "parent": "Alon Baseline - Low Income (₪25K)",
+      "name": "Daniel - Higher Expense Reality",
+      "base_scenario": "Daniel - Higher Expenses",
+      "monthly_income": 35000,
+      "monthly_expenses": 26000,
+      "age": 38,
+      "return_rate": 0.05,
+      "event_mode": "append",
+      "events": []
+    },
+    {
+      "name": "Daniel - Fast Mortgage Payoff",
+      "base_scenario": "Daniel - Accelerated Mortgage Payoff",
+      "monthly_income": 35000,
+      "monthly_expenses": 24000,
+      "age": 38,
+      "return_rate": 0.05,
+      "event_mode": "append",
+      "events": []
+    },
+    {
+      "name": "Daniel - Baseline + ₪600K Injection",
+      "base_scenario": "Daniel - Baseline + ₪600K (Year 2)",
+      "monthly_income": 35000,
+      "monthly_expenses": 24000,
+      "age": 38,
+      "return_rate": 0.05,
       "event_mode": "append",
       "events": [
         {
-          "year": 1,
-          "portfolio_injection": 2000000,
-          "description": "Exit proceeds"
-        },
-        {
           "year": 2,
-          "portfolio_injection": -500000,
-          "description": "Child 2 surrogacy expense"
+          "portfolio_injection": 600000,
+          "description": "Bonus/Inheritance/Business proceeds"
         }
       ]
     },
     {
-      "name": "Alon - Low Income + ₪3M Exit",
-      "parent": "Alon Baseline - Low Income (₪25K)",
+      "name": "Daniel - Aggressive + ₪600K Injection",
+      "base_scenario": "Daniel - Aggressive Savings + ₪600K (Year 2)",
+      "monthly_income": 35000,
+      "monthly_expenses": 20000,
+      "age": 38,
+      "return_rate": 0.05,
       "event_mode": "append",
       "events": [
         {
-          "year": 1,
-          "portfolio_injection": 3000000,
-          "description": "Exit proceeds"
-        },
-        {
           "year": 2,
-          "portfolio_injection": -500000,
-          "description": "Child 2 surrogacy expense"
-        }
-      ]
-    },
-    {
-      "name": "Alon Baseline + ₪2M Exit",
-      "parent": "Alon Baseline",
-      "event_mode": "replace",
-      "events": [
-        {
-          "year": 1,
-          "portfolio_injection": 2000000,
-          "description": "Exit proceeds"
-        }
-      ]
-    },
-    {
-      "name": "Alon Baseline + ₪3M Exit",
-      "parent": "Alon Baseline",
-      "event_mode": "replace",
-      "events": [
-        {
-          "year": 1,
-          "portfolio_injection": 3000000,
-          "description": "Exit proceeds"
+          "portfolio_injection": 600000,
+          "description": "Bonus/Inheritance/Business proceeds"
         }
       ]
     }

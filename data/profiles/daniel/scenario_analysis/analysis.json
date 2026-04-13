@@ -1,0 +1,39 @@
+{
+  "analyses": [
+    {
+      "name": "Baseline vs Aggressive Savings",
+      "description": "Compare current trajectory vs increased savings (24k → 20k expenses)",
+      "scenario_a": "Daniel - Baseline",
+      "scenario_b": "Daniel - Aggressive Path",
+      "focus": "How much faster can Daniel retire with 4k/month additional savings?"
+    },
+    {
+      "name": "Baseline vs Conservative Returns",
+      "description": "Impact of lower investment returns (7% → 5%) on retirement timeline",
+      "scenario_a": "Daniel - Baseline",
+      "scenario_b": "Daniel - Conservative Path",
+      "focus": "What if investments underperform? How much does this delay retirement?"
+    },
+    {
+      "name": "Impact of Higher Expenses",
+      "description": "Real-world scenario: expenses rise to 26k/month",
+      "scenario_a": "Daniel - Baseline",
+      "scenario_b": "Daniel - Higher Expense Reality",
+      "focus": "Is the retirement plan robust to lifestyle inflation?"
+    },
+    {
+      "name": "Mortgage Payoff Strategy Comparison",
+      "description": "Standard 10-year payoff vs aggressive 8-year payoff",
+      "scenario_a": "Daniel - Baseline",
+      "scenario_b": "Daniel - Fast Mortgage Payoff",
+      "focus": "Does accelerating mortgage payoff improve retirement outcomes?"
+    },
+    {
+      "name": "Best Case vs Worst Case",
+      "description": "Aggressive savings + market returns vs higher expenses + conservative returns",
+      "scenario_a": "Daniel - Aggressive Path",
+      "scenario_b": "Daniel - Higher Expense Reality",
+      "focus": "What's the range of retirement timing across different scenarios?"
+    }
+  ]
+}

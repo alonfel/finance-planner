@@ -1,96 +1,119 @@
 {
   "scenarios": [
     {
-      "name": "Baseline",
-      "monthly_income": 45000,
-      "monthly_expenses": 25000,
+      "name": "Daniel - Baseline",
+      "monthly_income": 35000,
+      "monthly_expenses": 24000,
       "currency": "ILS",
       "initial_portfolio": 1400000,
-      "mortgage": null,
-      "age": 41,
-      "events": [
-        {
-          "year": 2,
-          "portfolio_injection": -500000,
-          "description": "Surrogacy expense"
-        }
-      ]
-    },
-    {
-      "name": "Buy Apartment",
-      "monthly_income": 45000,
-      "monthly_expenses": 25000,
-      "currency": "ILS",
-      "initial_portfolio": 0,
+      "age": 38,
       "mortgage": {
-        "principal": 2250000,
+        "principal": 1100000,
         "annual_rate": 0.04,
-        "duration_years": 25,
+        "duration_years": 10,
         "currency": "ILS"
       },
-      "age": 41,
       "events": []
     },
     {
-      "name": "IPO Year 2",
-      "monthly_income": 45000,
-      "monthly_expenses": 25000,
+      "name": "Daniel - Conservative (Lower Returns)",
+      "monthly_income": 35000,
+      "monthly_expenses": 24000,
       "currency": "ILS",
-      "initial_portfolio": 0,
-      "mortgage": null,
-      "age": 41,
+      "initial_portfolio": 1400000,
+      "age": 38,
+      "mortgage": {
+        "principal": 1100000,
+        "annual_rate": 0.04,
+        "duration_years": 10,
+        "currency": "ILS"
+      },
+      "events": []
+    },
+    {
+      "name": "Daniel - Aggressive Savings",
+      "monthly_income": 35000,
+      "monthly_expenses": 20000,
+      "currency": "ILS",
+      "initial_portfolio": 1400000,
+      "age": 38,
+      "mortgage": {
+        "principal": 1100000,
+        "annual_rate": 0.04,
+        "duration_years": 10,
+        "currency": "ILS"
+      },
+      "events": []
+    },
+    {
+      "name": "Daniel - Higher Expenses",
+      "monthly_income": 35000,
+      "monthly_expenses": 26000,
+      "currency": "ILS",
+      "initial_portfolio": 1400000,
+      "age": 38,
+      "mortgage": {
+        "principal": 1100000,
+        "annual_rate": 0.04,
+        "duration_years": 10,
+        "currency": "ILS"
+      },
+      "events": []
+    },
+    {
+      "name": "Daniel - Accelerated Mortgage Payoff",
+      "monthly_income": 35000,
+      "monthly_expenses": 24000,
+      "currency": "ILS",
+      "initial_portfolio": 1400000,
+      "age": 38,
+      "mortgage": {
+        "principal": 1100000,
+        "annual_rate": 0.04,
+        "duration_years": 8,
+        "currency": "ILS"
+      },
+      "events": []
+    },
+    {
+      "name": "Daniel - Baseline + ₪600K (Year 2)",
+      "monthly_income": 35000,
+      "monthly_expenses": 24000,
+      "currency": "ILS",
+      "initial_portfolio": 1400000,
+      "age": 38,
+      "mortgage": {
+        "principal": 1100000,
+        "annual_rate": 0.04,
+        "duration_years": 10,
+        "currency": "ILS"
+      },
       "events": [
         {
           "year": 2,
-          "portfolio_injection": 3000000,
-          "description": "Stock offering"
-        },
-        {
-          "year": 3,
-          "portfolio_injection": -500000,
-          "description": "Surrogacy"
+          "portfolio_injection": 600000,
+          "description": "Bonus/Inheritance/Business proceeds"
         }
       ]
     },
     {
-      "name": "IPO Year 29",
-      "monthly_income": 45000,
-      "monthly_expenses": 25000,
+      "name": "Daniel - Aggressive Savings + ₪600K (Year 2)",
+      "monthly_income": 35000,
+      "monthly_expenses": 20000,
       "currency": "ILS",
-      "initial_portfolio": 0,
-      "mortgage": null,
-      "age": 41,
+      "initial_portfolio": 1400000,
+      "age": 38,
+      "mortgage": {
+        "principal": 1100000,
+        "annual_rate": 0.04,
+        "duration_years": 10,
+        "currency": "ILS"
+      },
       "events": [
         {
-          "year": 29,
-          "portfolio_injection": 2000000,
-          "description": "Stock offering (delayed)"
-        },
-        {
-          "year": 3,
-          "portfolio_injection": -500000,
-          "description": "Surrogacy"
-        }
-      ]
-    },
-    {
-      "name": "IPO Year 3",
-      "monthly_income": 45000,
-      "monthly_expenses": 25000,
-      "currency": "ILS",
-      "initial_portfolio": 0,
-      "mortgage": null,
-      "age": 41,
-      "events": [
-        {
-          "year": 3,
-          "portfolio_injection": 2000000,
-          "description": "Stock offering"
-        },
-        {
-          "year": 3,
-          "portfolio_injection": -500000,
-          "description": "Surrogacy"
+          "year": 2,
+          "portfolio_injection": 600000,
+          "description": "Bonus/Inheritance/Business proceeds"
         }
       ]
     }

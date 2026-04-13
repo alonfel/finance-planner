@@ -1,0 +1,27 @@
+{
+  "Daniel - Baseline": {
+    "name": "Daniel - Baseline",
+    "base_scenario": "Daniel - Baseline",
+    "overrides": {}
+  },
+  "Daniel - Conservative Path": {
+    "name": "Daniel - Conservative Path",
+    "base_scenario": "Daniel - Conservative (Lower Returns)",
+    "overrides": {}
+  },
+  "Daniel - Aggressive Path": {
+    "name": "Daniel - Aggressive Path",
+    "base_scenario": "Daniel - Aggressive Savings",
+    "overrides": {}
+  },
+  "Daniel - Higher Expense Reality": {
+    "name": "Daniel - Higher Expense Reality",
+    "base_scenario": "Daniel - Higher Expenses",
+    "overrides": {}
+  },
+  "Daniel - Fast Mortgage Payoff": {
+    "name": "Daniel - Fast Mortgage Payoff",
+    "base_scenario": "Daniel - Accelerated Mortgage Payoff",
+    "overrides": {}
+  }
+}

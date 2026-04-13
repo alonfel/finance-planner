@@ -87,7 +87,7 @@ def simulate(scenario: Scenario, years: int = 40) -> SimulationResult:
                     retirement_year = year_num
 
             elif scenario.retirement_mode == "pension_bridged":
-                # New mode: can retire if portfolio bridges to pension unlock
+                # Pension-bridged retirement: ensure lifetime sustainability (retirement to age 100)
                 current_age = scenario.age + year_num - 1
 
                 if pension_accessible:
@@ -96,19 +96,35 @@ def simulate(scenario: Scenario, years: int = 40) -> SimulationResult:
                     if effective_capital >= required_capital:
                         retirement_year = year_num
                 elif scenario.pension is not None:
-                    # Pension is locked. Check if we can bridge to unlock
-                    years_to_pension_unlock = scenario.pension.accessible_at_age - current_age
-                    annual_expenses_in_retirement = annual_expenses  # Use current year's expenses for calculation
+                    # Pension is locked. Two-phase check:
+                    # Phase 1: Can portfolio sustain until pension unlocks?
+                    # Phase 2: Will portfolio + pension sustain until end of life (age 100)?
 
-                    # Can we sustain from portfolio until pension unlocks?
+                    years_to_pension_unlock = scenario.pension.accessible_at_age - current_age
+                    years_from_unlock_to_age_100 = 100 - scenario.pension.accessible_at_age
+                    annual_expenses_in_retirement = annual_expenses
+
+                    # Phase 1: Portfolio covers bridge (conservative: assumes no growth during bridge)
                     portfolio_needed_to_bridge = annual_expenses_in_retirement * years_to_pension_unlock
 
-                    # At pension unlock, can we sustain from pension + portfolio?
-                    required_capital_at_unlock = annual_expenses_in_retirement / scenario.withdrawal_rate
+                    # Phase 2: Project what portfolio + pension will be at pension unlock
+                    # Conservative: portfolio after 'years_to_unlock' of withdrawals (assuming minimal growth)
+                    # In reality portfolio grows, so this is conservative
+                    portfolio_at_unlock = portfolio - (annual_expenses_in_retirement * years_to_pension_unlock)
 
-                    # Simple check: portfolio covers bridge, pension covers after unlock
+                    # Pension grows at its rate, so current pension value is conservative estimate
+                    # (actual pension at unlock will be higher due to contributions + growth)
+                    pension_at_unlock_conservative = pension
+
+                    # Total capital needed from unlock to age 100
+                    capital_needed_after_unlock = annual_expenses_in_retirement * years_from_unlock_to_age_100
+
+                    # Retirement is viable if:
+                    # 1. Portfolio survives the bridge phase (portfolio_at_unlock > 0)
+                    # 2. Portfolio + pension at unlock can sustain to age 100
                     if (portfolio >= portfolio_needed_to_bridge and
-                        pension >= required_capital_at_unlock):
+                        portfolio_at_unlock >= 0 and
+                        (portfolio_at_unlock + pension_at_unlock_conservative) >= capital_needed_after_unlock):
                         retirement_year = year_num
                 else:
                     # No pension, fall back to liquid_only logic
