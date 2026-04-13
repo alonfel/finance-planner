@@ -1,6 +1,6 @@
 # Claude Code Guidelines for Finance Planner
 
-**Updated:** April 13, 2026 — Fixed pension bridge bug. Simplified Alon profile to 2 core scenarios. What-If Explorer UI restructured with sidebar layout. Save as Scenario feature fully implemented with persistence. All tests passing. See component guides for detailed info.
+**Updated:** April 13, 2026 — **CRITICAL: Fixed mortgage rate 100x bug** in What-If Explorer (percentage/decimal mismatch). Fixed pension bridge bug. Simplified Alon profile to 2 core scenarios. What-If Explorer UI restructured with sidebar layout. Save as Scenario feature fully implemented with persistence. All tests passing. See component guides for detailed info.
 
 ## Quick Start
 
@@ -141,6 +141,32 @@ See [web/FEATURES.md](web/FEATURES.md) for complete user guide.
 ---
 
 ## Recent Bug Fixes (April 13, 2026)
+
+### Mortgage Rate Conversion Bug Fixed (CRITICAL)
+
+**Problem:** Graph displayed mathematically nonsensical values when mortgage scenarios were loaded. The issue was a 100x mismatch in mortgage rate calculations.
+
+**Root cause:** Frontend was sending mortgage `annual_rate` as a percentage (e.g., 4.5 for 4.5%) but the backend expected a decimal (e.g., 0.045). This caused the backend to calculate mortgage payments at 100x the correct rate.
+
+**Example impact:**
+- User sets mortgage rate slider to 4.5%
+- Frontend displays ₪8,000-10,000/month (correct in UI)
+- Backend receives: `annual_rate: 4.5` (percentage instead of decimal)
+- Backend calculates: `r = 4.5 / 12 = 0.375` (37.5% per month!)
+- Monthly payment: ₪4,500,000+ (100x too large)
+- Result: Expenses crash portfolio to zero immediately
+
+**Solution implemented:** Convert mortgage `annual_rate` to decimal before sending to backend, matching how `return_rate` is already handled.
+
+**Files modified:**
+- `web/frontend/src/views/WhatIfView.vue` — Added `/100` conversion in three places:
+  - Line 507: `refreshOriginalScenario()` 
+  - Line 541: `runSimulation()`
+  - Line 639: `saveScenario()`
+
+**Verification:** Monthly payment for ₪1.5M mortgage at 4.5% over 20 years now correctly calculates to ₪9,490/month instead of ₪4.5M/month.
+
+---
 
 ### Pension Bridge Implementation Fixed
 

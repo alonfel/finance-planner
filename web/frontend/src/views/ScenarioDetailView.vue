@@ -36,6 +36,68 @@
           </div>
         </div>
 
+        <!-- Parameters Section -->
+        <div class="parameters-section">
+          <h3>Scenario Parameters</h3>
+          <div class="params-grid">
+            <div v-if="yearData.length > 0" class="param-item">
+              <span class="param-label">Monthly Income:</span>
+              <span class="param-value">₪{{ formatNumber(yearData[0].income / 12) }}</span>
+            </div>
+            <div v-if="yearData.length > 0" class="param-item">
+              <span class="param-label">Monthly Expenses:</span>
+              <span class="param-value">₪{{ formatNumber(yearData[0].expenses / 12) }}</span>
+            </div>
+            <div v-if="yearData.length > 0" class="param-item">
+              <span class="param-label">Starting Age:</span>
+              <span class="param-value">{{ yearData[0].age - 1 }}</span>
+            </div>
+            <div v-if="yearData.length > 0" class="param-item">
+              <span class="param-label">Initial Portfolio:</span>
+              <span class="param-value">₪{{ formatCurrency(yearData[0].portfolio) }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mortgage Section -->
+        <div v-if="detailData && detailData.mortgage" class="mortgage-section">
+          <h3>Mortgage</h3>
+          <div class="mortgage-grid">
+            <div class="mortgage-item">
+              <span class="mortgage-label">Principal:</span>
+              <span class="mortgage-value">₪{{ formatNumber(detailData.mortgage.principal) }}</span>
+            </div>
+            <div class="mortgage-item">
+              <span class="mortgage-label">Annual Rate:</span>
+              <span class="mortgage-value">{{ detailData.mortgage.annual_rate }}%</span>
+            </div>
+            <div class="mortgage-item">
+              <span class="mortgage-label">Duration:</span>
+              <span class="mortgage-value">{{ detailData.mortgage.duration_years }} years</span>
+            </div>
+            <div class="mortgage-item">
+              <span class="mortgage-label">Monthly Payment:</span>
+              <span class="mortgage-value">₪{{ calculateMortgagePayment(detailData.mortgage) }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Events Section -->
+        <div v-if="detailData && detailData.events && detailData.events.length > 0" class="events-section">
+          <h3>One-Time Events</h3>
+          <div class="events-list">
+            <div v-for="(event, index) in detailData.events" :key="index" class="event-item">
+              <div class="event-info">
+                <span class="event-year">Year {{ event.year }}:</span>
+                <span class="event-description">{{ event.description }}</span>
+              </div>
+              <span class="event-amount" :class="event.portfolio_injection >= 0 ? 'positive' : 'negative'">
+                {{ event.portfolio_injection >= 0 ? '+' : '' }}₪{{ formatNumber(event.portfolio_injection) }}
+              </span>
+            </div>
+          </div>
+        </div>
+
         <div class="chart-section">
           <h3>Portfolio Growth</h3>
           <PortfolioChart :year-data="yearData" :retirement-year="summary.retirement_year" />
@@ -89,6 +151,23 @@ onMounted(async () => {
 
 const formatCurrency = (value) => {
   return (value / 1000000).toFixed(2)
+}
+
+const formatNumber = (num) => {
+  return Math.round(num).toLocaleString('en-US')
+}
+
+const calculateMortgagePayment = (mortgage) => {
+  if (!mortgage) return '0'
+  const r = (mortgage.annual_rate / 100) / 12
+  const n = mortgage.duration_years * 12
+  if (r === 0) {
+    return Math.round(mortgage.principal / n).toLocaleString('en-US')
+  }
+  const numerator = r * Math.pow(1 + r, n)
+  const denominator = Math.pow(1 + r, n) - 1
+  const payment = mortgage.principal * (numerator / denominator)
+  return Math.round(payment).toLocaleString('en-US')
 }
 
 const goBack = () => {
@@ -265,5 +344,117 @@ const goToWhatIf = () => {
 .table-section h3 {
   margin: 0 0 20px 0;
   color: #333;
+}
+
+.parameters-section,
+.mortgage-section,
+.events-section {
+  background: white;
+  padding: 30px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 30px;
+}
+
+.parameters-section h3,
+.mortgage-section h3,
+.events-section h3 {
+  margin: 0 0 20px 0;
+  color: #333;
+  font-size: 16px;
+}
+
+.params-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+}
+
+.param-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px;
+  background: #f9f9f9;
+  border-radius: 4px;
+}
+
+.param-label {
+  color: #666;
+  font-weight: 500;
+}
+
+.param-value {
+  font-weight: 600;
+  color: #333;
+}
+
+.mortgage-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+}
+
+.mortgage-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px;
+  background: #f9f9f9;
+  border-radius: 4px;
+}
+
+.mortgage-label {
+  color: #666;
+  font-weight: 500;
+}
+
+.mortgage-value {
+  font-weight: 600;
+  color: #333;
+}
+
+.events-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.event-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background: #f9f9f9;
+  border-radius: 4px;
+  border-left: 3px solid #667eea;
+}
+
+.event-info {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.event-year {
+  font-weight: 600;
+  color: #333;
+  min-width: 70px;
+}
+
+.event-description {
+  color: #666;
+}
+
+.event-amount {
+  font-weight: 600;
+  min-width: 120px;
+  text-align: right;
+}
+
+.event-amount.positive {
+  color: #27ae60;
+}
+
+.event-amount.negative {
+  color: #e74c3c;
 }
 </style>
