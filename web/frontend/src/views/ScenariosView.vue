@@ -27,6 +27,9 @@
           <button @click="goToComparison" class="btn-compare-link">
             📊 Compare Scenarios
           </button>
+          <button @click="goToWhatIf" class="btn-whatif-link">
+            🔮 What-If Explorer
+          </button>
         </div>
 
         <div v-if="scenarios.length === 0" class="empty">
@@ -128,6 +131,13 @@ const goToComparison = () => {
   })
 }
 
+const goToWhatIf = () => {
+  router.push({
+    name: 'WhatIf',
+    params: { profileId }
+  })
+}
+
 const goBack = () => {
   router.push({ name: 'Dashboard' })
 }
@@ -221,7 +231,7 @@ const handleLogout = () => {
   max-width: 300px;
 }
 
-.btn-compare-link {
+.btn-compare-link, .btn-whatif-link {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   border: none;
@@ -233,7 +243,11 @@ const handleLogout = () => {
   white-space: nowrap;
 }
 
-.btn-compare-link:hover {
+.btn-whatif-link {
+  background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+}
+
+.btn-compare-link:hover, .btn-whatif-link:hover {
   opacity: 0.9;
 }
 

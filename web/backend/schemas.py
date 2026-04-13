@@ -67,3 +67,18 @@ class LoginRequest(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str
+
+class SimulateRequest(BaseModel):
+    monthly_income: float
+    monthly_expenses: float
+    return_rate: float = 0.07
+    starting_age: int
+    initial_portfolio: float
+    years: int = 20
+
+class SimulateResponse(BaseModel):
+    scenario_name: str
+    retirement_year: Optional[int]
+    final_portfolio: float
+    total_savings: float
+    year_data: List[YearDataSchema]
