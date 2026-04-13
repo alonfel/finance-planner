@@ -52,7 +52,7 @@ const props = defineProps({
   }
 })
 
-const useLogScale = ref(false)
+const useLogScale = ref(true)
 
 // Color palette for multiple scenarios
 const colors = [
