@@ -79,7 +79,7 @@
                 step="0.5"
                 @input="onSliderChange"
               />
-              <span class="slider-value">{{ (sliders.growthRate / 100).toFixed(1) }}%/year</span>
+              <span class="slider-value">{{ sliders.growthRate.toFixed(1) }}%/year</span>
             </div>
           </div>
         </div>
