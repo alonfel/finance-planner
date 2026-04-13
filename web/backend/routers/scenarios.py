@@ -7,7 +7,7 @@ from schemas import (
     ScenarioSummarySchema,
     ScenarioCardSchema
 )
-from models import ScenarioResult, YearData, Profile
+from models import ScenarioResult, YearData, Profile, SimulationRun
 from auth import get_current_user
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", ".."))
@@ -87,22 +87,12 @@ def get_scenario_detail(
     ).order_by(YearData.year).all()
 
     # Get the profile name for this scenario via the SimulationRun
-    run = db.query(ScenarioResult.run_id).filter(ScenarioResult.id == result_id).first()
-    if run:
-        simulation_run = db.query("SimulationRun").filter("SimulationRun.id" == run[0]).first()
-        # Get profile name from the run's profile_id
-        from models import SimulationRun
-        sim_run = db.query(SimulationRun).filter(SimulationRun.id == run[0]).first()
-        if sim_run:
-            profile = db.query(Profile).filter(Profile.id == sim_run.profile_id).first()
-            if profile:
-                events = _get_scenario_events(profile.name, result.scenario_name)
-            else:
-                events = []
-        else:
-            events = []
-    else:
-        events = []
+    events = []
+    sim_run = db.query(SimulationRun).filter(SimulationRun.id == result.run_id).first()
+    if sim_run:
+        profile = db.query(Profile).filter(Profile.id == sim_run.profile_id).first()
+        if profile:
+            events = _get_scenario_events(profile.name, result.scenario_name)
 
     return {
         "id": result.id,
