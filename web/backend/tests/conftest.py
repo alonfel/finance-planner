@@ -94,8 +94,8 @@ def test_user(db_session):
 
 
 @pytest.fixture
-def test_profile(db_session, tmp_path, monkeypatch):
-    """Create a test profile with mocked scenarios.json path."""
+def test_profile(db_session, tmp_path):
+    """Create a test profile."""
     profile = Profile(
         id=1,
         name="test_profile",
@@ -107,22 +107,13 @@ def test_profile(db_session, tmp_path, monkeypatch):
     db_session.commit()
     db_session.refresh(profile)
 
-    # Create scenarios.json in temp directory
+    # Create scenarios.json in temp directory for backward compatibility
     scenarios_file = tmp_path / "scenarios.json"
     scenarios_file.write_text(json.dumps({
         "profile_name": "test_profile",
         "currency": "ILS",
         "scenarios": []
     }, indent=2))
-
-    # Monkeypatch get_scenarios_path to use our temp file
-    def mock_get_scenarios_path(profile_name):
-        if profile_name == "test_profile":
-            return scenarios_file
-        return Path(f"/tmp/{profile_name}/scenarios.json")
-
-    monkeypatch.setattr("routers.whatif_saves.get_scenarios_path", mock_get_scenarios_path)
-    monkeypatch.setattr("infrastructure.data_layer.get_scenarios_path", mock_get_scenarios_path)
 
     return profile, scenarios_file
 

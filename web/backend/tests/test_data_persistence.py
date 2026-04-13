@@ -1,23 +1,19 @@
-"""Test suite for backend data persistence (SQLite + JSON file operations)."""
+"""Test suite for backend data persistence (SQLite + DB operations)."""
 import pytest
 import json
 import sys
 import os
 from pathlib import Path
 from unittest.mock import patch, MagicMock
-import filelock
 
 # Add paths
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 
 from sqlalchemy.orm import Session
-from models import Profile, SimulationRun, ScenarioResult, YearData
+from models import Profile, SimulationRun, ScenarioResult, YearData, ScenarioDefinition, ScenarioEvent
 from schemas import SaveScenarioRequest, EventSchema, MortgageSchema
 from routers.whatif_saves import (
-    save_whatif_scenario,
-    _assert_name_unique,
-    _append_to_scenarios_json,
     _get_or_create_whatif_run,
     WHATIF_SAVES_LABEL
 )
@@ -122,7 +118,7 @@ class TestSaveWhatIfScenario:
         assert run.profile_id == profile.id
 
     def test_save_scenario_with_events_persists_all_events(self, db_session, test_profile, authorized_client):
-        """Saving scenario with events should persist them to disk."""
+        """Saving scenario with events should persist them to database."""
         profile, scenarios_file = test_profile
 
         events = [
@@ -146,20 +142,31 @@ class TestSaveWhatIfScenario:
         )
 
         assert response.status_code == 201
+        scenario_id = response.json()["scenario_result_id"]
 
-        # Read scenarios.json and verify events are there
-        with open(scenarios_file) as f:
-            data = json.load(f)
+        # Verify events were persisted to database
+        scenario = db_session.query(ScenarioResult).filter(
+            ScenarioResult.id == scenario_id
+        ).first()
+        assert scenario is not None
+        assert scenario.scenario_id is not None
 
-        saved_scenario = data["scenarios"][0]
-        assert len(saved_scenario["events"]) == 2
-        assert saved_scenario["events"][0]["year"] == 5
-        assert saved_scenario["events"][0]["portfolio_injection"] == 500000
-        assert saved_scenario["events"][1]["year"] == 10
-        assert saved_scenario["events"][1]["portfolio_injection"] == -100000
+        # Query events from scenario definition
+        definition = db_session.query(ScenarioDefinition).filter(
+            ScenarioDefinition.id == scenario.scenario_id
+        ).first()
+        db_events = db_session.query(ScenarioEvent).filter(
+            ScenarioEvent.scenario_id == definition.id
+        ).all()
+
+        assert len(db_events) == 2
+        assert db_events[0].year == 5
+        assert db_events[0].portfolio_injection == 500000
+        assert db_events[1].year == 10
+        assert db_events[1].portfolio_injection == -100000
 
     def test_save_scenario_with_mortgage_persists_mortgage(self, db_session, test_profile, authorized_client):
-        """Saving scenario with mortgage should persist mortgage details."""
+        """Saving scenario with mortgage should persist mortgage details to database."""
         profile, scenarios_file = test_profile
 
         mortgage = {
@@ -185,16 +192,24 @@ class TestSaveWhatIfScenario:
         )
 
         assert response.status_code == 201
+        scenario_id = response.json()["scenario_result_id"]
 
-        # Read scenarios.json and verify mortgage is there
-        with open(scenarios_file) as f:
-            data = json.load(f)
+        # Verify mortgage was persisted to database
+        scenario = db_session.query(ScenarioResult).filter(
+            ScenarioResult.id == scenario_id
+        ).first()
+        assert scenario is not None
+        assert scenario.scenario_id is not None
 
-        saved_scenario = data["scenarios"][0]
-        assert saved_scenario["mortgage"] is not None
-        assert saved_scenario["mortgage"]["principal"] == 1500000
-        assert saved_scenario["mortgage"]["annual_rate"] == 0.045
-        assert saved_scenario["mortgage"]["duration_years"] == 20
+        from models import ScenarioMortgage
+        db_mortgage = db_session.query(ScenarioMortgage).filter(
+            ScenarioMortgage.scenario_id == scenario.scenario_id
+        ).first()
+
+        assert db_mortgage is not None
+        assert db_mortgage.principal == 1500000
+        assert db_mortgage.annual_rate == 0.045
+        assert db_mortgage.duration_years == 20
 
     def test_save_scenario_duplicate_name_returns_409(self, db_session, test_profile, authorized_client):
         """Saving with duplicate name should return 409 Conflict."""
@@ -256,17 +271,18 @@ class TestSaveWhatIfScenario:
         assert response.status_code == 404
         assert "not found" in response.json()["detail"]
 
-    def test_save_scenario_appends_to_scenarios_json(self, db_session, test_profile, authorized_client):
-        """Saving should append to scenarios.json file."""
+    def test_save_scenario_creates_definition_in_db(self, db_session, test_profile, authorized_client):
+        """Saving should create scenario definition in database."""
         profile, scenarios_file = test_profile
 
-        # Initial state
-        with open(scenarios_file) as f:
-            initial = json.load(f)
-        assert len(initial["scenarios"]) == 0
+        # Initial state - no definitions
+        initial_count = db_session.query(ScenarioDefinition).filter(
+            ScenarioDefinition.profile_id == profile.id
+        ).count()
+        assert initial_count == 0
 
         # Save first scenario
-        authorized_client.post(
+        response1 = authorized_client.post(
             f"/api/v1/profiles/{profile.id}/saved-scenarios",
             json={
                 "scenario_name": "Scenario 1",
@@ -281,14 +297,16 @@ class TestSaveWhatIfScenario:
             }
         )
 
-        # Verify appended
-        with open(scenarios_file) as f:
-            after_save1 = json.load(f)
-        assert len(after_save1["scenarios"]) == 1
-        assert after_save1["scenarios"][0]["name"] == "Scenario 1"
+        assert response1.status_code == 201
+
+        # Verify created in database
+        count_after_1 = db_session.query(ScenarioDefinition).filter(
+            ScenarioDefinition.profile_id == profile.id
+        ).count()
+        assert count_after_1 == 1
 
         # Save second scenario
-        authorized_client.post(
+        response2 = authorized_client.post(
             f"/api/v1/profiles/{profile.id}/saved-scenarios",
             json={
                 "scenario_name": "Scenario 2",
@@ -303,18 +321,26 @@ class TestSaveWhatIfScenario:
             }
         )
 
-        # Verify second scenario appended
-        with open(scenarios_file) as f:
-            after_save2 = json.load(f)
-        assert len(after_save2["scenarios"]) == 2
-        assert after_save2["scenarios"][0]["name"] == "Scenario 1"
-        assert after_save2["scenarios"][1]["name"] == "Scenario 2"
+        assert response2.status_code == 201
+
+        # Verify second scenario created
+        count_after_2 = db_session.query(ScenarioDefinition).filter(
+            ScenarioDefinition.profile_id == profile.id
+        ).count()
+        assert count_after_2 == 2
+
+        # Verify names are correct
+        definitions = db_session.query(ScenarioDefinition).filter(
+            ScenarioDefinition.profile_id == profile.id
+        ).order_by(ScenarioDefinition.id).all()
+        assert definitions[0].name == "Scenario 1"
+        assert definitions[1].name == "Scenario 2"
 
     def test_save_scenario_marks_as_saved_from_whatif(self, db_session, test_profile, authorized_client):
-        """Saved scenario should have 'saved_from': 'whatif' marker."""
+        """Saved scenario should have 'saved_from': 'whatif' marker in DB."""
         profile, scenarios_file = test_profile
 
-        authorized_client.post(
+        response = authorized_client.post(
             f"/api/v1/profiles/{profile.id}/saved-scenarios",
             json={
                 "scenario_name": "What-If Save",
@@ -329,12 +355,22 @@ class TestSaveWhatIfScenario:
             }
         )
 
-        with open(scenarios_file) as f:
-            data = json.load(f)
+        assert response.status_code == 201
+        scenario_id = response.json()["scenario_result_id"]
 
-        saved_scenario = data["scenarios"][0]
-        assert saved_scenario["saved_from"] == "whatif"
-        assert "saved_at" in saved_scenario
+        # Verify in database
+        scenario = db_session.query(ScenarioResult).filter(
+            ScenarioResult.id == scenario_id
+        ).first()
+        assert scenario is not None
+        assert scenario.scenario_id is not None
+
+        definition = db_session.query(ScenarioDefinition).filter(
+            ScenarioDefinition.id == scenario.scenario_id
+        ).first()
+        assert definition is not None
+        assert definition.saved_from == "whatif"
+        assert definition.saved_at is not None
 
     def test_save_scenario_returns_correct_final_portfolio(self, db_session, test_profile, authorized_client):
         """Response should include final_portfolio from simulation."""
@@ -362,105 +398,6 @@ class TestSaveWhatIfScenario:
         assert data["final_portfolio"] > data["scenario_result_id"]  # Just a sanity check
 
 
-class TestScenarioUniqueness:
-    """Test scenario name uniqueness validation."""
-
-    def test_assert_name_unique_with_existing_name(self, tmp_path):
-        """Should raise exception if name already exists."""
-        scenarios_file = tmp_path / "scenarios.json"
-        scenarios_file.write_text(json.dumps({
-            "scenarios": [
-                {"name": "Existing", "monthly_income": 50000}
-            ]
-        }))
-
-        from fastapi import HTTPException
-        with pytest.raises(HTTPException) as exc_info:
-            _assert_name_unique(scenarios_file, "Existing")
-
-        assert exc_info.value.status_code == 409
-        assert "already exists" in exc_info.value.detail
-
-    def test_assert_name_unique_with_new_name(self, tmp_path):
-        """Should not raise exception if name is new."""
-        scenarios_file = tmp_path / "scenarios.json"
-        scenarios_file.write_text(json.dumps({
-            "scenarios": [
-                {"name": "Existing", "monthly_income": 50000}
-            ]
-        }))
-
-        # Should not raise
-        _assert_name_unique(scenarios_file, "New Scenario")
-
-    def test_assert_name_unique_with_missing_file(self, tmp_path):
-        """Should not raise exception if file doesn't exist."""
-        scenarios_file = tmp_path / "nonexistent.json"
-
-        # Should not raise
-        _assert_name_unique(scenarios_file, "Any Name")
-
-
-class TestFileLocking:
-    """Test file locking for concurrent operations."""
-
-    def test_append_to_scenarios_json_uses_file_lock(self, tmp_path, monkeypatch):
-        """_append_to_scenarios_json should use file locking."""
-        scenarios_file = tmp_path / "scenarios.json"
-        scenarios_file.write_text(json.dumps({
-            "scenarios": []
-        }, indent=2))
-
-        request = SaveScenarioRequest(
-            scenario_name="Test",
-            monthly_income=50000,
-            monthly_expenses=25000,
-            return_rate=0.07,
-            starting_age=41,
-            initial_portfolio=2000000,
-            years=20,
-            events=[]
-        )
-
-        # Track if FileLock was called
-        original_filelock = filelock.FileLock
-        lock_called = []
-
-        def mock_filelock(path, **kwargs):
-            lock_called.append(path)
-            return original_filelock(path, **kwargs)
-
-        monkeypatch.setattr("routers.whatif_saves.filelock.FileLock", mock_filelock)
-
-        _append_to_scenarios_json(scenarios_file, request)
-
-        # Verify FileLock was used
-        assert len(lock_called) > 0
-        assert str(scenarios_file) + ".lock" in lock_called[0]
-
-    def test_append_to_scenarios_json_creates_lock_file(self, tmp_path):
-        """_append_to_scenarios_json should create a lock file."""
-        scenarios_file = tmp_path / "scenarios.json"
-        scenarios_file.write_text(json.dumps({"scenarios": []}, indent=2))
-
-        request = SaveScenarioRequest(
-            scenario_name="Test",
-            monthly_income=50000,
-            monthly_expenses=25000,
-            return_rate=0.07,
-            starting_age=41,
-            initial_portfolio=2000000,
-            years=20,
-            events=[]
-        )
-
-        _append_to_scenarios_json(scenarios_file, request)
-
-        # Lock file should be created (even if cleaned up later)
-        # At minimum, we should have successfully written the file
-        with open(scenarios_file) as f:
-            data = json.load(f)
-        assert len(data["scenarios"]) == 1
 
 
 class TestGetOrCreateWhatIfRun:
