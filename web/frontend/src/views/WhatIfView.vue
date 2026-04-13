@@ -476,11 +476,45 @@ const onScenarioSelect = async () => {
       mortgage.value = null
     }
 
-    // Run initial simulation
+    // Re-simulate the original scenario with current sliders and mortgage
+    // This ensures the blue line reflects the loaded mortgage data
+    await refreshOriginalScenario()
+
+    // Run initial What-If simulation
     await runSimulation()
   } catch (err) {
     error.value = 'Failed to load scenario'
     console.error(err)
+  }
+}
+
+const refreshOriginalScenario = async () => {
+  if (!originalScenario.value) return
+  try {
+    // Simulate original scenario with current sliders and mortgage
+    const response = await axios.post(`${API_BASE_URL}/simulate`, {
+      monthly_income: sliders.value.income,
+      monthly_expenses: sliders.value.expenses,
+      return_rate: sliders.value.growthRate / 100,
+      starting_age: sliders.value.startingAge,
+      initial_portfolio: sliders.value.initialPortfolio,
+      years: 20,
+      events: events.value
+        .filter(e => e.enabled)
+        .map(e => ({ year: e.year, portfolio_injection: e.amount, description: e.description })),
+      mortgage: mortgage.value ? {
+        principal: mortgage.value.principal,
+        annual_rate: mortgage.value.annual_rate,
+        duration_years: mortgage.value.duration_years,
+        currency: mortgage.value.currency || 'ILS'
+      } : null
+    }, { headers: { Authorization: `Bearer ${authStore.token}` } })
+
+    // Update original scenario's year_data with fresh simulation
+    originalScenario.value.year_data = response.data.year_data
+    originalScenario.value.retirement_year = response.data.retirement_year
+  } catch (err) {
+    console.error('Failed to refresh original scenario:', err)
   }
 }
 
