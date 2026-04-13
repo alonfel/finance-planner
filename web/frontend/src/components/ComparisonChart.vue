@@ -215,7 +215,8 @@ const chartOptions = computed(() => ({
     },
     y: {
       type: useLogScale.value ? 'logarithmic' : 'linear',
-      beginAtZero: !useLogScale.value,
+      beginAtZero: true,
+      min: 0,
       grid: {
         color: 'rgba(0, 0, 0, 0.05)'
       },
