@@ -421,7 +421,7 @@ fetchRuns()
 
 .whatif-content {
   max-width: 1200px;
-  margin: 30px auto;
+  margin: 15px auto;
   padding: 0 20px;
 }
 
@@ -440,9 +440,9 @@ fetchRuns()
 
 .selector-section {
   background: white;
-  padding: 20px;
+  padding: 15px;
   border-radius: 8px;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
@@ -473,14 +473,14 @@ fetchRuns()
 
 .sliders-section {
   background: white;
-  padding: 30px;
+  padding: 20px;
   border-radius: 8px;
-  margin-bottom: 30px;
+  margin-bottom: 20px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .slider-group {
-  margin-bottom: 25px;
+  margin-bottom: 12px;
 }
 
 .slider-group:last-child {
@@ -491,14 +491,14 @@ fetchRuns()
   display: block;
   font-weight: 500;
   color: #333;
-  margin-bottom: 10px;
-  font-size: 14px;
+  margin-bottom: 6px;
+  font-size: 13px;
 }
 
 .slider-control {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 12px;
 }
 
 .slider-control input[type="range"] {
@@ -543,18 +543,18 @@ fetchRuns()
 
 .comparison-display {
   background: white;
-  padding: 30px;
+  padding: 25px;
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  margin-bottom: 30px;
+  margin-bottom: 20px;
 }
 
 .metrics-cards {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 30px;
-  margin-top: 30px;
-  padding-top: 30px;
+  gap: 20px;
+  margin-top: 20px;
+  padding-top: 20px;
   border-top: 1px solid #e0e0e0;
 }
 
@@ -597,23 +597,23 @@ fetchRuns()
 
 .events-section {
   background: white;
-  padding: 30px;
+  padding: 20px;
   border-radius: 8px;
-  margin-bottom: 30px;
+  margin-bottom: 20px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .events-section h3 {
-  margin: 0 0 20px 0;
-  font-size: 16px;
+  margin: 0 0 12px 0;
+  font-size: 14px;
   font-weight: 600;
   color: #333;
 }
 
 .events-buttons {
   display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 
 .btn-add-event {
@@ -654,14 +654,14 @@ fetchRuns()
 .events-list {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 10px;
 }
 
 .event-row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 15px;
+  gap: 10px;
+  padding: 10px;
   background: #f9f9f9;
   border-radius: 6px;
   border: 1px solid #e0e0e0;
