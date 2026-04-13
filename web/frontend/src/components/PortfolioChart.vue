@@ -152,12 +152,28 @@ const chartOptions = computed(() => ({
       type: useLogScale.value ? 'logarithmic' : 'linear',
       ...(useLogScale.value ? {} : { beginAtZero: true, min: 0 }),
       grid: {
-        color: 'rgba(0, 0, 0, 0.05)'
+        color: 'rgba(0, 0, 0, 0.05)',
+        drawBorder: true
       },
       ticks: {
         font: { size: 11 },
+        count: useLogScale.value ? 10 : undefined,
         callback: function(value) {
-          return '₪' + value.toFixed(0) + 'M'
+          if (useLogScale.value) {
+            // For log scale, show more granular values
+            if (value >= 1) {
+              return '₪' + value.toFixed(1) + 'M'
+            } else {
+              return '₪' + value.toFixed(2) + 'M'
+            }
+          } else {
+            // For linear scale, show values with decimal precision
+            if (value >= 1) {
+              return '₪' + value.toFixed(1) + 'M'
+            } else {
+              return '₪' + value.toFixed(2) + 'M'
+            }
+          }
         }
       }
     }

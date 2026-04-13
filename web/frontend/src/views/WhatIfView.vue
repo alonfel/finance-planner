@@ -128,7 +128,7 @@
                     step="100000"
                     @input="onSliderChange"
                   />
-                  <span class="slider-value">₪{{ formatNumber(sliders.initialPortfolio / 1000000) }}M</span>
+                  <span class="slider-value">₪{{ formatPortfolio(sliders.initialPortfolio) }}M</span>
                 </div>
               </div>
             </div>
@@ -454,6 +454,14 @@ const formatEventAmount = (amount) => {
 
 const formatNumber = (num) => {
   return Math.round(num).toLocaleString('en-US')
+}
+
+const formatPortfolio = (value) => {
+  const millions = value / 1000000
+  if (millions < 1) {
+    return millions.toFixed(2)
+  }
+  return Math.round(millions).toLocaleString('en-US')
 }
 
 const retirementAge = (retirementYear, startingAge) => {

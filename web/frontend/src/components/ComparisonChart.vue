@@ -208,21 +208,48 @@ const chartOptions = computed(() => ({
       },
       ticks: {
         font: { size: 10 },
-        maxTicksLimit: 12,
+        maxTicksLimit: 20,
         maxRotation: 0,
-        minRotation: 0
+        minRotation: 0,
+        callback: function(value, index) {
+          const labels = this.chart.data.labels
+          if (labels && labels[index]) {
+            const label = labels[index]
+            // Extract year parts from label like "2026\n(+1y)"
+            const parts = label.split('\n')
+            return parts[0] // Just show the year
+          }
+          return ''
+        }
       }
     },
     y: {
       type: useLogScale.value ? 'logarithmic' : 'linear',
       ...(useLogScale.value ? {} : { beginAtZero: true, min: 0 }),
       grid: {
-        color: 'rgba(0, 0, 0, 0.05)'
+        color: 'rgba(0, 0, 0, 0.05)',
+        drawBorder: true
       },
       ticks: {
         font: { size: 11 },
+        count: useLogScale.value ? 10 : undefined,
+        stepSize: useLogScale.value ? undefined : undefined,
         callback: function(value) {
-          return '₪' + value.toFixed(0) + 'M'
+          if (useLogScale.value) {
+            // For log scale, show more granular values
+            if (value >= 1) {
+              return '₪' + value.toFixed(1) + 'M'
+            } else {
+              return '₪' + value.toFixed(2) + 'M'
+            }
+          } else {
+            // For linear scale, show values with decimal precision
+            if (value >= 1) {
+              return '₪' + value.toFixed(1) + 'M'
+            } else {
+              return '₪' + value.toFixed(2) + 'M'
+            }
+          }
         }
       }
     }

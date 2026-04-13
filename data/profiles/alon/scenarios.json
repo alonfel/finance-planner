@@ -51,6 +51,29 @@
       ],
       "saved_from": "whatif",
       "saved_at": "2026-04-13T15:26:53Z"
+    },
+    {
+      "name": "ipo + s2 , 5%",
+      "monthly_income": 45700.0,
+      "monthly_expenses": 20000.0,
+      "return_rate": 0.05,
+      "age": 41,
+      "initial_portfolio": 1368067.289719626,
+      "currency": "ILS",
+      "events": [
+        {
+          "year": 3,
+          "portfolio_injection": 2100000.0,
+          "description": "ipo"
+        },
+        {
+          "year": 5,
+          "portfolio_injection": -500000.0,
+          "description": "s2"
+        }
+      ],
+      "saved_from": "whatif",
+      "saved_at": "2026-04-13T16:03:52Z"
     }
   ]
 }
