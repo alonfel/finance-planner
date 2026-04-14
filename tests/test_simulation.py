@@ -819,5 +819,196 @@ def test_resolved_node_is_valid_for_simulation(self):
         self.assertEqual(result.scenario_name, "Child")
 
 
+class TestHistoricalReturns(unittest.TestCase):
+    """Test historical S&P 500 return rate simulation."""
+
+    def test_historical_returns_dict_has_data(self):
+        """SP500_ANNUAL_RETURNS should have entries for 1928-2024."""
+        from domain.historical_returns import SP500_ANNUAL_RETURNS, HISTORICAL_START_YEAR, HISTORICAL_END_YEAR
+
+        self.assertGreaterEqual(len(SP500_ANNUAL_RETURNS), 97)  # 1928-2024
+        self.assertIn(1928, SP500_ANNUAL_RETURNS)
+        self.assertIn(2024, SP500_ANNUAL_RETURNS)
+        self.assertEqual(HISTORICAL_START_YEAR, 1928)
+        self.assertEqual(HISTORICAL_END_YEAR, 2024)
+
+    def test_get_historical_rate_sequence_known_year(self):
+        """Sequence from known year (1990) should match historical data."""
+        from domain.historical_returns import get_historical_rate_sequence, SP500_ANNUAL_RETURNS
+
+        # 1990 was -3.17% (negative year)
+        sequence = get_historical_rate_sequence(1990, 1)
+        self.assertEqual(len(sequence), 1)
+        self.assertEqual(sequence[0], SP500_ANNUAL_RETURNS[1990])
+
+    def test_get_historical_rate_sequence_length(self):
+        """Sequence length should match requested years."""
+        from domain.historical_returns import get_historical_rate_sequence
+
+        for num_years in [1, 5, 10, 30]:
+            sequence = get_historical_rate_sequence(1990, num_years)
+            self.assertEqual(len(sequence), num_years)
+
+    def test_get_historical_rate_sequence_wraparound(self):
+        """Sequence should wrap around past 2024 back to 1928."""
+        from domain.historical_returns import get_historical_rate_sequence, SP500_ANNUAL_RETURNS
+
+        # Start in 2023, request 3 years: should get 2023, 2024, 1928
+        sequence = get_historical_rate_sequence(2023, 3)
+        self.assertEqual(sequence[0], SP500_ANNUAL_RETURNS[2023])
+        self.assertEqual(sequence[1], SP500_ANNUAL_RETURNS[2024])
+        self.assertEqual(sequence[2], SP500_ANNUAL_RETURNS[1928])  # Wrapped around
+
+    def test_get_historical_rate_sequence_invalid_year(self):
+        """Invalid start year should raise ValueError."""
+        from domain.historical_returns import get_historical_rate_sequence
+
+        with self.assertRaises(ValueError):
+            get_historical_rate_sequence(1800, 1)
+
+        with self.assertRaises(ValueError):
+            get_historical_rate_sequence(2099, 1)
+
+    def test_simulate_with_historical_returns(self):
+        """Simulation with historical_start_year should use historical rates."""
+        scenario_historical = Scenario(
+            name="Historical 1990",
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
+            historical_start_year=1990,
+        )
+        scenario_fixed = Scenario(
+            name="Fixed 7%",
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
+            return_rate=0.07,
+        )
+
+        result_historical = simulate(scenario_historical, years=5)
+        result_fixed = simulate(scenario_fixed, years=5)
+
+        # Results should differ (historical 1990-1994 includes -3.17%, -9.1%, etc.)
+        self.assertNotEqual(
+            result_historical.year_data[-1].portfolio,
+            result_fixed.year_data[-1].portfolio,
+            "Historical and fixed rates should produce different portfolios"
+        )
+
+    def test_simulate_without_historical_returns_uses_fixed_rate(self):
+        """Scenario without historical_start_year should use return_rate as before."""
+        scenario = Scenario(
+            name="Test",
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
+            return_rate=0.07,
+            historical_start_year=None,  # Explicit None
+        )
+        result = simulate(scenario, years=40)
+        # Should complete without error and find retirement
+        self.assertIsNotNone(result.retirement_year)
+        self.assertEqual(len(result.year_data), 40)
+
+    def test_simulate_historical_is_pure(self):
+        """Historical simulation should be deterministic (pure function)."""
+        scenario = Scenario(
+            name="Pure Historical",
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
+            historical_start_year=2000,
+        )
+        result1 = simulate(scenario, years=10)
+        result2 = simulate(scenario, years=10)
+
+        # Both runs should produce identical results
+        self.assertEqual(len(result1.year_data), len(result2.year_data))
+        for y1, y2 in zip(result1.year_data, result2.year_data):
+            self.assertAlmostEqual(y1.portfolio, y2.portfolio, places=2)
+
+    def test_historical_start_year_none_backward_compat(self):
+        """Setting historical_start_year=None should be backward compatible."""
+        scenario_old = Scenario(
+            name="Old Style",
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
+            return_rate=0.07,
+        )
+        scenario_new = Scenario(
+            name="New Style",
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
+            return_rate=0.07,
+            historical_start_year=None,
+        )
+
+        result_old = simulate(scenario_old, years=20)
+        result_new = simulate(scenario_new, years=20)
+
+        # Should produce identical results (backward compatible)
+        self.assertEqual(result_old.retirement_year, result_new.retirement_year)
+        for y_old, y_new in zip(result_old.year_data, result_new.year_data):
+            self.assertAlmostEqual(y_old.portfolio, y_new.portfolio, places=2)
+
+    def test_historical_start_year_overrides_return_rate(self):
+        """Historical start year should take precedence over return_rate."""
+        scenario = Scenario(
+            name="Override Test",
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
+            return_rate=0.10,  # High fixed rate
+            historical_start_year=2000,  # But use crash years instead
+        )
+        result = simulate(scenario, years=5)
+        # 2000-2004 includes -9.1%, -11.9%, -22.1% — should be much worse than 10%
+        final_portfolio = result.year_data[-1].portfolio
+        # With 10% constant: portfolio should be higher than historical crash
+        scenario_fixed_10 = Scenario(
+            name="Fixed 10%",
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
+            return_rate=0.10,
+        )
+        result_fixed = simulate(scenario_fixed_10, years=5)
+        # Historical 2000 should be lower than constant 10%
+        self.assertLess(final_portfolio, result_fixed.year_data[-1].portfolio)
+
+    def test_scenario_node_inherits_historical_start_year(self):
+        """ScenarioNode should properly inherit historical_start_year from parent."""
+        from domain.models import ScenarioNode
+
+        base = Scenario(
+            name="Baseline",
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
+            historical_start_year=1990,
+        )
+        root = ScenarioNode(name="Root", base_scenario=base)
+        child = ScenarioNode(name="Child", parent_name="Root")
+
+        all_nodes = {"Root": root, "Child": child}
+        resolved = child.resolve(all_nodes)
+
+        # Child should inherit historical_start_year from root
+        self.assertEqual(resolved.historical_start_year, 1990)
+
+    def test_scenario_node_overrides_historical_start_year(self):
+        """ScenarioNode child should be able to override historical_start_year."""
+        from domain.models import ScenarioNode
+
+        base = Scenario(
+            name="Baseline",
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 13_000}),
+            historical_start_year=1990,
+        )
+        root = ScenarioNode(name="Root", base_scenario=base)
+        child = ScenarioNode(name="Child", parent_name="Root", historical_start_year=2000)
+
+        all_nodes = {"Root": root, "Child": child}
+        resolved = child.resolve(all_nodes)
+
+        # Child should override with 2000
+        self.assertEqual(resolved.historical_start_year, 2000)
+
+
 if __name__ == "__main__":
     unittest.main()

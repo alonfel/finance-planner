@@ -54,6 +54,7 @@ class Scenario:
     pension: Optional[Pension] = None
     initial_portfolio: float = 0.0
     return_rate: float = 0.07  # Annual portfolio return rate
+    historical_start_year: Optional[int] = None  # If set, use S&P 500 historical returns from this year
     withdrawal_rate: float = 0.04  # Safe withdrawal rate (4% rule)
     currency: str = "ILS"  # Currency code (e.g., "ILS", "USD", "EUR")
     age: int = 30  # Current age (used to calculate retirement age)
@@ -81,6 +82,7 @@ class ScenarioNode:
     age: Optional[int] = None
     initial_portfolio: Optional[float] = None
     return_rate: Optional[float] = None
+    historical_start_year: Optional[int] = None
     withdrawal_rate: Optional[float] = None
     currency: Optional[str] = None
     retirement_mode: Optional[str] = None  # "liquid_only" | "pension_bridged"
@@ -123,7 +125,7 @@ class ScenarioNode:
         for i, node in enumerate(ancestor_chain):
             # Apply scalar overrides
             overrides = {}
-            for field_name in ['age', 'initial_portfolio', 'return_rate', 'withdrawal_rate', 'currency', 'retirement_mode']:
+            for field_name in ['age', 'initial_portfolio', 'return_rate', 'historical_start_year', 'withdrawal_rate', 'currency', 'retirement_mode']:
                 val = getattr(node, field_name)
                 if val is not None:
                     overrides[field_name] = val

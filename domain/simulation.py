@@ -42,6 +42,13 @@ def simulate(scenario: Scenario, years: int = 40) -> SimulationResult:
     retirement_year: Optional[int] = None
     year_data_list: list[YearData] = []
 
+    # Build historical rate sequence if using historical returns
+    if scenario.historical_start_year is not None:
+        from domain.historical_returns import get_historical_rate_sequence
+        rate_sequence = get_historical_rate_sequence(scenario.historical_start_year, years)
+    else:
+        rate_sequence = None
+
     for year_num in range(1, years + 1):
         # Compute annual income
         annual_income = scenario.monthly_income.total * 12
@@ -71,8 +78,9 @@ def simulate(scenario: Scenario, years: int = 40) -> SimulationResult:
             # Grow pension fund with contributions
             pension = (pension + scenario.pension.monthly_contribution * 12) * (1 + scenario.pension.annual_growth_rate)
 
-        # Portfolio growth
-        portfolio = (portfolio + net_savings) * (1 + scenario.return_rate)
+        # Portfolio growth — use historical rate if available, else fixed return_rate
+        annual_rate = rate_sequence[year_num - 1] if rate_sequence is not None else scenario.return_rate
+        portfolio = (portfolio + net_savings) * (1 + annual_rate)
 
         # Compute required capital for retirement
         required_capital = annual_expenses / scenario.withdrawal_rate

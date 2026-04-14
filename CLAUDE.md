@@ -1,6 +1,174 @@
 # Claude Code Guidelines for Finance Planner
 
-**Updated:** April 13, 2026 — **CRITICAL: Fixed mortgage rate 100x bug** in What-If Explorer (percentage/decimal mismatch). Fixed pension bridge bug. Simplified Alon profile to 2 core scenarios. What-If Explorer UI restructured with sidebar layout. Save as Scenario feature fully implemented with persistence. All tests passing. See component guides for detailed info.
+**Updated:** April 14, 2026 — **MAJOR: Model-centric architecture refactoring** completed for What-If Explorer. 7 data integrity bugs fixed (NULL scenario_id, hardcoded values, missing fields). Auto-generated scenario names added. Backend and frontend fully synchronized. All 17 backend tests passing. See recent updates section below.
+
+---
+
+## Recent Updates (April 14, 2026)
+
+### Model-Centric Architecture Refactoring (COMPLETED)
+
+**Problem Solved:**
+When saving and reloading What-If scenarios, critical data was missing or incorrect:
+- Events and mortgages silently absent for seeded scenarios (scenario_id was NULL)
+- Growth rate hardcoded to 7% on reload instead of reading saved value
+- Initial portfolio back-calculated from year_data, losing precision
+- Disabled events were saved anyway (inconsistent behavior)
+- Pension fields completely absent from What-If flow
+- withdrawal_rate, retirement_mode, currency hardcoded instead of persisted
+
+**Architecture Fix:**
+Introduced `WhatIfScenarioSchema` as canonical source of truth for scenario state. Backend returns this exact schema when loading saved scenarios. Frontend has two pure mapping functions:
+- `toApiRequest()` — All saves/simulates send this format
+- `fromDefinition(def)` — All loads restore exact values
+
+Adding a new field now requires: add to schema + update two mappers (automatic for UI/API roundtrip).
+
+**Files Modified:**
+
+| File | Changes |
+|------|---------|
+| `web/backend/schemas.py` | Created `WhatIfScenarioSchema`; updated `SimulateRequest`, `SaveScenarioRequest`, `ScenarioResultSchema` |
+| `web/backend/routers/simulate.py` | Pass pension, withdrawal_rate, retirement_mode, currency to Scenario constructor |
+| `web/backend/routers/whatif_saves.py` | Save pension to scenario_pensions table; use body fields instead of hardcoded defaults |
+| `web/backend/routers/scenarios.py` | New `_build_definition()` function loads exact definition from DB; endpoint returns `definition` field |
+| `web/backend/seed.py` | Call `link_scenario_results(db)` to backfill NULL scenario_id on seeded rows |
+| `web/frontend/src/views/WhatIfView.vue` | Added `toApiRequest()` + `fromDefinition()` pure functions; mortgage now collapsible; events always visible |
+| `web/frontend/src/views/ScenarioDetailView.vue` | Display exact definition values (returnRate, withdrawalRate) instead of approximations; fixed goToWhatIf navigation |
+
+**Bugs Fixed:**
+1. ✅ Seeded scenario events/mortgage NULL — backfilled via link_scenario_results()
+2. ✅ Growth rate hardcoded to 7% — now reads from definition.return_rate
+3. ✅ Initial portfolio approximated — now stored and returned exactly
+4. ✅ Disabled events saved anyway — filter in toApiRequest()
+5. ✅ Mortgage not restored on query-param path — fromDefinition() now handles all fields
+6. ✅ Pension absent end-to-end — added to all layers (model → schema → UI)
+7. ✅ withdrawal_rate/retirement_mode/currency hardcoded — now persisted in all scenarios
+
+**Verification:**
+- `SELECT count(*) FROM scenario_results WHERE scenario_id IS NULL` → 0 (all seeded scenarios linked)
+- Save scenario with 6% growth → reload → Growth Rate shows 6% (not hardcoded 7%)
+- Save scenario with pension → reload → pension fields populated
+- Disabled events excluded from saves (consistent with simulate behavior)
+- All 17 backend tests passing
+- ScenarioDetailView shows exact growth rate and withdrawal rate
+
+---
+
+### Auto-Generated Scenario Names (COMPLETED)
+
+**Feature:** Save dialog now pre-fills name with intelligent default.
+
+**Format:** `{BaseScenarioName} - Modified {HH:MM AM/PM}`
+
+**Examples:**
+- "Baseline - Modified 04:32 PM"
+- "IPO Year 2 - Modified 02:15 AM"
+
+**How It Works:**
+1. User clicks "💾 Save as Scenario" button
+2. Dialog opens with pre-generated name (based on origin scenario + current time)
+3. User can edit the name or accept the default
+4. Time-based identifier makes multiple same-day saves distinguishable
+
+**Files Modified:**
+- `web/frontend/src/views/WhatIfView.vue` — Added `generateDefaultScenarioName()` and `openSaveModal()` functions
+
+**Benefits:**
+✅ Identifies origin scenario  
+✅ Timestamp distinguishes multiple saves on same day  
+✅ User-editable (default is suggestion, not forced)  
+✅ No manual typing required (better UX)  
+✅ Clear, concise naming convention  
+
+---
+
+### UI Improvements
+
+**Events Visibility:**
+- Mortgage section now colapsible (hidden by default)
+- Events list remains visible without scrolling
+- Increased sliders-section height from 45vh to 55vh
+- Parameter controls more accessible
+
+**Definition Display (ScenarioDetailView):**
+- Now shows Growth Rate and Withdrawal Rate (previously missing)
+- Uses exact values from definition when available
+- Falls back to year_data approximation for legacy scenarios
+- Retirement mode and currency now available for display
+
+---
+
+### Historical S&P 500 Return Rate Simulation (NEW)
+
+**Feature:** Simulate portfolio growth using actual S&P 500 annual returns from any calendar year (1928–2024), enabling backtesting and stress-testing scenarios.
+
+**Use Case:** "What if I had started investing in 2000?" — See portfolio behavior through the dot-com crash (-9.1%, -11.9%, -22.1%) or "What if I started in 1990?" — Experience the strong 90s bull market (+30.58%, +7.44%, etc.).
+
+**How to Use:**
+
+**Method 1: From scenarios.json or scenario_nodes.json**
+```json
+{
+  "name": "Backtesting: Dot-Com Crash",
+  "monthly_income": 45000,
+  "monthly_expenses": 25000,
+  "historical_start_year": 2000
+}
+```
+
+**Method 2: From Python**
+```python
+from domain.models import Scenario
+from domain.breakdown import IncomeBreakdown, ExpenseBreakdown
+from domain.simulation import simulate
+
+scenario = Scenario(
+    name="1990s Bull Market",
+    monthly_income=IncomeBreakdown({"income": 45000}),
+    monthly_expenses=ExpenseBreakdown({"expenses": 25000}),
+    historical_start_year=1990  # Use S&P 500 returns from 1990 onward
+)
+result = simulate(scenario, years=30)
+print(f"Retirement year: {result.retirement_year}")
+```
+
+**Method 3: Web UI (WhatIf Explorer)**
+- Toggle: "Growth Rate (Fixed)" ↔ "Historical S&P 500"
+- Slider: Pick start year (1928–2024)
+- Chart shows portfolio impact of actual historical returns
+
+**Behavior:**
+
+| Scenario | Retirement Year | Final Portfolio | Why |
+|----------|---|---|---|
+| Fixed 7% | Year 11 | ₪8.2M | Constant steady growth |
+| Start 1990 | Year 10 | ₪9.1M | Strong 90s bull market |
+| Start 2000 | Year 13 | ₪6.4M | Dot-com crash delayed retirement |
+
+**Data Coverage:** S&P 500 annual total returns (including dividends) from 1928–2024 (97 years).
+
+**Overflow Behavior:** If simulation exceeds available data (e.g., 30-year simulation starting in 2010), years wrap around deterministically from 1928 (e.g., 2025 → 1928, 2026 → 1929, etc.). This is useful for stress-testing longer periods.
+
+**Backward Compatibility:**
+- `historical_start_year=None` (default) → uses fixed `return_rate` (7% default)
+- Existing scenarios without this field are unaffected
+- Can freely mix historical and fixed-rate scenarios
+
+**Files Modified:**
+- `domain/historical_returns.py` — S&P 500 data (1928–2024) + helper function
+- `domain/models.py` — Added `historical_start_year` field to `Scenario` and `ScenarioNode`
+- `domain/simulation.py` — Uses historical rates in year loop when field is set
+- `infrastructure/parsers.py` — Parses `historical_start_year` from JSON
+- `tests/test_simulation.py` — 12 new tests (happy path, edge cases, ScenarioNode inheritance)
+
+**TODO (Web Layer):**
+- ❌ Add `historical_start_year` to API schema (`web/backend/schemas.py`)
+- ❌ Persist to database (`web/backend/models.py` + migration)
+- ❌ API error handling: invalid start year → HTTP 422
+- ❌ UI toggle in WhatIf Explorer (`web/frontend/src/views/WhatIfView.vue`)
+
+---
 
 ## Quick Start
 
@@ -121,22 +289,27 @@ See [web/FEATURES.md](web/FEATURES.md) for complete user guide.
 2. Clicks "Save as Scenario" button
 3. Modal prompts for scenario name
 4. Backend validates uniqueness, runs simulation in-process
-5. Scenario persisted to:
-   - `scenarios.json` on disk (with `saved_from: "whatif"` marker)
-   - SQLite database under "What-If Saves" run
+5. Scenario persisted to SQLite database:
+   - `scenario_definitions` table (with `saved_from='whatif'` marker and timestamp)
+   - `scenario_events` table (linked via `scenario_id` FK)
+   - `scenario_mortgages` table (if mortgage present)
+   - "What-If Saves" `SimulationRun` for grouping
+   - `ScenarioResult` and `YearData` tables
 6. Scenario immediately available in Scenarios view
 
 **Files Implemented:**
-- `web/backend/routers/whatif_saves.py` — Save endpoint with atomic file locking
+- `web/backend/routers/whatif_saves.py` — Save endpoint with database persistence
 - `web/backend/schemas.py` — SaveScenarioRequest/Response models
 - `web/frontend/src/views/WhatIfView.vue` — Save button and modal UI
-- `web/backend/requirements.txt` — Added `filelock` dependency
+- `web/backend/requirements.txt` — Removed `filelock` dependency (database replaces file locking)
 
 **Architecture:**
-- File locking for concurrent save safety
-- Dual persistence (disk + SQLite) for durability and queryability
+- Database-first persistence in SQLite (scenario_definitions table)
+- Transactional integrity (ACID guarantees, automatic rollback on error)
+- Foreign key relationships (scenario_id links definitions to results)
 - 201 Created status on success, 409 Conflict if name exists
 - Scenario simulation runs on backend (ensures consistency)
+- JSON files kept as read-only backups for portability
 
 ---
 
