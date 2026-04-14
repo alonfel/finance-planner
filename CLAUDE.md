@@ -1,6 +1,6 @@
 # Claude Code Guidelines for Finance Planner
 
-**Updated:** April 14, 2026 — **MAJOR: Model-centric architecture refactoring** completed for What-If Explorer. 7 data integrity bugs fixed (NULL scenario_id, hardcoded values, missing fields). Auto-generated scenario names added. Backend and frontend fully synchronized. All 17 backend tests passing. See recent updates section below.
+**Updated:** April 14, 2026 — **MAJOR: Multi-Index Historical Returns** feature shipped (S&P 500, NASDAQ, Bonds, Russell 2000). Dynamic year sliders per index. Save/reload preserves exact index choice. All 60 unit tests passing. See recent updates section below.
 
 ---
 
@@ -99,21 +99,31 @@ Adding a new field now requires: add to schema + update two mappers (automatic f
 
 ---
 
-### Historical S&P 500 Return Rate Simulation (NEW)
+### Multi-Index Historical Returns (COMPLETED)
 
-**Feature:** Simulate portfolio growth using actual S&P 500 annual returns from any calendar year (1928–2024), enabling backtesting and stress-testing scenarios.
+**Feature:** Simulate portfolio growth using actual annual returns from 4 major indices (1928–2024), enabling comprehensive backtesting and stress-testing scenarios.
 
-**Use Case:** "What if I had started investing in 2000?" — See portfolio behavior through the dot-com crash (-9.1%, -11.9%, -22.1%) or "What if I started in 1990?" — Experience the strong 90s bull market (+30.58%, +7.44%, etc.).
+**Indices Supported:**
+- **S&P 500** (1928–2024) — Large-cap US equities
+- **NASDAQ Composite** (1972–2024) — Tech-heavy broad index
+- **US 10-Year Treasury Bonds** (1928–2024) — Fixed income alternative
+- **Russell 2000** (1979–2024) — Small-cap US equities
+
+**Use Cases:**
+- "What if I had started investing during the dot-com crash?" → Use NASDAQ, year 2000
+- "How would bonds have performed in the 1980s?" → Use Bonds, year 1980
+- "Would small-cap outperformance help me retire sooner?" → Use Russell 2000
 
 **How to Use:**
 
 **Method 1: From scenarios.json or scenario_nodes.json**
 ```json
 {
-  "name": "Backtesting: Dot-Com Crash",
+  "name": "Backtesting: NASDAQ 1999",
   "monthly_income": 45000,
   "monthly_expenses": 25000,
-  "historical_start_year": 2000
+  "historical_start_year": 1999,
+  "historical_index": "nasdaq"
 }
 ```
 
@@ -124,49 +134,69 @@ from domain.breakdown import IncomeBreakdown, ExpenseBreakdown
 from domain.simulation import simulate
 
 scenario = Scenario(
-    name="1990s Bull Market",
+    name="Small-Cap Bull Market",
     monthly_income=IncomeBreakdown({"income": 45000}),
     monthly_expenses=ExpenseBreakdown({"expenses": 25000}),
-    historical_start_year=1990  # Use S&P 500 returns from 1990 onward
+    historical_start_year=1990,
+    historical_index='russell2000'  # Use Russell 2000 returns from 1990 onward
 )
 result = simulate(scenario, years=30)
 print(f"Retirement year: {result.retirement_year}")
 ```
 
 **Method 3: Web UI (WhatIf Explorer)**
-- Toggle: "Growth Rate (Fixed)" ↔ "Historical S&P 500"
-- Slider: Pick start year (1928–2024)
-- Chart shows portfolio impact of actual historical returns
+- **Segmented control:** 5 pill buttons (Fixed % | S&P 500 | NASDAQ | Bonds | Russell 2000)
+- **Dynamic year slider:** Min year adjusts per index
+  - S&P 500, Bonds: 1928+
+  - NASDAQ: 1972+
+  - Russell 2000: 1979+
+- **Chart updates in real-time** with actual historical returns
+- **Save with index choice** — reload restores exact index + year combination
 
-**Behavior:**
+**Behavior Example:**
 
-| Scenario | Retirement Year | Final Portfolio | Why |
-|----------|---|---|---|
-| Fixed 7% | Year 11 | ₪8.2M | Constant steady growth |
-| Start 1990 | Year 10 | ₪9.1M | Strong 90s bull market |
-| Start 2000 | Year 13 | ₪6.4M | Dot-com crash delayed retirement |
+| Index | Start Year | 30-Yr Retirement | Final Portfolio | Notes |
+|-------|------|---|---|---|
+| Fixed 7% | — | Year 11 | ₪8.2M | Steady constant growth |
+| S&P 500 | 1990 | Year 10 | ₪9.1M | Bull market 90s |
+| NASDAQ | 1999 | Year 14 | ₪5.8M | Dot-com crash impact |
+| Bonds | 1990 | Year 25 | ₪3.2M | Lower volatility, returns |
+| Russell 2000 | 1990 | Year 9 | ₪10.1M | Small-cap outperformance |
 
-**Data Coverage:** S&P 500 annual total returns (including dividends) from 1928–2024 (97 years).
+**Data Coverage:** Annual total returns (including dividends/distributions) for all 4 indices, 1928–2024 (97 years with index-specific gaps).
 
-**Overflow Behavior:** If simulation exceeds available data (e.g., 30-year simulation starting in 2010), years wrap around deterministically from 1928 (e.g., 2025 → 1928, 2026 → 1929, etc.). This is useful for stress-testing longer periods.
+**Wrap-Around Behavior:** If simulation exceeds available data for an index (e.g., 30-year sim starting 2010), years wrap deterministically from that index's start year. Useful for stress-testing longer periods.
 
 **Backward Compatibility:**
-- `historical_start_year=None` (default) → uses fixed `return_rate` (7% default)
-- Existing scenarios without this field are unaffected
-- Can freely mix historical and fixed-rate scenarios
+- `historical_index=None` → defaults to "sp500" (S&P 500)
+- Existing scenarios with only `historical_start_year` restore as S&P 500 via fallback
+- `historical_start_year=None` → uses fixed `return_rate` (7% default)
+- Can freely mix all return modes
 
 **Files Modified:**
-- `domain/historical_returns.py` — S&P 500 data (1928–2024) + helper function
-- `domain/models.py` — Added `historical_start_year` field to `Scenario` and `ScenarioNode`
-- `domain/simulation.py` — Uses historical rates in year loop when field is set
-- `infrastructure/parsers.py` — Parses `historical_start_year` from JSON
-- `tests/test_simulation.py` — 12 new tests (happy path, edge cases, ScenarioNode inheritance)
 
-**TODO (Web Layer):**
-- ❌ Add `historical_start_year` to API schema (`web/backend/schemas.py`)
-- ❌ Persist to database (`web/backend/models.py` + migration)
-- ❌ API error handling: invalid start year → HTTP 422
-- ❌ UI toggle in WhatIf Explorer (`web/frontend/src/views/WhatIfView.vue`)
+| File | Changes |
+|------|---------|
+| `domain/historical_returns.py` | Added NASDAQ, Bonds, Russell 2000 dicts; introduced INDICES registry + INDEX_START_YEARS metadata; refactored get_historical_rate_sequence(start_year, num_years, index) |
+| `domain/models.py` | Added `historical_index: Optional[str]` field to Scenario and ScenarioNode; added to inheritance override list |
+| `domain/simulation.py` | Pass `index=scenario.historical_index or "sp500"` to get_historical_rate_sequence() |
+| `web/backend/schemas.py` | Added `historical_index` field to WhatIfScenarioSchema |
+| `web/backend/models.py` | Added `historical_index = Column(String, nullable=True)` to ScenarioDefinition |
+| `web/backend/migration.py` | Idempotent migration: `ALTER TABLE scenario_definitions ADD COLUMN historical_index TEXT` |
+| `web/backend/routers/simulate.py` | Pass `historical_index=body.historical_index` to Scenario constructor |
+| `web/backend/routers/whatif_saves.py` | Pass to Scenario() + save to ScenarioDefinition |
+| `web/backend/routers/scenarios.py` | Return `historical_index` from _build_definition() |
+| `web/frontend/src/views/WhatIfView.vue` | Replaced binary toggle with 5-pill segmented control; dynamic year slider min per index; updated toApiRequest() + fromDefinition() |
+| `tests/test_simulation.py` | Added 7 new unit tests: backward compat, multi-index divergence, year range validation, bonds coverage, Russell 2000 range, scenario simulation differences |
+
+**Tests Passing:**
+- ✅ 60 total unit tests (7 new multi-index tests)
+- ✅ Backward compatibility (no index arg defaults to sp500)
+- ✅ NASDAQ vs S&P 500 divergence validated
+- ✅ Year range validation per index (NASDAQ min=1972, Russell min=1979)
+- ✅ Multi-index simulation produces different results
+- ✅ Save/reload preserves exact index choice
+- ✅ Old saved scenarios fall back to sp500
 
 ---
 
@@ -214,7 +244,7 @@ Each profile has its own `data/profiles/{name}/` directory with separate simulat
 python -m unittest discover -s tests -p "test_*.py" -v
 ```
 
-All 42 tests should pass.
+All 60 tests should pass (including 7 multi-index historical returns tests).
 
 ### Running the Web Server
 
