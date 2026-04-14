@@ -46,6 +46,7 @@
 import { ref } from 'vue'
 import QuestionnaireForm from './QuestionnaireForm.vue'
 import ResultsScreen from './ResultsScreen.vue'
+import { QUESTIONNAIRE_API_URL } from '../config.js'
 
 export default {
   name: 'ScenarioGeneratorModal',
@@ -64,10 +65,11 @@ export default {
     const generationResult = ref(null)
     const completeness = ref(0)
     const error = ref(null)
+    let completenessTimer = null
 
     const loadConfig = async () => {
       try {
-        const response = await fetch('/api/questionnaire/config', {
+        const response = await fetch(`${QUESTIONNAIRE_API_URL}/questionnaire/config`, {
           method: 'POST'
         })
         if (!response.ok) throw new Error('Failed to load questionnaire config')
@@ -82,27 +84,30 @@ export default {
     const handleAnswerUpdate = async (questionId, value) => {
       answers.value[questionId] = value
 
-      // Calculate completeness in real-time
-      try {
-        const response = await fetch('/api/questionnaire/completeness', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ answers: answers.value, profile: 'alon' })
-        })
-        if (response.ok) {
-          const data = await response.json()
-          completeness.value = data.completeness_score
+      // Debounce completeness calculation (300ms) to avoid excessive API calls
+      if (completenessTimer) clearTimeout(completenessTimer)
+      completenessTimer = setTimeout(async () => {
+        try {
+          const response = await fetch(`${QUESTIONNAIRE_API_URL}/questionnaire/completeness`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ answers: answers.value, profile: 'alon' })
+          })
+          if (response.ok) {
+            const data = await response.json()
+            completeness.value = data.completeness_score
+          }
+        } catch (e) {
+          console.warn('Error calculating completeness:', e)
         }
-      } catch (e) {
-        console.warn('Error calculating completeness:', e)
-      }
+      }, 300)
     }
 
     const handleGenerate = async () => {
       error.value = null
       currentStep.value = 'loading'
       try {
-        const response = await fetch('/api/questionnaire/generate-scenario', {
+        const response = await fetch(`${QUESTIONNAIRE_API_URL}/questionnaire/generate-scenario`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ answers: answers.value, profile: 'alon' })

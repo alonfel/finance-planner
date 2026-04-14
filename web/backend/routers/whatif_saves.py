@@ -95,7 +95,10 @@ def save_whatif_scenario(profile_id: int, body: SaveScenarioRequest,
         mortgage=mortgage,
         pension=pension,
         events=[Event(year=e.year, portfolio_injection=e.portfolio_injection,
-                      description=e.description) for e in body.events]
+                      description=e.description) for e in body.events],
+        retirement_lifestyle_mode=body.retirement_lifestyle.mode if body.retirement_lifestyle else None,
+        retirement_lifestyle_age=body.retirement_lifestyle.age if body.retirement_lifestyle else None,
+        partial_retirement_income=body.retirement_lifestyle.partial_income if body.retirement_lifestyle else None
     )
 
     try:
@@ -117,6 +120,9 @@ def save_whatif_scenario(profile_id: int, body: SaveScenarioRequest,
         historical_index=body.historical_index,
         withdrawal_rate=body.withdrawal_rate,
         retirement_mode=body.retirement_mode,
+        retirement_lifestyle_mode=body.retirement_lifestyle.mode if body.retirement_lifestyle else None,
+        retirement_lifestyle_age=body.retirement_lifestyle.age if body.retirement_lifestyle else None,
+        partial_retirement_income=body.retirement_lifestyle.partial_income if body.retirement_lifestyle else None,
         saved_from="whatif",
         saved_at=datetime.utcnow().isoformat(timespec="seconds") + "Z",
     )
@@ -180,7 +186,9 @@ def save_whatif_scenario(profile_id: int, body: SaveScenarioRequest,
             required_capital=yd.required_capital,
             mortgage_active=yd.mortgage_active,
             pension_value=yd.pension_value,
-            pension_accessible=yd.pension_accessible
+            pension_accessible=yd.pension_accessible,
+            is_retired=yd.is_retired,
+            active_income=yd.active_income
         ))
 
     db.commit()

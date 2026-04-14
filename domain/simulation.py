@@ -16,6 +16,8 @@ class YearData:
     mortgage_active: bool  # Whether mortgage payment was included this year
     pension_value: float = 0.0  # End-of-year pension fund value
     pension_accessible: bool = False  # Whether pension can count toward retirement
+    is_retired: bool = False  # Whether retirement lifestyle is active this year
+    active_income: float = 0.0  # Income used in calculation (after retirement adjustments)
 
 
 @dataclass
@@ -54,8 +56,21 @@ def simulate(scenario: Scenario, years: int = 40) -> SimulationResult:
         rate_sequence = None
 
     for year_num in range(1, years + 1):
-        # Compute annual income
-        annual_income = scenario.monthly_income.total * 12
+        current_age = scenario.age + year_num
+
+        # Determine active income (apply retirement lifestyle if applicable)
+        is_retired = False
+        active_income_monthly = scenario.monthly_income.total
+
+        if scenario.retirement_lifestyle_mode and scenario.retirement_lifestyle_age:
+            if current_age >= scenario.retirement_lifestyle_age:
+                is_retired = True
+                if scenario.retirement_lifestyle_mode == "full":
+                    active_income_monthly = 0
+                elif scenario.retirement_lifestyle_mode == "partial":
+                    active_income_monthly = scenario.partial_retirement_income or 0
+
+        annual_income = active_income_monthly * 12
 
         # Compute annual expenses
         annual_expenses = scenario.monthly_expenses.total * 12
@@ -145,7 +160,6 @@ def simulate(scenario: Scenario, years: int = 40) -> SimulationResult:
                         retirement_year = year_num
 
         # Record year data
-        current_age = scenario.age + year_num
         year_data_list.append(
             YearData(
                 year=year_num,
@@ -158,6 +172,8 @@ def simulate(scenario: Scenario, years: int = 40) -> SimulationResult:
                 mortgage_active=mortgage_active,
                 pension_value=pension,
                 pension_accessible=pension_accessible,
+                is_retired=is_retired,
+                active_income=annual_income,
             )
         )
 

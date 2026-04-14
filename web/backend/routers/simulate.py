@@ -46,7 +46,10 @@ def run_simulation(body: SimulateRequest, username: str = Depends(get_current_us
         mortgage=mortgage,
         pension=pension,
         events=[Event(year=e.year, portfolio_injection=e.portfolio_injection, description=e.description)
-                for e in body.events]
+                for e in body.events],
+        retirement_lifestyle_mode=body.retirement_lifestyle.mode if body.retirement_lifestyle else None,
+        retirement_lifestyle_age=body.retirement_lifestyle.age if body.retirement_lifestyle else None,
+        partial_retirement_income=body.retirement_lifestyle.partial_income if body.retirement_lifestyle else None
     )
 
     try:
@@ -67,7 +70,9 @@ def run_simulation(body: SimulateRequest, username: str = Depends(get_current_us
             required_capital=yd.required_capital,
             mortgage_active=yd.mortgage_active,
             pension_value=yd.pension_value,
-            pension_accessible=yd.pension_accessible
+            pension_accessible=yd.pension_accessible,
+            is_retired=yd.is_retired,
+            active_income=yd.active_income
         )
         year_data_schemas.append(schema)
 
