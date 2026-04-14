@@ -261,22 +261,26 @@ class ScenarioGeneratorService:
         mortgage = None
         if answers.get('has_mortgage', False):
             mortgage = Mortgage(
-                loan_amount=answers.get('mortgage_amount', 0),
+                principal=answers.get('mortgage_amount', 0),
                 annual_rate=answers.get('mortgage_annual_rate', 0.045) / 100,  # Convert % to decimal
-                years_remaining=answers.get('mortgage_years', 20)
+                duration_years=answers.get('mortgage_years', 20)
             )
 
         # Build pension if provided
         pension = None
-        if answers.get('has_pension', False):
-            pension = Pension(
-                initial_value=answers.get('pension_initial', 2000000),
-                monthly_contribution=answers.get('pension_monthly_contribution', 9000),
-                annual_growth_rate=self.defaults.get_default('pension.annual_growth_rate', 0.06),
-                accessible_at_age=self.defaults.get_default('pension.accessible_at_age', 67)
-            )
+        if 'has_pension' in answers:
+            # User explicitly answered the question
+            if answers.get('has_pension', False):
+                # User said yes to pension
+                pension = Pension(
+                    initial_value=answers.get('pension_initial', 2000000),
+                    monthly_contribution=answers.get('pension_monthly_contribution', 9000),
+                    annual_growth_rate=self.defaults.get_default('pension.annual_growth_rate', 0.06),
+                    accessible_at_age=self.defaults.get_default('pension.accessible_at_age', 67)
+                )
+            # else: User said no to pension, keep pension = None
         else:
-            # Use default pension if configured
+            # User never answered the question (didn't see it), use default if configured
             default_pension = self.defaults.get_default('pension')
             if default_pension:
                 pension = Pension(**default_pension)
