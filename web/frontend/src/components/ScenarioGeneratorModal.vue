@@ -1,42 +1,49 @@
 <template>
-  <div v-if="isOpen" class="generator-modal-overlay" @click.self="close">
-    <div class="generator-modal">
-      <!-- Header -->
-      <div class="modal-header">
-        <h2>Generate Your Scenario</h2>
-        <button class="close-btn" @click="close">✕</button>
-      </div>
+  <Teleport to="body">
+    <div v-if="isOpen" class="generator-modal-overlay" @click.self="close">
+      <div class="generator-modal">
+        <!-- Header -->
+        <div class="modal-header">
+          <h2>✨ Generate Your Scenario</h2>
+          <button class="close-btn" @click="close" aria-label="Close modal">✕</button>
+        </div>
 
-      <!-- Body: Questionnaire or Results -->
-      <div class="modal-body">
-        <QuestionnaireForm
-          v-if="currentStep === 'questionnaire'"
-          :config="config"
-          :answers="answers"
-          @update-answer="handleAnswerUpdate"
-          @generate="handleGenerate"
-          @close="close"
-        />
+        <!-- Body: Questionnaire or Results -->
+        <div class="modal-body">
+          <QuestionnaireForm
+            v-if="currentStep === 'questionnaire'"
+            :config="config"
+            :answers="answers"
+            @update-answer="handleAnswerUpdate"
+            @generate="handleGenerate"
+            @close="close"
+          />
 
-        <ResultsScreen
-          v-else-if="currentStep === 'results'"
-          :generation-result="generationResult"
-          :completeness-score="completeness"
-          @save="handleSave"
-          @back="resetToQuestionnaire"
-        />
+          <ResultsScreen
+            v-else-if="currentStep === 'results'"
+            :generation-result="generationResult"
+            :completeness-score="completeness"
+            @save="handleSave"
+            @back="resetToQuestionnaire"
+          />
 
-        <div v-else-if="currentStep === 'loading'" class="loading-spinner">
-          <div class="spinner"></div>
-          <p>Generating your scenario...</p>
+          <div v-else-if="currentStep === 'loading'" class="loading-spinner">
+            <div class="spinner"></div>
+            <p>Generating your scenario...</p>
+          </div>
+
+          <div v-if="error" class="error-container">
+            <p class="error-message">{{ error }}</p>
+            <button @click="resetToQuestionnaire" class="btn-retry">Try Again</button>
+          </div>
         </div>
       </div>
     </div>
-  </div>
+  </Teleport>
 </template>
 
 <script>
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import QuestionnaireForm from './QuestionnaireForm.vue'
 import ResultsScreen from './ResultsScreen.vue'
 
@@ -51,30 +58,31 @@ export default {
   },
   emits: ['close', 'scenario-saved'],
   setup(props, { emit }) {
-    const currentStep = ref('questionnaire') // 'questionnaire', 'loading', 'results'
+    const currentStep = ref('questionnaire') // 'questionnaire', 'loading', 'results', 'error'
     const answers = ref({})
     const config = ref(null)
     const generationResult = ref(null)
     const completeness = ref(0)
     const error = ref(null)
 
-    // Load questionnaire config on mount
     const loadConfig = async () => {
       try {
         const response = await fetch('/api/questionnaire/config', {
           method: 'POST'
         })
-        if (!response.ok) throw new Error('Failed to load config')
-        config.value = await response.json()
+        if (!response.ok) throw new Error('Failed to load questionnaire config')
+        const data = await response.json()
+        config.value = data
+        error.value = null
       } catch (e) {
-        error.value = e.message
+        error.value = 'Failed to load questionnaire: ' + e.message
       }
     }
 
     const handleAnswerUpdate = async (questionId, value) => {
       answers.value[questionId] = value
 
-      // Calculate completeness
+      // Calculate completeness in real-time
       try {
         const response = await fetch('/api/questionnaire/completeness', {
           method: 'POST',
@@ -86,11 +94,12 @@ export default {
           completeness.value = data.completeness_score
         }
       } catch (e) {
-        console.error('Error calculating completeness:', e)
+        console.warn('Error calculating completeness:', e)
       }
     }
 
     const handleGenerate = async () => {
+      error.value = null
       currentStep.value = 'loading'
       try {
         const response = await fetch('/api/questionnaire/generate-scenario', {
@@ -112,27 +121,20 @@ export default {
       }
     }
 
-    const handleSave = async (scenarioName) => {
-      // Save via existing whatif-saves endpoint
-      try {
-        // Build scenario request from generation result
-        const saveRequest = {
-          name: scenarioName || generationResult.value.name,
-          // Populate remaining fields from answers and defaults...
-          // (This is simplified; the full implementation reconstructs the scenario)
-        }
-
-        // Emit event to parent to handle save
-        emit('scenario-saved', { name: scenarioName, data: generationResult.value })
-        close()
-      } catch (e) {
-        error.value = e.message
-      }
+    const handleSave = (scenarioName) => {
+      // Emit event to parent (WhatIfView) to handle save via existing whatif-saves endpoint
+      emit('scenario-saved', {
+        name: scenarioName || generationResult.value.name,
+        answers: answers.value,
+        result: generationResult.value
+      })
+      close()
     }
 
     const resetToQuestionnaire = () => {
       currentStep.value = 'questionnaire'
       generationResult.value = null
+      error.value = null
     }
 
     const close = () => {
@@ -180,17 +182,35 @@ export default {
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .generator-modal {
   background: white;
-  border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-  max-width: 600px;
+  border-radius: 12px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  max-width: 700px;
   width: 90%;
-  max-height: 80vh;
+  max-height: 85vh;
   display: flex;
   flex-direction: column;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .modal-header {
@@ -199,12 +219,14 @@ export default {
   align-items: center;
   padding: 24px;
   border-bottom: 1px solid #e5e7eb;
+  background: linear-gradient(135deg, #f8fafb 0%, #ffffff 100%);
 }
 
 .modal-header h2 {
   margin: 0;
-  font-size: 20px;
-  font-weight: 600;
+  font-size: 22px;
+  font-weight: 700;
+  color: #1f2937;
 }
 
 .close-btn {
@@ -212,11 +234,20 @@ export default {
   border: none;
   font-size: 24px;
   cursor: pointer;
-  color: #6b7280;
+  color: #9ca3af;
+  transition: color 0.2s;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
 }
 
 .close-btn:hover {
-  color: #000;
+  color: #1f2937;
+  background: #f3f4f6;
 }
 
 .modal-body {
@@ -235,8 +266,8 @@ export default {
 }
 
 .spinner {
-  width: 40px;
-  height: 40px;
+  width: 48px;
+  height: 48px;
   border: 3px solid #e5e7eb;
   border-top-color: #3b82f6;
   border-radius: 50%;
@@ -245,5 +276,40 @@ export default {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+.spinner ~ p {
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.error-container {
+  padding: 16px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  margin-top: 16px;
+}
+
+.error-message {
+  color: #991b1b;
+  font-size: 14px;
+  margin: 0 0 12px 0;
+  line-height: 1.5;
+}
+
+.btn-retry {
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.btn-retry:hover {
+  background: #dc2626;
 }
 </style>

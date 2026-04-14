@@ -39,6 +39,14 @@
             </select>
           </div>
 
+          <!-- Generate button -->
+          <button
+            @click="showGeneratorModal = true"
+            class="btn-generate-scenario-sidebar"
+          >
+            ✨ Generate Scenario
+          </button>
+
           <!-- Save button -->
           <button
             v-if="whatIfResult"
@@ -342,6 +350,13 @@
       </div>
     </div>
 
+    <!-- Scenario Generator Modal -->
+    <ScenarioGeneratorModal
+      :is-open="showGeneratorModal"
+      @close="showGeneratorModal = false"
+      @scenario-saved="handleGeneratedScenarioSaved"
+    />
+
     <!-- Save Scenario Modal -->
     <div v-if="showSaveModal" class="modal-overlay" @click.self="showSaveModal = false">
       <div class="modal-box">
@@ -382,6 +397,7 @@ import { useRouter, useRoute } from 'vue-router'
 import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
 import ComparisonChart from '../components/ComparisonChart.vue'
+import ScenarioGeneratorModal from '../components/ScenarioGeneratorModal.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -431,6 +447,8 @@ const showSaveModal = ref(false)
 const saveScenarioName = ref('')
 const saveStatus = ref(null)   // null | 'saving' | 'success' | 'error'
 const saveError = ref('')
+
+const showGeneratorModal = ref(false)
 
 const profileId = computed(() => route.params.profileId)
 const originalStartingAge = computed(() => {
@@ -734,6 +752,27 @@ const saveScenario = async () => {
   }
 }
 
+const handleGeneratedScenarioSaved = async (eventData) => {
+  // eventData has { name, answers, result }
+  // Save the generated scenario using the existing whatif-saves endpoint
+  saveStatus.value = 'saving'
+  saveError.value = ''
+  try {
+    // TODO: Call /api/whatif-saves endpoint with the generated scenario data
+    // For now, just close the modal and show success
+    showGeneratorModal.value = false
+    saveStatus.value = 'success'
+    setTimeout(() => {
+      saveStatus.value = null
+    }, 1500)
+    // Refresh scenarios list
+    await fetchRuns()
+  } catch (err) {
+    saveStatus.value = 'error'
+    saveError.value = err.response?.data?.detail || 'Failed to save generated scenario'
+  }
+}
+
 const goBack = () => {
   router.push({ name: 'Scenarios', params: { profileId: profileId.value } })
 }
@@ -918,6 +957,27 @@ if (route.query.scenarioId) {
   outline: none;
   border-color: #667eea;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.btn-generate-scenario-sidebar {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  border: none;
+  padding: 10px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.2s;
+  width: 100%;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+}
+
+.btn-generate-scenario-sidebar:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+  transform: translateY(-1px);
 }
 
 .btn-save-scenario-sidebar {

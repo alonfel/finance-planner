@@ -49,21 +49,25 @@
     </div>
 
     <!-- Save modal -->
-    <div v-if="showSaveModal" class="save-modal-overlay" @click.self="showSaveModal = false">
-      <div class="save-modal">
-        <h3>Save Scenario</h3>
-        <input
-          v-model="scenarioNameInput"
-          type="text"
-          placeholder="Enter scenario name..."
-          class="input"
-        />
-        <div class="modal-actions">
-          <button class="btn btn-secondary" @click="showSaveModal = false">Cancel</button>
-          <button class="btn btn-primary" @click="confirmSave">Save</button>
+    <Teleport to="body">
+      <div v-if="showSaveModal" class="save-modal-overlay" @click.self="showSaveModal = false">
+        <div class="save-modal">
+          <h3>Save Scenario</h3>
+          <p class="save-help">Give your generated scenario a memorable name</p>
+          <input
+            v-model="scenarioNameInput"
+            type="text"
+            placeholder="e.g., Early Retirement Plan"
+            class="input"
+            @keyup.enter="confirmSave"
+          />
+          <div class="modal-actions">
+            <button class="btn btn-secondary" @click="showSaveModal = false">Cancel</button>
+            <button class="btn btn-primary" @click="confirmSave">💾 Save</button>
+          </div>
         </div>
       </div>
-    </div>
+    </Teleport>
   </div>
 </template>
 
@@ -247,24 +251,37 @@ export default {
 }
 
 .save-modal h3 {
-  margin: 0 0 16px 0;
+  margin: 0 0 8px 0;
   font-size: 18px;
   font-weight: 600;
+  color: #1f2937;
+}
+
+.save-help {
+  margin: 0 0 16px 0;
+  font-size: 13px;
+  color: #6b7280;
 }
 
 .save-modal .input {
   width: 100%;
-  padding: 10px 12px;
+  padding: 12px;
   border: 1px solid #d1d5db;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 14px;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
+  font-family: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .save-modal .input:focus {
   outline: none;
   border-color: #3b82f6;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.save-modal .input::placeholder {
+  color: #d1d5db;
 }
 
 .modal-actions {

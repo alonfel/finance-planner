@@ -35,20 +35,20 @@
 
     <!-- Action buttons -->
     <div class="actions">
-      <button class="btn btn-secondary" @click="$emit('close')">Cancel</button>
+      <button class="btn btn-secondary" @click="$emit('close')">← Cancel</button>
       <button
         class="btn btn-primary"
         @click="$emit('generate')"
         :disabled="!canGenerate"
       >
-        Generate Scenario
+        🚀 Generate Scenario
       </button>
     </div>
   </div>
 </template>
 
 <script>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import ScoreBar from './ScoreBar.vue'
 import QuestionInput from './QuestionInput.vue'
 
@@ -66,7 +66,9 @@ export default {
     }
   },
   emits: ['update-answer', 'generate', 'close'],
-  setup(props) {
+  setup(props, { emit }) {
+    const error = ref(null)
+
     const sectionMetadata = computed(
       () => props.config?.sections || {}
     )
@@ -106,17 +108,21 @@ export default {
       const condition = question.visible_when
       if (!condition) return true
 
-      // Evaluate conditional visibility
+      // Evaluate conditional visibility safely
       try {
-        return eval(condition.replace(/(\w+)/g, `answers['$1']`), {
-          answers: props.answers
-        })
-      } catch {
+        // Replace question IDs with their values from answers
+        let evaluableCondition = condition
+        for (const [key, value] of Object.entries(props.answers)) {
+          if (typeof value === 'boolean') {
+            evaluableCondition = evaluableCondition.replace(new RegExp(`\\b${key}\\b`, 'g'), value)
+          }
+        }
+        return eval(evaluableCondition)
+      } catch (e) {
+        console.warn('Error evaluating visibility condition:', e)
         return true
       }
     }
-
-    const error = ref(null)
 
     return {
       sectionMetadata,

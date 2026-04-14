@@ -40,14 +40,16 @@
         <button
           class="toggle-btn"
           :class="{ active: value === true }"
-          @click="$emit('update', true)"
+          @click="() => $emit('update', true)"
+          type="button"
         >
           Yes
         </button>
         <button
           class="toggle-btn"
           :class="{ active: value === false || value === null }"
-          @click="$emit('update', false)"
+          @click="() => $emit('update', false)"
+          type="button"
         >
           No
         </button>
