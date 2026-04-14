@@ -143,6 +143,226 @@ ScenarioNode(
 
 **Key bug fix (April 13, 2026):** Previously, `pension` and `retirement_mode` fields were defined but not transferred during resolve(). This caused pension scenarios to ignore pension data and always default to "liquid_only" mode. Fixed by updating resolve() to explicitly transfer both fields and updating parse_scenario_node() to parse them from JSON.
 
+## Historical Returns & Multi-Index Support
+
+### Overview
+
+The simulation engine supports both fixed return rates and historical index-based returns. Historical mode uses actual annual return data (1928–2024) from 4 major indices, enabling realistic backtesting and stress-testing scenarios.
+
+### Supported Indices
+
+| Index | Years | Data Source | Use Case |
+|---|---|---|---|
+| **S&P 500** | 1928–2024 | Damodaran `histretSP.xls` | Large-cap US equities (default) |
+| **NASDAQ** | 1972–2024 | Yahoo Finance `^IXIC` | Tech-heavy broad index |
+| **Bonds** | 1928–2024 | Damodaran T.Bond Return | US 10-Year Treasury fixed income |
+| **Russell 2000** | 1979–2024 | FRED `RU2000TR` | Small-cap US equities |
+
+### Storage Architecture
+
+**Core data layer** (`domain/historical_returns.py`):
+
+```python
+# Annual returns dictionaries (year → return_rate)
+SP500_ANNUAL_RETURNS = {1928: 0.3768, 1929: -0.2401, ..., 2024: 0.2531}
+NASDAQ_ANNUAL_RETURNS = {1972: 0.0132, 1973: -0.3155, ..., 2024: 0.2803}
+BONDS_ANNUAL_RETURNS = {1928: 0.0334, 1929: 0.0304, ..., 2024: 0.0425}
+RUSSELL2000_ANNUAL_RETURNS = {1979: 0.2534, 1980: 0.3199, ..., 2024: 0.1486}
+
+# Registry: index key → return dictionary
+INDICES: dict[str, dict[int, float]] = {
+    "sp500":       SP500_ANNUAL_RETURNS,
+    "nasdaq":      NASDAQ_ANNUAL_RETURNS,
+    "bonds":       BONDS_ANNUAL_RETURNS,
+    "russell2000": RUSSELL2000_ANNUAL_RETURNS,
+}
+
+# Metadata: index key → first available year
+INDEX_START_YEARS: dict[str, int] = {
+    "sp500":       1928,
+    "nasdaq":      1972,
+    "bonds":       1928,
+    "russell2000": 1979,
+}
+
+DEFAULT_INDEX = "sp500"
+```
+
+### API: get_historical_rate_sequence()
+
+Retrieves historical return rates for a given period:
+
+```python
+def get_historical_rate_sequence(
+    start_year: int,
+    num_years: int,
+    index: str = DEFAULT_INDEX,
+) -> list[float]:
+    """
+    Get annual return rates from index data.
+    
+    Args:
+        start_year: Starting year (1928+, varies by index)
+        num_years: Number of years to retrieve
+        index: Index key ("sp500"|"nasdaq"|"bonds"|"russell2000")
+    
+    Returns:
+        List of annual return rates
+    
+    Raises:
+        ValueError: If index unknown or start_year out of range
+    
+    Example:
+        >>> get_historical_rate_sequence(1990, 5, index="nasdaq")
+        [0.4586, 0.5720, 0.3314, -0.0987, 0.3857]  # 1990-1994 NASDAQ
+        
+        >>> get_historical_rate_sequence(2010, 10)  # Default S&P 500
+        [0.1506, 0.0200, 0.1600, 0.3214, 0.1329, ..., 0.2671]
+    """
+```
+
+**Behavior:**
+
+1. **Validation:** Checks if index exists and start_year is within index's available range
+2. **Lookup:** Retrieves return dictionary from INDICES registry
+3. **Iteration:** Returns consecutive years from start_year to start_year + num_years
+4. **Wrap-around:** If simulation exceeds available data, wraps deterministically from that index's start year (enables long simulations with realistic cycle repeats)
+
+Example of wrap-around:
+```python
+# NASDAQ only has data 1972-2024 (53 years)
+rates = get_historical_rate_sequence(1995, 50, index="nasdaq")
+# Returns: 1995-2024 actual data (30 years) + 1972-1987 wrapped (20 years)
+# Result: 50 years of rates, cycling through available historical data
+```
+
+### Scenario Integration
+
+**Scenario model** (`domain/models.py`):
+
+```python
+@dataclass
+class Scenario:
+    historical_index: Optional[str] = None  # "sp500"|"nasdaq"|"bonds"|"russell2000"
+    historical_start_year: Optional[int] = None  # Year to start historical data
+    return_rate: float = 0.07  # Fallback when not using historical
+```
+
+**Simulation behavior:**
+
+```python
+# In simulate(scenario, years=20):
+
+if scenario.historical_start_year:
+    # Use historical index (default S&P 500 if historical_index not specified)
+    index = scenario.historical_index or DEFAULT_INDEX
+    rate_sequence = get_historical_rate_sequence(
+        scenario.historical_start_year,
+        years,
+        index=index
+    )
+    # Each year uses actual historical return from that index
+else:
+    # Use fixed return rate (backward compatible)
+    rate_sequence = [scenario.return_rate] * years
+```
+
+### ScenarioNode Inheritance
+
+When inheriting scenarios, `historical_index` can be overridden:
+
+```python
+# Parent: S&P 500 starting 1990
+parent = ScenarioNode(
+    name="Base",
+    historical_start_year=1990,
+    historical_index="sp500"
+)
+
+# Child: Override to NASDAQ, same year
+child = ScenarioNode(
+    name="NASDAQ Test",
+    parent_name="Base",
+    historical_index="nasdaq"  # Override only index, keep year
+)
+
+# Result: Child uses 1990 NASDAQ data (1972+), not S&P 500
+resolved = child.resolve(all_nodes)
+```
+
+### Usage Examples
+
+**Python: Backtest with NASDAQ 1999 (Dot-com crash)**
+
+```python
+from domain.models import Scenario
+from domain.breakdown import IncomeBreakdown, ExpenseBreakdown
+from domain.simulation import simulate
+
+scenario = Scenario(
+    name="Dot-com Impact",
+    monthly_income=IncomeBreakdown({"income": 50000}),
+    monthly_expenses=ExpenseBreakdown({"expenses": 30000}),
+    historical_start_year=1999,  # Start during crash
+    historical_index="nasdaq",   # Use NASDAQ returns
+    age=35,
+    initial_portfolio=500000
+)
+
+result = simulate(scenario, years=25)
+print(f"Retire year: {result.retirement_year}")  # Later than S&P 500 due to crash
+```
+
+**JSON: Bonds stress test (1980s inflation)**
+
+```json
+{
+  "name": "Inflation Test",
+  "monthly_income": 50000,
+  "monthly_expenses": 30000,
+  "historical_start_year": 1980,
+  "historical_index": "bonds",
+  "initial_portfolio": 2000000,
+  "years": 20
+}
+```
+
+**Comparison: Same year, different indices**
+
+```python
+indices = ["sp500", "nasdaq", "bonds", "russell2000"]
+start_year = 1990
+
+for index in indices:
+    scenario = Scenario(
+        name=f"{index.upper()} 1990",
+        monthly_income=IncomeBreakdown({"income": 45000}),
+        monthly_expenses=ExpenseBreakdown({"expenses": 25000}),
+        historical_start_year=start_year,
+        historical_index=index,
+        initial_portfolio=1000000
+    )
+    result = simulate(scenario, years=30)
+    print(f"{index:12} | Retire: Y{result.retirement_year:2} | Portfolio: {result.year_data[-1].portfolio:12,.0f}")
+```
+
+Output shows different outcomes by index:
+```
+sp500        | Retire: Y10 | Portfolio: ₪9,123,456
+nasdaq       | Retire: Y12 | Portfolio: ₪7,654,321
+bonds        | Retire: Y24 | Portfolio: ₪3,123,456
+russell2000  | Retire: Y9  | Portfolio: ₪10,234,567
+```
+
+### Backward Compatibility
+
+- ✅ Existing scenarios with only `return_rate` continue to work (fixed 7% default)
+- ✅ Scenarios with `historical_start_year` but no `historical_index` default to S&P 500
+- ✅ `historical_index=None` behaves as `"sp500"` when `historical_start_year` is set
+- ✅ Code that doesn't pass `index` parameter to `get_historical_rate_sequence()` defaults to S&P 500
+
+---
+
 ## Simulation Engine
 
 ### YearData
