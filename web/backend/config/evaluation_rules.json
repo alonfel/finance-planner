@@ -1,0 +1,49 @@
+{
+  "version": "1.0",
+  "description": "Simple evaluation rules for generated scenarios. Applied in order; first match wins.",
+  "rules": [
+    {
+      "id": "early_retirement",
+      "priority": 1,
+      "condition": "retirement_year <= 50",
+      "verdict": "success",
+      "emoji": "🎉",
+      "message": "Early retirement path! You could retire before 50.",
+      "hint": "Consider exploring variations: earlier exit, sabbatical, or increased flexibility."
+    },
+    {
+      "id": "on_track",
+      "priority": 2,
+      "condition": "retirement_year > 50 and retirement_year < 67",
+      "verdict": "success",
+      "emoji": "✅",
+      "message": "You're on track for retirement in your 50s.",
+      "hint": "Small changes to income or expenses could bring this even earlier."
+    },
+    {
+      "id": "standard_retirement",
+      "priority": 3,
+      "condition": "retirement_year >= 67",
+      "verdict": "warning",
+      "emoji": "⚠️",
+      "message": "Retirement likely at or after age 67.",
+      "hint": "Consider increasing income, reducing expenses, or saving more upfront."
+    },
+    {
+      "id": "depleted_portfolio",
+      "priority": 4,
+      "condition": "final_portfolio <= 0",
+      "verdict": "fail",
+      "emoji": "❌",
+      "message": "Portfolio depletes before age 100.",
+      "hint": "You'll need to increase income, reduce expenses, or save more to sustain retirement."
+    }
+  ],
+  "default_verdict": {
+    "verdict": "success",
+    "emoji": "✅",
+    "message": "Scenario generated successfully.",
+    "hint": "Adjust sliders in What-If Explorer to explore variations and refine your plan."
+  },
+  "notes": "Future: Replace with AI agent evaluation to discover novel insights"
+}

@@ -56,12 +56,12 @@ web/backend/
 
 ### Design Principles
 
-1. **Layered Architecture** — Routers (HTTP) → Domain (business logic) → Infrastructure (data loading)
+1. **Layered Architecture** — Routers (HTTP) → Domain (business logic) → Database (persistence)
 2. **Dependency Injection** — FastAPI's `Depends()` pattern for DB, auth, etc.
 3. **Type Safety** — Pydantic for validation, SQLAlchemy for ORM
 4. **Domain-Driven** — Heavy lifting happens in `/domain/` (simulation, insights)
-5. **Concurrent Safety** — File locking for scenarios.json writes
-6. **Stateless** — Each request is independent; session data in DB
+5. **Database-First** — Scenario definitions stored in SQLite (not JSON files)
+6. **Stateless** — Each request is independent; all data persisted in DB
 
 ---
 
@@ -73,13 +73,19 @@ SQLite database stored at `data/finance_planner.db` (relative to project root).
 
 **Full path:** `/Users/alon/Documents/finance_planner/data/finance_planner.db`
 
-Initialized automatically on first run via `init_db()` in `main.py`.
+Initialized automatically on first run via `init_db()` in `main.py`. Migration script (`migration.py`) runs on startup to load any JSON data into the database.
 
-**Models:**
-- `Profile` — User profiles (id, name, display_name, description, created_at)
-- `SimulationRun` — Batch runs (id, profile_id, label, generated_at, num_scenarios)
-- `ScenarioResult` — Individual scenario within a run (id, run_id, scenario_name, retirement_year)
-- `YearData` — Year-by-year data for a scenario (year, age, income, expenses, portfolio, etc.)
+**Core Tables:**
+- `profiles` — User profiles (id, name, display_name, description, created_at)
+- `scenario_definitions` — Scenario definitions (name, income, expenses, age, return_rate, etc.)
+- `scenario_events` — One-time portfolio events per scenario
+- `scenario_mortgages` — Optional mortgage data (0-1 per scenario)
+- `scenario_pensions` — Optional pension data (0-1 per scenario)
+- `scenario_nodes` — Scenario inheritance tree for variations
+- `profile_settings` — Simulation defaults per profile (years, return_rate, withdrawal_rate)
+- `simulation_runs` — Batch simulation runs (id, profile_id, label, generated_at)
+- `scenario_results` — Individual simulation results (scenario_name, retirement_year, scenario_id FK)
+- `year_data` — Year-by-year simulation data (year, age, income, expenses, portfolio, etc.)
 
 ### CORS
 
@@ -105,23 +111,33 @@ Header format: `Authorization: Bearer <token>`
 
 ### Profiles
 
-A profile represents a user's financial context. Each profile has:
-- **scenarios.json** — Named scenario definitions (income, expenses, events, etc.)
-- **settings.json** — Simulation defaults (years, return rate, etc.)
-- **scenario_nodes.json** — Inheritance tree for scenario variations
-- **SQLite records** — Simulation runs and results
+A profile represents a user's financial context. All profile data is stored in SQLite:
+- **scenario_definitions** — Named scenario definitions (income, expenses, events, etc.)
+- **scenario_events** — One-time portfolio events linked to scenarios
+- **scenario_mortgages** — Optional mortgage data for scenarios
+- **scenario_nodes** — Inheritance tree for scenario variations
+- **profile_settings** — Simulation defaults (years, return rate, withdrawal rate)
+- **simulation_runs** — Batch simulation results
+- **scenario_results** — Individual scenario simulation results
 
-Profiles are loaded from the domain via `infrastructure.data_layer.get_scenarios_path()`.
+**Note:** JSON files (scenarios.json, settings.json, scenario_nodes.json) are kept on disk as read-only backups for portability. The database is the source of truth for all scenario data.
 
 ### Scenarios
 
-Two types of scenarios:
+All scenarios are stored in the `scenario_definitions` table:
 
-1. **Stored Scenarios** — Defined in `scenarios.json`, parsed and loaded on demand
-2. **Saved What-If Scenarios** — User-created via the "Save as Scenario" feature
-   - Appended to `scenarios.json` with `"saved_from": "whatif"` marker
-   - Tracked in SQLite under the "What-If Saves" `SimulationRun`
+1. **Default Scenarios** — Pre-configured scenarios migrated from scenarios.json on first startup
+2. **User-Created Scenarios** — Created via the "Save as Scenario" feature in What-If Explorer
+   - Marked with `saved_from='whatif'` in the database
+   - Tracked under the "What-If Saves" `SimulationRun` for grouping
    - Immediately available in the scenario list
+   - Linked to their simulation results via `scenario_id` FK
+
+**Schema:** scenario_definitions table stores:
+- name, age, initial_portfolio, monthly_income, monthly_expenses (JSON)
+- return_rate, withdrawal_rate, retirement_mode, currency
+- saved_from, saved_at, is_deleted (soft-delete flag)
+- profile_id FK to link to user profile
 
 ### Simulation Flow
 
@@ -131,9 +147,13 @@ Two types of scenarios:
    - Used in real-time exploration
 3. **POST /api/v1/profiles/{profile_id}/saved-scenarios** — User clicks "Save as Scenario"
    - Backend runs simulation in-process
-   - Appends to disk with file lock (atomic)
-   - Records result in SQLite
-   - Scenario now appears in Scenarios list under "What-If Saves" run
+   - Inserts scenario definition into `scenario_definitions` table
+   - Inserts events into `scenario_events` table (linked via scenario_id FK)
+   - Inserts mortgage into `scenario_mortgages` table if present
+   - Gets or creates "What-If Saves" `SimulationRun`
+   - Inserts `ScenarioResult` and `YearData` rows
+   - Scenario immediately appears in Scenarios list
+   - Optional: exports to scenarios.json for backup
 
 ---
 
@@ -143,10 +163,11 @@ Two types of scenarios:
 |---------|---------|---------|
 | `fastapi` | Latest | Web framework |
 | `uvicorn` | Latest | ASGI server |
-| `sqlalchemy` | Latest | ORM |
+| `sqlalchemy` | Latest | ORM for database access |
 | `pydantic` | Latest | Request/response validation |
-| `filelock` | ≥3.12.0 | Concurrent JSON write safety |
 | `python-multipart` | Latest | Form data parsing |
+
+**Note:** `filelock` is no longer required (removed in v1.0 — database replaced file-based writes)
 
 See `requirements.txt` for pinned versions.
 

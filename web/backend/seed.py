@@ -7,6 +7,7 @@ import os
 from database import init_db, SessionLocal
 from models import User, Profile, SimulationRun, ScenarioResult, YearData
 from auth import hash_password
+from migration import link_scenario_results
 
 def seed_database():
     """Seed database with Alon profile and cache data"""
@@ -93,6 +94,11 @@ def seed_database():
             db.commit()
 
         print(f"✓ Created {scenario_count} scenarios with {year_count} year data rows")
+
+        # Backfill scenario_id FKs for seeded scenarios
+        link_scenario_results(db)
+        print("✓ Linked scenarios to scenario_definitions")
+
         print("\n✅ Database seeded successfully!")
         print(f"   - User: alon / alon123")
         print(f"   - Profile: {profile.display_name}")

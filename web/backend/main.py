@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import init_db, SessionLocal
 from migration import run_migration
-from routers import auth, profiles, scenarios, simulate, whatif_saves
+from routers import auth, profiles, scenarios, simulate, whatif_saves, generator
 
 # Initialize database and run migration
 init_db()
@@ -36,6 +36,7 @@ app.include_router(profiles.router)
 app.include_router(scenarios.router)
 app.include_router(simulate.router)
 app.include_router(whatif_saves.router)
+app.include_router(generator.router)
 
 @app.get("/health")
 def health_check():

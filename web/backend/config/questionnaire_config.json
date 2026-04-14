@@ -1,0 +1,225 @@
+{
+  "version": "1.0",
+  "description": "Guided Scenario Generator questionnaire configuration. Supports conditional logic, skip-enabled questions, and progressive enhancement.",
+  "questions": [
+    {
+      "id": "age",
+      "section": "Demographics",
+      "label": "What age are you today?",
+      "type": "number",
+      "unit": "years",
+      "min": 18,
+      "max": 80,
+      "default": 42,
+      "required": true,
+      "weight": 0.2,
+      "skippable": false,
+      "help": "Used to calculate years until retirement"
+    },
+    {
+      "id": "monthly_income",
+      "section": "Income & Expenses",
+      "label": "What's your monthly income?",
+      "type": "number",
+      "unit": "₪",
+      "min": 0,
+      "max": 500000,
+      "default": 45000,
+      "required": true,
+      "weight": 0.2,
+      "skippable": false,
+      "help": "Gross monthly income (salary, freelance, etc.)"
+    },
+    {
+      "id": "monthly_expenses",
+      "section": "Income & Expenses",
+      "label": "What are your monthly expenses?",
+      "type": "number",
+      "unit": "₪",
+      "min": 0,
+      "max": 300000,
+      "default": 25000,
+      "required": true,
+      "weight": 0.2,
+      "skippable": false,
+      "help": "Total monthly spending (rent, food, utilities, etc.)"
+    },
+    {
+      "id": "initial_portfolio",
+      "section": "Savings & Investments",
+      "label": "How much do you have saved today?",
+      "type": "number",
+      "unit": "₪",
+      "min": 0,
+      "max": 50000000,
+      "default": 1500000,
+      "required": false,
+      "weight": 0.2,
+      "skippable": true,
+      "help": "Total liquid savings + investments"
+    },
+    {
+      "id": "retirement_age",
+      "section": "Goals",
+      "label": "At what age do you want to retire?",
+      "type": "number",
+      "unit": "years",
+      "min": 40,
+      "max": 85,
+      "default": 55,
+      "required": false,
+      "weight": 0.2,
+      "skippable": true,
+      "help": "Target retirement age (will be compared to simulation result)"
+    },
+    {
+      "id": "has_mortgage",
+      "section": "Debt & Obligations",
+      "label": "Do you have a mortgage?",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "weight": 0.0,
+      "skippable": true,
+      "help": "If yes, we'll ask for details",
+      "conditional": true
+    },
+    {
+      "id": "mortgage_amount",
+      "section": "Debt & Obligations",
+      "label": "Mortgage loan amount (₪)",
+      "type": "number",
+      "unit": "₪",
+      "min": 0,
+      "max": 10000000,
+      "required": false,
+      "weight": 0.0,
+      "skippable": true,
+      "visible_when": "has_mortgage === true",
+      "help": "Remaining loan balance"
+    },
+    {
+      "id": "mortgage_annual_rate",
+      "section": "Debt & Obligations",
+      "label": "Mortgage annual interest rate (%)",
+      "type": "number",
+      "unit": "%",
+      "min": 0.1,
+      "max": 10,
+      "default": 4.5,
+      "required": false,
+      "weight": 0.0,
+      "skippable": true,
+      "visible_when": "has_mortgage === true",
+      "help": "Annual interest rate (e.g., 4.5)"
+    },
+    {
+      "id": "mortgage_years",
+      "section": "Debt & Obligations",
+      "label": "Mortgage duration (years remaining)",
+      "type": "number",
+      "unit": "years",
+      "min": 1,
+      "max": 30,
+      "default": 20,
+      "required": false,
+      "weight": 0.0,
+      "skippable": true,
+      "visible_when": "has_mortgage === true",
+      "help": "Years remaining on mortgage"
+    },
+    {
+      "id": "has_pension",
+      "section": "Retirement Security",
+      "label": "Do you have a pension plan?",
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "weight": 0.0,
+      "skippable": true,
+      "help": "If yes, we'll ask for details",
+      "conditional": true
+    },
+    {
+      "id": "pension_initial",
+      "section": "Retirement Security",
+      "label": "Pension current balance (₪)",
+      "type": "number",
+      "unit": "₪",
+      "min": 0,
+      "max": 50000000,
+      "default": 2000000,
+      "required": false,
+      "weight": 0.0,
+      "skippable": true,
+      "visible_when": "has_pension === true",
+      "help": "Accumulated pension value today"
+    },
+    {
+      "id": "pension_monthly_contribution",
+      "section": "Retirement Security",
+      "label": "Pension monthly contribution (₪)",
+      "type": "number",
+      "unit": "₪",
+      "min": 0,
+      "max": 100000,
+      "default": 9000,
+      "required": false,
+      "weight": 0.0,
+      "skippable": true,
+      "visible_when": "has_pension === true",
+      "help": "Monthly addition to pension fund"
+    },
+    {
+      "id": "scenario_name",
+      "section": "Summary",
+      "label": "Give your scenario a name (optional)",
+      "type": "text",
+      "placeholder": "e.g., 'Early Retirement', 'Beach Life Plan'",
+      "required": false,
+      "weight": 0.0,
+      "skippable": true,
+      "help": "If blank, auto-generates name with timestamp"
+    }
+  ],
+  "sections": {
+    "Demographics": {
+      "order": 1,
+      "description": "Basic information about you"
+    },
+    "Income & Expenses": {
+      "order": 2,
+      "description": "Your monthly cash flow"
+    },
+    "Savings & Investments": {
+      "order": 3,
+      "description": "What you've already saved"
+    },
+    "Goals": {
+      "order": 4,
+      "description": "Your retirement target"
+    },
+    "Debt & Obligations": {
+      "order": 5,
+      "description": "Mortgage and other debts (optional)"
+    },
+    "Retirement Security": {
+      "order": 6,
+      "description": "Pension and safety nets (optional)"
+    },
+    "Summary": {
+      "order": 7,
+      "description": "Final step: name your scenario"
+    }
+  },
+  "scoring": {
+    "method": "equal_weight",
+    "description": "Each question with weight > 0 counts equally. Total score = (answered_questions / total_required_questions) * 100",
+    "exclude_conditional": true,
+    "notes": "Conditional questions (mortgage_amount if has_mortgage=false) are excluded from scoring"
+  },
+  "defaults": {
+    "currency": "ILS",
+    "language": "en"
+  }
+}

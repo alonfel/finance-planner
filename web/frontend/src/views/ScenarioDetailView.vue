@@ -40,21 +40,29 @@
         <div class="parameters-section">
           <h3>Scenario Parameters</h3>
           <div class="params-grid">
-            <div v-if="yearData.length > 0" class="param-item">
+            <div v-if="scenarioParams.income !== null" class="param-item">
               <span class="param-label">Monthly Income:</span>
-              <span class="param-value">₪{{ formatNumber(yearData[0].income / 12) }}</span>
+              <span class="param-value">₪{{ formatNumber(scenarioParams.income) }}</span>
             </div>
-            <div v-if="yearData.length > 0" class="param-item">
+            <div v-if="scenarioParams.expenses !== null" class="param-item">
               <span class="param-label">Monthly Expenses:</span>
-              <span class="param-value">₪{{ formatNumber(yearData[0].expenses / 12) }}</span>
+              <span class="param-value">₪{{ formatNumber(scenarioParams.expenses) }}</span>
             </div>
-            <div v-if="yearData.length > 0" class="param-item">
+            <div v-if="scenarioParams.returnRate !== null" class="param-item">
+              <span class="param-label">Growth Rate:</span>
+              <span class="param-value">{{ scenarioParams.returnRate }}%</span>
+            </div>
+            <div v-if="scenarioParams.withdrawalRate !== null" class="param-item">
+              <span class="param-label">Withdrawal Rate:</span>
+              <span class="param-value">{{ scenarioParams.withdrawalRate }}%</span>
+            </div>
+            <div v-if="scenarioParams.startingAge !== null" class="param-item">
               <span class="param-label">Starting Age:</span>
-              <span class="param-value">{{ yearData[0].age - 1 }}</span>
+              <span class="param-value">{{ scenarioParams.startingAge }}</span>
             </div>
-            <div v-if="yearData.length > 0" class="param-item">
+            <div v-if="scenarioParams.initialPortfolio !== null" class="param-item">
               <span class="param-label">Initial Portfolio:</span>
-              <span class="param-value">₪{{ formatCurrency(yearData[0].portfolio) }}</span>
+              <span class="param-value">₪{{ formatCurrency(scenarioParams.initialPortfolio) }}</span>
             </div>
           </div>
         </div>
@@ -113,7 +121,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import axios from 'axios'
@@ -132,6 +140,45 @@ const detailData = ref(null)
 const loading = ref(true)
 
 const API_BASE_URL = 'http://localhost:8000/api/v1'
+
+// Computed properties for scenario parameters
+const scenarioParams = computed(() => {
+  // Use exact definition values if available
+  if (detailData.value?.definition) {
+    const def = detailData.value.definition
+    return {
+      income: def.monthly_income,
+      expenses: def.monthly_expenses,
+      returnRate: (def.return_rate * 100).toFixed(1),
+      withdrawalRate: (def.withdrawal_rate * 100).toFixed(1),
+      startingAge: def.starting_age,
+      initialPortfolio: def.initial_portfolio
+    }
+  }
+
+  // Legacy fallback: back-calculate from year_data
+  if (yearData.value && yearData.value.length > 0) {
+    const firstYear = yearData.value[0]
+    return {
+      income: Math.round(firstYear.income / 12),
+      expenses: Math.round(firstYear.expenses / 12),
+      returnRate: '7.0', // Approximation
+      withdrawalRate: '4.0', // Approximation
+      startingAge: firstYear.age - 1,
+      initialPortfolio: firstYear.portfolio
+    }
+  }
+
+  // No data available
+  return {
+    income: null,
+    expenses: null,
+    returnRate: null,
+    withdrawalRate: null,
+    startingAge: null,
+    initialPortfolio: null
+  }
+})
 
 onMounted(async () => {
   try {
@@ -180,24 +227,15 @@ const handleLogout = () => {
 }
 
 const goToWhatIf = () => {
-  if (!detailData.value) return
+  if (!resultId) return
 
-  // Extract scenario parameters from the detail data
-  const firstYear = detailData.value.year_data?.[0]
-  if (!firstYear) return
-
-  // Navigate to What-If view with pre-filled query params
+  // Navigate to What-If view with scenario ID
+  // The What-If screen's loadPreloadedScenario will fetch all definition data from the API
   router.push({
     name: 'WhatIf',
     params: { profileId },
     query: {
-      scenarioId: resultId,
-      scenarioName: detailData.value.scenario_name,
-      income: Math.round(firstYear.income / 12),
-      expenses: Math.round(firstYear.expenses / 12),
-      startingAge: firstYear.age - 1,
-      // Store events as JSON in query param
-      events: JSON.stringify(detailData.value.events || [])
+      scenarioId: resultId
     }
   })
 }

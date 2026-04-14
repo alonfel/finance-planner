@@ -1,0 +1,32 @@
+{
+  "profile": "alon",
+  "description": "Default template values for Alon's profile. Used to fill missing questionnaire answers.",
+  "defaults": {
+    "monthly_income": {
+      "salary": 36000,
+      "freelance": 5000,
+      "other": 4000
+    },
+    "monthly_expenses": {
+      "rent": 8000,
+      "food": 3500,
+      "utilities": 1500,
+      "childcare": 4000,
+      "other": 8000
+    },
+    "mortgage": null,
+    "pension": {
+      "initial_value": 2000000,
+      "monthly_contribution": 9000,
+      "annual_growth_rate": 0.06,
+      "accessible_at_age": 67
+    },
+    "return_rate": 0.07,
+    "historical_index": "sp500",
+    "historical_start_year": null,
+    "starting_age": 42,
+    "currency": "ILS",
+    "retirement_mode": "liquid_only"
+  },
+  "notes": "Future: Add support for multiple user profiles with different defaults"
+}

@@ -210,9 +210,9 @@ What-If changes calculate instantly with no server latency:
 ### Data Persistence
 
 What-If Saves:
-1. **Written to Disk** — Persisted to `scenarios.json` with timestamp
-2. **Recorded in Database** — Stored in SQLite for retrieval
-3. **Immediately Available** — Appear in Scenarios list without app restart
+1. **Stored in Database** — Inserted into `scenario_definitions` table in SQLite with `saved_from='whatif'` marker
+2. **Events Linked** — Any one-time events stored in `scenario_events` table with foreign key reference
+3. **Immediately Available** — Appear in Scenarios list without app restart, queryable via API
 
 ### Authentication
 
