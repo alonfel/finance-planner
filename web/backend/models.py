@@ -47,6 +47,7 @@ class ScenarioDefinition(Base):
     age = Column(Integer, nullable=False)
     currency = Column(String, nullable=False, default="ILS")
     return_rate = Column(Float, nullable=False)
+    historical_start_year = Column(Integer, nullable=True)
     withdrawal_rate = Column(Float, nullable=False, default=0.04)
     retirement_mode = Column(String, nullable=False, default="liquid_only")
     saved_from = Column(String, nullable=True)

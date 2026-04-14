@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import List, Optional
 
+# Base schemas - no dependencies
 class YearDataSchema(BaseModel):
     year: int
     age: int
@@ -16,6 +17,63 @@ class YearDataSchema(BaseModel):
     class Config:
         from_attributes = True
 
+class EventSchema(BaseModel):
+    year: int
+    portfolio_injection: float
+    description: str = ""
+
+class MortgageSchema(BaseModel):
+    principal: float
+    annual_rate: float
+    duration_years: int
+    currency: str = "ILS"
+
+class PensionSchema(BaseModel):
+    initial_value: float
+    monthly_contribution: float
+    annual_growth_rate: float
+    accessible_at_age: int = 67
+
+# Core request/response schemas
+class WhatIfScenarioSchema(BaseModel):
+    """Canonical shape for all What-If scenario state"""
+    monthly_income: float
+    monthly_expenses: float
+    return_rate: float = 0.07
+    historical_start_year: Optional[int] = None
+    withdrawal_rate: float = 0.04
+    starting_age: int
+    initial_portfolio: float
+    years: int = 20
+    retirement_mode: str = "liquid_only"
+    currency: str = "ILS"
+    events: List[EventSchema] = []
+    mortgage: Optional[MortgageSchema] = None
+    pension: Optional[PensionSchema] = None
+
+class SimulateRequest(WhatIfScenarioSchema):
+    """Request for one-off simulation - inherits all fields from WhatIfScenarioSchema"""
+    pass
+
+class SaveScenarioRequest(WhatIfScenarioSchema):
+    """Request to save a What-If scenario - inherits all scenario fields plus name"""
+    scenario_name: str = Field(..., min_length=1, max_length=100)
+
+class SimulateResponse(BaseModel):
+    scenario_name: str
+    retirement_year: Optional[int]
+    final_portfolio: float
+    total_savings: float
+    year_data: List[YearDataSchema]
+
+class SaveScenarioResponse(BaseModel):
+    scenario_result_id: int
+    run_id: int
+    scenario_name: str
+    retirement_year: Optional[int]
+    final_portfolio: float
+
+# Scenario detail response - uses forward reference for WhatIfScenarioSchema
 class ScenarioResultSchema(BaseModel):
     id: int
     scenario_name: str
@@ -23,6 +81,7 @@ class ScenarioResultSchema(BaseModel):
     year_data: List[YearDataSchema]
     events: List[EventSchema] = []
     mortgage: Optional[MortgageSchema] = None
+    definition: Optional['WhatIfScenarioSchema'] = None
 
     class Config:
         from_attributes = True
@@ -70,53 +129,7 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str
 
-class EventSchema(BaseModel):
-    year: int
-    portfolio_injection: float
-    description: str = ""
-
-class MortgageSchema(BaseModel):
-    principal: float
-    annual_rate: float
-    duration_years: int
-    currency: str = "ILS"
-
-class SimulateRequest(BaseModel):
-    monthly_income: float
-    monthly_expenses: float
-    return_rate: float = 0.07
-    starting_age: int
-    initial_portfolio: float
-    years: int = 20
-    events: List[EventSchema] = []
-    mortgage: Optional[MortgageSchema] = None
-
-class SimulateResponse(BaseModel):
-    scenario_name: str
-    retirement_year: Optional[int]
-    final_portfolio: float
-    total_savings: float
-    year_data: List[YearDataSchema]
-
-class SaveScenarioRequest(BaseModel):
-    scenario_name: str = Field(..., min_length=1, max_length=100)
-    monthly_income: float
-    monthly_expenses: float
-    return_rate: float = 0.07
-    starting_age: int
-    initial_portfolio: float
-    years: int = 20
-    events: List[EventSchema] = []
-    mortgage: Optional[MortgageSchema] = None
-
-class SaveScenarioResponse(BaseModel):
-    scenario_result_id: int
-    run_id: int
-    scenario_name: str
-    retirement_year: Optional[int]
-    final_portfolio: float
-
-
+# Database schemas
 class ScenarioDefinitionSchema(BaseModel):
     """Full scenario definition from database"""
     id: int
@@ -136,14 +149,6 @@ class ScenarioDefinitionSchema(BaseModel):
 
     class Config:
         from_attributes = True
-
-
-class PensionSchema(BaseModel):
-    initial_value: float
-    monthly_contribution: float
-    annual_growth_rate: float
-    accessible_at_age: int = 67
-
 
 class ScenarioNodeSchema(BaseModel):
     """Scenario node for inheritance tree"""

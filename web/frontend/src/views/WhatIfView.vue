@@ -42,7 +42,7 @@
           <!-- Save button -->
           <button
             v-if="whatIfResult"
-            @click="showSaveModal = true"
+            @click="openSaveModal"
             class="btn-save-scenario-sidebar"
           >
             💾 Save as Scenario
@@ -88,8 +88,17 @@
               </div>
 
               <div class="slider-group">
-                <label>Growth Rate</label>
-                <div class="slider-control">
+                <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px">
+                  <label style="margin:0">Growth Rate</label>
+                  <button
+                    @click="returnMode = returnMode === 'fixed' ? 'historical' : 'fixed'; onSliderChange()"
+                    class="btn-return-mode"
+                    :class="{ active: returnMode === 'historical' }"
+                  >
+                    {{ returnMode === 'fixed' ? 'Fixed' : 'S&P 500' }}
+                  </button>
+                </div>
+                <div v-if="returnMode === 'fixed'" class="slider-control">
                   <input
                     v-model.number="sliders.growthRate"
                     type="range"
@@ -99,6 +108,17 @@
                     @input="onSliderChange"
                   />
                   <span class="slider-value">{{ sliders.growthRate.toFixed(1) }}%</span>
+                </div>
+                <div v-else class="slider-control">
+                  <input
+                    v-model.number="historicalStartYear"
+                    type="range"
+                    min="1928"
+                    max="2024"
+                    step="1"
+                    @input="onSliderChange"
+                  />
+                  <span class="slider-value">{{ historicalStartYear }}</span>
                 </div>
               </div>
 
@@ -133,17 +153,26 @@
               </div>
             </div>
 
-            <!-- Mortgage Section -->
+            <!-- Mortgage Section (Collapsible) -->
             <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e0e0e0;">
               <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px;">
-                <h4 style="margin: 0; font-size: 13px; font-weight: 600; color: #333;">Mortgage</h4>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <h4 style="margin: 0; font-size: 13px; font-weight: 600; color: #333;">Mortgage</h4>
+                  <button
+                    v-if="mortgage"
+                    @click="showMortgage = !showMortgage"
+                    style="background: none; border: none; cursor: pointer; font-size: 12px; color: #667eea;"
+                  >
+                    {{ showMortgage ? '▼' : '▶' }}
+                  </button>
+                </div>
                 <div class="mortgage-buttons">
-                  <button v-if="!mortgage" @click="addMortgage" class="btn-add-mortgage">+ Add Mortgage</button>
-                  <button v-else @click="removeMortgage" class="btn-remove-mortgage">Remove</button>
+                  <button v-if="!mortgage" @click="addMortgage; showMortgage = true" class="btn-add-mortgage">+ Add</button>
+                  <button v-else @click="removeMortgage; showMortgage = false" class="btn-remove-mortgage">Remove</button>
                 </div>
               </div>
 
-              <div v-if="mortgage" class="mortgage-controls">
+              <div v-if="mortgage && showMortgage" class="mortgage-controls">
                 <div class="mortgage-row">
                   <label>Principal (₪)</label>
                   <div class="mortgage-control">
@@ -376,11 +405,19 @@ const sliders = ref({
   expenses: 22000,
   growthRate: 7,
   startingAge: 41,
-  initialPortfolio: 1700000
+  initialPortfolio: 1700000,
+  withdrawalRate: 4,
+  retirementMode: 'liquid_only',
+  currency: 'ILS'
 })
 
 const events = ref([])
 const mortgage = ref(null)
+const pension = ref(null)
+const showMortgage = ref(false)
+
+const returnMode = ref('fixed')        // 'fixed' | 'historical'
+const historicalStartYear = ref(1990)
 
 const showSaveModal = ref(false)
 const saveScenarioName = ref('')
@@ -440,44 +477,46 @@ const onScenarioSelect = async () => {
     const response = await axios.get(`${API_BASE_URL}/scenarios/${selectedScenarioId.value}`)
     originalScenario.value = response.data
 
-    // Initialize sliders from original scenario's first year
-    if (response.data.year_data && response.data.year_data.length > 0) {
-      const firstYear = response.data.year_data[0]
-      sliders.value.income = firstYear.income / 12  // Convert annual to monthly
-      sliders.value.expenses = firstYear.expenses / 12  // Convert annual to monthly
-      sliders.value.growthRate = 7 // Default growth rate
-      sliders.value.startingAge = firstYear.age - 1
-      // Estimate initial portfolio backwards: portfolio_start = (portfolio_end / (1 + rate)) - net_savings
-      sliders.value.initialPortfolio =
-        (firstYear.portfolio / 1.07) - firstYear.net_savings
-    }
-
-    // Load events from the scenario
-    if (response.data.events && response.data.events.length > 0) {
-      events.value = response.data.events.map(e => ({
-        year: e.year,
-        amount: e.portfolio_injection,
-        description: e.description,
-        enabled: true
-      }))
+    // Use exact definition values if available (What-If Saves or new scenarios)
+    if (response.data.definition) {
+      fromDefinition(response.data.definition)
     } else {
-      events.value = []
-    }
-
-    // Load mortgage from the scenario if it exists
-    if (response.data.mortgage) {
-      mortgage.value = {
-        principal: response.data.mortgage.principal,
-        annual_rate: response.data.mortgage.annual_rate,
-        duration_years: response.data.mortgage.duration_years,
-        currency: response.data.mortgage.currency || 'ILS'
+      // Legacy fallback: back-calculate from year_data for old seeded scenarios
+      if (response.data.year_data && response.data.year_data.length > 0) {
+        const firstYear = response.data.year_data[0]
+        sliders.value.income = firstYear.income / 12
+        sliders.value.expenses = firstYear.expenses / 12
+        sliders.value.growthRate = 7 // Approximation for legacy
+        sliders.value.startingAge = firstYear.age - 1
+        sliders.value.initialPortfolio = (firstYear.portfolio / 1.07) - firstYear.net_savings
       }
-    } else {
-      mortgage.value = null
+
+      // Load events from the scenario
+      if (response.data.events && response.data.events.length > 0) {
+        events.value = response.data.events.map(e => ({
+          year: e.year,
+          amount: e.portfolio_injection,
+          description: e.description,
+          enabled: true
+        }))
+      } else {
+        events.value = []
+      }
+
+      // Load mortgage from the scenario if it exists
+      if (response.data.mortgage) {
+        mortgage.value = {
+          principal: response.data.mortgage.principal,
+          annual_rate: response.data.mortgage.annual_rate,
+          duration_years: response.data.mortgage.duration_years,
+          currency: response.data.mortgage.currency || 'ILS'
+        }
+      } else {
+        mortgage.value = null
+      }
     }
 
-    // Re-simulate the original scenario with current sliders and mortgage
-    // This ensures the blue line reflects the loaded mortgage data
+    // Re-simulate the original scenario with current sliders
     await refreshOriginalScenario()
 
     // Run initial What-If simulation
@@ -491,24 +530,9 @@ const onScenarioSelect = async () => {
 const refreshOriginalScenario = async () => {
   if (!originalScenario.value) return
   try {
-    // Simulate original scenario with current sliders and mortgage
-    const response = await axios.post(`${API_BASE_URL}/simulate`, {
-      monthly_income: sliders.value.income,
-      monthly_expenses: sliders.value.expenses,
-      return_rate: sliders.value.growthRate / 100,
-      starting_age: sliders.value.startingAge,
-      initial_portfolio: sliders.value.initialPortfolio,
-      years: 20,
-      events: events.value
-        .filter(e => e.enabled)
-        .map(e => ({ year: e.year, portfolio_injection: e.amount, description: e.description })),
-      mortgage: mortgage.value ? {
-        principal: mortgage.value.principal,
-        annual_rate: mortgage.value.annual_rate / 100,
-        duration_years: mortgage.value.duration_years,
-        currency: mortgage.value.currency || 'ILS'
-      } : null
-    }, { headers: { Authorization: `Bearer ${authStore.token}` } })
+    const response = await axios.post(`${API_BASE_URL}/simulate`, toApiRequest(), {
+      headers: { Authorization: `Bearer ${authStore.token}` }
+    })
 
     // Update original scenario's year_data with fresh simulation
     originalScenario.value.year_data = response.data.year_data
@@ -526,23 +550,7 @@ const onSliderChange = () => {
 const runSimulation = async () => {
   if (!originalScenario.value) return
   try {
-    const response = await axios.post(`${API_BASE_URL}/simulate`, {
-      monthly_income: sliders.value.income,
-      monthly_expenses: sliders.value.expenses,
-      return_rate: sliders.value.growthRate / 100,
-      starting_age: sliders.value.startingAge,
-      initial_portfolio: sliders.value.initialPortfolio,
-      years: 20,
-      events: events.value
-        .filter(e => e.enabled)
-        .map(e => ({ year: e.year, portfolio_injection: e.amount, description: e.description })),
-      mortgage: mortgage.value ? {
-        principal: mortgage.value.principal,
-        annual_rate: mortgage.value.annual_rate / 100,
-        duration_years: mortgage.value.duration_years,
-        currency: mortgage.value.currency || 'ILS'
-      } : null
-    })
+    const response = await axios.post(`${API_BASE_URL}/simulate`, toApiRequest())
     whatIfResult.value = response.data
   } catch (err) {
     error.value = 'Failed to run simulation'
@@ -580,6 +588,62 @@ const removeMortgage = () => {
   onSliderChange()
 }
 
+// Pure mapping function: builds API request from current state
+const toApiRequest = () => ({
+  monthly_income: sliders.value.income,
+  monthly_expenses: sliders.value.expenses,
+  return_rate: returnMode.value === 'fixed' ? sliders.value.growthRate / 100 : 0.07,
+  historical_start_year: returnMode.value === 'historical' ? historicalStartYear.value : null,
+  withdrawal_rate: sliders.value.withdrawalRate / 100,
+  starting_age: sliders.value.startingAge,
+  initial_portfolio: sliders.value.initialPortfolio,
+  years: 20,
+  retirement_mode: sliders.value.retirementMode,
+  currency: sliders.value.currency,
+  events: events.value
+    .filter(e => e.enabled)
+    .map(e => ({ year: e.year, portfolio_injection: e.amount, description: e.description })),
+  mortgage: mortgage.value ? {
+    principal: mortgage.value.principal,
+    annual_rate: mortgage.value.annual_rate,
+    duration_years: mortgage.value.duration_years,
+    currency: mortgage.value.currency || 'ILS'
+  } : null,
+  pension: pension.value ? { ...pension.value } : null
+})
+
+// Pure mapping function: restores exact values from loaded definition
+const fromDefinition = (def) => {
+  if (!def) return
+  sliders.value.income = def.monthly_income
+  sliders.value.expenses = def.monthly_expenses
+
+  // Restore return rate mode
+  if (def.historical_start_year != null) {
+    returnMode.value = 'historical'
+    historicalStartYear.value = def.historical_start_year
+  } else {
+    returnMode.value = 'fixed'
+    sliders.value.growthRate = (def.return_rate ?? 0.07) * 100
+  }
+
+  sliders.value.withdrawalRate = (def.withdrawal_rate ?? 0.04) * 100
+  sliders.value.startingAge = def.starting_age
+  sliders.value.initialPortfolio = def.initial_portfolio
+  sliders.value.retirementMode = def.retirement_mode ?? 'liquid_only'
+  sliders.value.currency = def.currency ?? 'ILS'
+
+  events.value = (def.events ?? []).map(e => ({
+    year: e.year,
+    amount: e.portfolio_injection,
+    description: e.description,
+    enabled: true
+  }))
+
+  mortgage.value = def.mortgage ? { ...def.mortgage } : null
+  pension.value = def.pension ? { ...def.pension } : null
+}
+
 const calculateMortgagePayment = (m) => {
   if (!m) return '0'
   const r = (m.annual_rate / 100) / 12
@@ -614,6 +678,20 @@ const retirementAge = (retirementYear, startingAge) => {
   return startingAge + retirementYear
 }
 
+const generateDefaultScenarioName = () => {
+  const baseName = originalScenario.value?.scenario_name || 'What-If Scenario'
+  const now = new Date()
+  const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+  return `${baseName} - Modified ${timeStr}`
+}
+
+const openSaveModal = () => {
+  saveScenarioName.value = generateDefaultScenarioName()
+  saveStatus.value = null
+  saveError.value = ''
+  showSaveModal.value = true
+}
+
 const saveScenario = async () => {
   if (!saveScenarioName.value.trim()) return
   saveStatus.value = 'saving'
@@ -623,23 +701,7 @@ const saveScenario = async () => {
       `${API_BASE_URL}/profiles/${profileId.value}/saved-scenarios`,
       {
         scenario_name: saveScenarioName.value.trim(),
-        monthly_income: sliders.value.income,
-        monthly_expenses: sliders.value.expenses,
-        return_rate: sliders.value.growthRate / 100,
-        starting_age: sliders.value.startingAge,
-        initial_portfolio: sliders.value.initialPortfolio,
-        years: 20,
-        events: events.value.map(e => ({
-          year: e.year,
-          portfolio_injection: e.amount,
-          description: e.description
-        })),
-        mortgage: mortgage.value ? {
-          principal: mortgage.value.principal,
-          annual_rate: mortgage.value.annual_rate / 100,
-          duration_years: mortgage.value.duration_years,
-          currency: mortgage.value.currency || 'ILS'
-        } : null
+        ...toApiRequest()
       },
       { headers: { Authorization: `Bearer ${authStore.token}` } }
     )
@@ -671,23 +733,29 @@ fetchRuns()
 if (route.query.scenarioId) {
   selectedScenarioId.value = parseInt(route.query.scenarioId)
 
-  // Load the scenario details and events (don't use stale query params)
+  // Load the scenario details and events
   const loadPreloadedScenario = async () => {
     try {
       const response = await axios.get(`${API_BASE_URL}/scenarios/${selectedScenarioId.value}`)
       originalScenario.value = response.data
 
-      // Load events
-      if (response.data.events && response.data.events.length > 0) {
-        events.value = response.data.events.map(e => ({
-          year: e.year,
-          amount: e.portfolio_injection,
-          description: e.description,
-          enabled: true
-        }))
+      // Use exact definition values if available
+      if (response.data.definition) {
+        fromDefinition(response.data.definition)
+      } else {
+        // Legacy fallback: load events from top-level
+        if (response.data.events && response.data.events.length > 0) {
+          events.value = response.data.events.map(e => ({
+            year: e.year,
+            amount: e.portfolio_injection,
+            description: e.description,
+            enabled: true
+          }))
+        }
       }
 
       // Run initial simulation
+      await refreshOriginalScenario()
       await runSimulation()
     } catch (err) {
       console.error('Failed to load preloaded scenario:', err)
@@ -860,7 +928,7 @@ if (route.query.scenarioId) {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   flex-shrink: 0;
   overflow-y: auto;
-  max-height: 45vh;
+  max-height: 55vh;
 }
 
 .sliders-section h3 {
@@ -1055,6 +1123,33 @@ if (route.query.scenarioId) {
 
 .btn-expense:hover {
   background: #c0392b;
+}
+
+.btn-return-mode {
+  border: 1px solid #667eea;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: white;
+  color: #667eea;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.btn-return-mode.active {
+  background: #667eea;
+  color: white;
+  border-color: #667eea;
+}
+
+.btn-return-mode:hover {
+  border-color: #5568d3;
+  color: #5568d3;
+}
+
+.btn-return-mode.active:hover {
+  background: #5568d3;
 }
 
 .no-events {

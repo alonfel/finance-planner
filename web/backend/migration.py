@@ -40,6 +40,13 @@ def run_migration(db: Session) -> None:
         db.execute(text("ALTER TABLE scenario_results ADD COLUMN scenario_id INTEGER"))
         db.commit()
 
+    # Add historical_start_year column to scenario_definitions if it doesn't exist
+    columns = [c['name'] for c in inspector.get_columns('scenario_definitions')]
+    if 'historical_start_year' not in columns:
+        print("  Adding historical_start_year column to scenario_definitions...")
+        db.execute(text("ALTER TABLE scenario_definitions ADD COLUMN historical_start_year INTEGER"))
+        db.commit()
+
     # Check if migration has already run
     if db.query(ScenarioDefinition).first():
         print("✓ Migration already completed (scenario_definitions table has rows)")
@@ -103,6 +110,7 @@ def migrate_scenarios(db: Session, profile: Profile) -> None:
             age=scenario.age,
             currency=scenario.currency,
             return_rate=scenario.return_rate,
+            historical_start_year=scenario_dict.get("historical_start_year"),
             withdrawal_rate=scenario.withdrawal_rate,
             retirement_mode=scenario.retirement_mode,
             saved_from=scenario_dict.get("saved_from"),

@@ -1,5 +1,5 @@
-from fastapi import APIRouter, Depends
-from domain.models import Scenario, Event, Mortgage
+from fastapi import APIRouter, Depends, HTTPException
+from domain.models import Scenario, Event, Mortgage, Pension
 from domain.simulation import simulate
 from domain.breakdown import IncomeBreakdown, ExpenseBreakdown
 from schemas import SimulateRequest, SimulateResponse, YearDataSchema
@@ -22,19 +22,36 @@ def run_simulation(body: SimulateRequest, username: str = Depends(get_current_us
             currency=body.mortgage.currency
         )
 
+    pension = None
+    if body.pension:
+        pension = Pension(
+            initial_value=body.pension.initial_value,
+            monthly_contribution=body.pension.monthly_contribution,
+            annual_growth_rate=body.pension.annual_growth_rate,
+            accessible_at_age=body.pension.accessible_at_age
+        )
+
     scenario = Scenario(
         name="What-If",
         monthly_income=IncomeBreakdown(components={"income": body.monthly_income}),
         monthly_expenses=ExpenseBreakdown(components={"expenses": body.monthly_expenses}),
         return_rate=body.return_rate,
+        historical_start_year=body.historical_start_year,
+        withdrawal_rate=body.withdrawal_rate,
         age=body.starting_age,
         initial_portfolio=body.initial_portfolio,
+        currency=body.currency,
+        retirement_mode=body.retirement_mode,
         mortgage=mortgage,
+        pension=pension,
         events=[Event(year=e.year, portfolio_injection=e.portfolio_injection, description=e.description)
                 for e in body.events]
     )
 
-    result = simulate(scenario, years=body.years)
+    try:
+        result = simulate(scenario, years=body.years)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
 
     # Convert domain YearData to schema format
     year_data_schemas = []

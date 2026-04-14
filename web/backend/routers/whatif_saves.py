@@ -22,10 +22,10 @@ from database import get_db
 from schemas import SaveScenarioRequest, SaveScenarioResponse
 from models import (
     Profile, SimulationRun, ScenarioResult, YearData,
-    ScenarioDefinition, ScenarioEvent, ScenarioMortgage
+    ScenarioDefinition, ScenarioEvent, ScenarioMortgage, ScenarioPension
 )
 from auth import get_current_user
-from domain.models import Scenario, Event, Mortgage
+from domain.models import Scenario, Event, Mortgage, Pension
 from domain.simulation import simulate
 from domain.breakdown import IncomeBreakdown, ExpenseBreakdown
 
@@ -71,18 +71,36 @@ def save_whatif_scenario(profile_id: int, body: SaveScenarioRequest,
             currency=body.mortgage.currency
         )
 
+    pension = None
+    if body.pension:
+        pension = Pension(
+            initial_value=body.pension.initial_value,
+            monthly_contribution=body.pension.monthly_contribution,
+            annual_growth_rate=body.pension.annual_growth_rate,
+            accessible_at_age=body.pension.accessible_at_age
+        )
+
     scenario_obj = Scenario(
         name=body.scenario_name,
         monthly_income=IncomeBreakdown(components={"income": body.monthly_income}),
         monthly_expenses=ExpenseBreakdown(components={"expenses": body.monthly_expenses}),
         return_rate=body.return_rate,
+        historical_start_year=body.historical_start_year,
+        withdrawal_rate=body.withdrawal_rate,
         age=body.starting_age,
         initial_portfolio=body.initial_portfolio,
+        currency=body.currency,
+        retirement_mode=body.retirement_mode,
         mortgage=mortgage,
+        pension=pension,
         events=[Event(year=e.year, portfolio_injection=e.portfolio_injection,
                       description=e.description) for e in body.events]
     )
-    sim_result = simulate(scenario_obj, years=body.years)
+
+    try:
+        sim_result = simulate(scenario_obj, years=body.years)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
 
     # Insert into scenario_definitions
     definition = ScenarioDefinition(
@@ -92,10 +110,11 @@ def save_whatif_scenario(profile_id: int, body: SaveScenarioRequest,
         monthly_expenses=json.dumps({"expenses": body.monthly_expenses}),
         initial_portfolio=body.initial_portfolio,
         age=body.starting_age,
-        currency="ILS",
+        currency=body.currency,
         return_rate=body.return_rate,
-        withdrawal_rate=0.04,  # Default
-        retirement_mode="liquid_only",  # Default
+        historical_start_year=body.historical_start_year,
+        withdrawal_rate=body.withdrawal_rate,
+        retirement_mode=body.retirement_mode,
         saved_from="whatif",
         saved_at=datetime.utcnow().isoformat(timespec="seconds") + "Z",
     )
@@ -119,6 +138,16 @@ def save_whatif_scenario(profile_id: int, body: SaveScenarioRequest,
             annual_rate=body.mortgage.annual_rate,
             duration_years=body.mortgage.duration_years,
             currency=body.mortgage.currency,
+        ))
+
+    # Insert pension if present
+    if body.pension:
+        db.add(ScenarioPension(
+            scenario_id=definition.id,
+            initial_value=body.pension.initial_value,
+            monthly_contribution=body.pension.monthly_contribution,
+            annual_growth_rate=body.pension.annual_growth_rate,
+            accessible_at_age=body.pension.accessible_at_age,
         ))
 
     db.flush()
