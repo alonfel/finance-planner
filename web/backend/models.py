@@ -48,6 +48,7 @@ class ScenarioDefinition(Base):
     currency = Column(String, nullable=False, default="ILS")
     return_rate = Column(Float, nullable=False)
     historical_start_year = Column(Integer, nullable=True)
+    historical_index = Column(String, nullable=True)  # "sp500" | "nasdaq" | "bonds" | "russell2000"
     withdrawal_rate = Column(Float, nullable=False, default=0.04)
     retirement_mode = Column(String, nullable=False, default="liquid_only")
     saved_from = Column(String, nullable=True)

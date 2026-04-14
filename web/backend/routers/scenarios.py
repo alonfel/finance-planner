@@ -86,6 +86,7 @@ def _build_definition(db: Session, scenario_id: int):
             monthly_expenses=monthly_expenses,
             return_rate=definition.return_rate,
             historical_start_year=definition.historical_start_year,
+            historical_index=definition.historical_index,
             withdrawal_rate=definition.withdrawal_rate,
             starting_age=definition.age,
             initial_portfolio=definition.initial_portfolio,

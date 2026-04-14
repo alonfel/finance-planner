@@ -1009,6 +1009,94 @@ class TestHistoricalReturns(unittest.TestCase):
         # Child should override with 2000
         self.assertEqual(resolved.historical_start_year, 2000)
 
+    def test_multi_index_backward_compat(self):
+        """historical_index defaults to sp500 when not provided."""
+        from domain.historical_returns import get_historical_rate_sequence
+
+        # Call without index arg (backward compat)
+        rates_default = get_historical_rate_sequence(1990, 5)
+        rates_sp500 = get_historical_rate_sequence(1990, 5, index='sp500')
+
+        # Should be identical
+        self.assertEqual(rates_default, rates_sp500)
+
+    def test_multi_index_nasdaq_different_from_sp500(self):
+        """NASDAQ returns differ from S&P 500 for same period."""
+        from domain.historical_returns import get_historical_rate_sequence
+
+        rates_sp500 = get_historical_rate_sequence(1990, 10, index='sp500')
+        rates_nasdaq = get_historical_rate_sequence(1990, 10, index='nasdaq')
+
+        # Should be lists of same length
+        self.assertEqual(len(rates_sp500), 10)
+        self.assertEqual(len(rates_nasdaq), 10)
+
+        # But should be different (not identical sequences)
+        self.assertNotEqual(rates_sp500, rates_nasdaq)
+
+    def test_multi_index_nasdaq_year_range_validation(self):
+        """NASDAQ data only available from 1972 onward."""
+        from domain.historical_returns import get_historical_rate_sequence
+
+        # Valid year for NASDAQ
+        rates = get_historical_rate_sequence(1990, 5, index='nasdaq')
+        self.assertEqual(len(rates), 5)
+
+        # Invalid year for NASDAQ (before 1972)
+        with self.assertRaises(ValueError) as context:
+            get_historical_rate_sequence(1970, 5, index='nasdaq')
+        self.assertIn('out of range', str(context.exception))
+
+    def test_multi_index_bonds_available_from_1928(self):
+        """Bonds data available from 1928 same as S&P 500."""
+        from domain.historical_returns import get_historical_rate_sequence
+
+        rates_1928 = get_historical_rate_sequence(1928, 10, index='bonds')
+        self.assertEqual(len(rates_1928), 10)
+
+    def test_multi_index_russell2000_year_range(self):
+        """Russell 2000 data only available from 1979 onward."""
+        from domain.historical_returns import get_historical_rate_sequence
+
+        # Valid year
+        rates = get_historical_rate_sequence(1990, 5, index='russell2000')
+        self.assertEqual(len(rates), 5)
+
+        # Invalid year (before 1979)
+        with self.assertRaises(ValueError):
+            get_historical_rate_sequence(1970, 5, index='russell2000')
+
+    def test_scenario_with_multi_index(self):
+        """Scenario with historical_index='nasdaq' produces different results than sp500."""
+        # Base scenario with NASDAQ
+        scenario_nasdaq = Scenario(
+            name="NASDAQ Backtest",
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 10_000}),
+            initial_portfolio=100_000,
+            historical_start_year=1990,
+            historical_index='nasdaq',
+        )
+
+        # Same scenario but with S&P 500
+        scenario_sp500 = Scenario(
+            name="S&P 500 Backtest",
+            monthly_income=IncomeBreakdown({"income": 20_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 10_000}),
+            initial_portfolio=100_000,
+            historical_start_year=1990,
+            historical_index='sp500',
+        )
+
+        result_nasdaq = simulate(scenario_nasdaq, years=10)
+        result_sp500 = simulate(scenario_sp500, years=10)
+
+        # Final portfolios should differ due to different annual returns
+        self.assertNotEqual(
+            result_nasdaq.year_data[-1].portfolio,
+            result_sp500.year_data[-1].portfolio
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

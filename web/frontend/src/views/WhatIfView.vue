@@ -88,17 +88,17 @@
               </div>
 
               <div class="slider-group">
-                <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px">
-                  <label style="margin:0">Growth Rate</label>
+                <label style="margin-bottom:8px; display:block">Growth Rate</label>
+                <div class="index-selector">
                   <button
-                    @click="returnMode = returnMode === 'fixed' ? 'historical' : 'fixed'; onSliderChange()"
-                    class="btn-return-mode"
-                    :class="{ active: returnMode === 'historical' }"
-                  >
-                    {{ returnMode === 'fixed' ? 'Fixed' : 'S&P 500' }}
-                  </button>
+                    v-for="opt in INDEX_OPTIONS"
+                    :key="opt.key"
+                    @click="onIndexSelect(opt)"
+                    class="btn-index-option"
+                    :class="{ active: selectedIndex === opt.key }"
+                  >{{ opt.label }}</button>
                 </div>
-                <div v-if="returnMode === 'fixed'" class="slider-control">
+                <div v-if="selectedIndex === 'fixed'" class="slider-control" style="margin-top:8px">
                   <input
                     v-model.number="sliders.growthRate"
                     type="range"
@@ -109,11 +109,11 @@
                   />
                   <span class="slider-value">{{ sliders.growthRate.toFixed(1) }}%</span>
                 </div>
-                <div v-else class="slider-control">
+                <div v-else class="slider-control" style="margin-top:8px">
                   <input
                     v-model.number="historicalStartYear"
                     type="range"
-                    min="1928"
+                    :min="INDEX_OPTIONS.find(o => o.key === selectedIndex)?.minYear ?? 1928"
                     max="2024"
                     step="1"
                     @input="onSliderChange"
@@ -416,8 +416,16 @@ const mortgage = ref(null)
 const pension = ref(null)
 const showMortgage = ref(false)
 
-const returnMode = ref('fixed')        // 'fixed' | 'historical'
+const selectedIndex = ref('fixed')        // 'fixed' | 'sp500' | 'nasdaq' | 'bonds' | 'russell2000'
 const historicalStartYear = ref(1990)
+
+const INDEX_OPTIONS = [
+  { key: 'fixed',        label: 'Fixed %',      minYear: null },
+  { key: 'sp500',        label: 'S&P 500',       minYear: 1928 },
+  { key: 'nasdaq',       label: 'NASDAQ',        minYear: 1972 },
+  { key: 'bonds',        label: 'Bonds',         minYear: 1928 },
+  { key: 'russell2000',  label: 'Russell 2000',  minYear: 1979 },
+]
 
 const showSaveModal = ref(false)
 const saveScenarioName = ref('')
@@ -542,6 +550,14 @@ const refreshOriginalScenario = async () => {
   }
 }
 
+const onIndexSelect = (opt) => {
+  selectedIndex.value = opt.key
+  if (opt.minYear && historicalStartYear.value < opt.minYear) {
+    historicalStartYear.value = opt.minYear
+  }
+  onSliderChange()
+}
+
 const onSliderChange = () => {
   clearTimeout(debounceTimer)
   debounceTimer = setTimeout(runSimulation, 300)
@@ -592,8 +608,9 @@ const removeMortgage = () => {
 const toApiRequest = () => ({
   monthly_income: sliders.value.income,
   monthly_expenses: sliders.value.expenses,
-  return_rate: returnMode.value === 'fixed' ? sliders.value.growthRate / 100 : 0.07,
-  historical_start_year: returnMode.value === 'historical' ? historicalStartYear.value : null,
+  return_rate: selectedIndex.value === 'fixed' ? sliders.value.growthRate / 100 : 0.07,
+  historical_start_year: selectedIndex.value !== 'fixed' ? historicalStartYear.value : null,
+  historical_index: selectedIndex.value !== 'fixed' ? selectedIndex.value : null,
   withdrawal_rate: sliders.value.withdrawalRate / 100,
   starting_age: sliders.value.startingAge,
   initial_portfolio: sliders.value.initialPortfolio,
@@ -620,10 +637,10 @@ const fromDefinition = (def) => {
 
   // Restore return rate mode
   if (def.historical_start_year != null) {
-    returnMode.value = 'historical'
+    selectedIndex.value = def.historical_index ?? 'sp500'  // fallback for old saves
     historicalStartYear.value = def.historical_start_year
   } else {
-    returnMode.value = 'fixed'
+    selectedIndex.value = 'fixed'
     sliders.value.growthRate = (def.return_rate ?? 0.07) * 100
   }
 
@@ -1150,6 +1167,41 @@ if (route.query.scenarioId) {
 
 .btn-return-mode.active:hover {
   background: #5568d3;
+}
+
+.index-selector {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.btn-index-option {
+  border: 1px solid #ddd;
+  padding: 6px 12px;
+  border-radius: 16px;
+  background: white;
+  color: #333;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.btn-index-option:hover {
+  border-color: #667eea;
+  color: #667eea;
+}
+
+.btn-index-option.active {
+  background: #667eea;
+  color: white;
+  border-color: #667eea;
+}
+
+.btn-index-option.active:hover {
+  background: #5568d3;
+  border-color: #5568d3;
 }
 
 .no-events {

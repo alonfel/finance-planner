@@ -47,6 +47,13 @@ def run_migration(db: Session) -> None:
         db.execute(text("ALTER TABLE scenario_definitions ADD COLUMN historical_start_year INTEGER"))
         db.commit()
 
+    # Add historical_index column to scenario_definitions if it doesn't exist
+    columns = [c['name'] for c in inspector.get_columns('scenario_definitions')]
+    if 'historical_index' not in columns:
+        print("  Adding historical_index column to scenario_definitions...")
+        db.execute(text("ALTER TABLE scenario_definitions ADD COLUMN historical_index TEXT"))
+        db.commit()
+
     # Check if migration has already run
     if db.query(ScenarioDefinition).first():
         print("✓ Migration already completed (scenario_definitions table has rows)")

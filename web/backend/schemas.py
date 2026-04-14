@@ -41,6 +41,7 @@ class WhatIfScenarioSchema(BaseModel):
     monthly_expenses: float
     return_rate: float = 0.07
     historical_start_year: Optional[int] = None
+    historical_index: Optional[str] = None  # "sp500" | "nasdaq" | "bonds" | "russell2000"
     withdrawal_rate: float = 0.04
     starting_age: int
     initial_portfolio: float

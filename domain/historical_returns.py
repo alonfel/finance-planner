@@ -1,6 +1,6 @@
-"""S&P 500 historical annual total returns (1928-2024)."""
+"""Multi-index historical annual total returns (1928-2024+)."""
 
-# Annual total returns (including dividends) sourced from public market data
+# S&P 500 annual total returns (including dividends) 1928-2024
 SP500_ANNUAL_RETURNS: dict[int, float] = {
     1928: 0.4381, 1929: -0.0830, 1930: -0.2512, 1931: -0.4384, 1932: -0.0819,
     1933: 0.5399, 1934: -0.0119, 1935: 0.4767, 1936: 0.3344, 1937: -0.3506,
@@ -24,30 +24,118 @@ SP500_ANNUAL_RETURNS: dict[int, float] = {
     2023: 0.2426, 2024: 0.2523,
 }
 
+# NASDAQ Composite annual total returns 1972-2024 (price only, no dividends)
+NASDAQ_ANNUAL_RETURNS: dict[int, float] = {
+    1972: 0.4116, 1973: -0.3155, 1974: -0.3835, 1975: 0.3779, 1976: 0.2290,
+    1977: -0.0535, 1978: 0.1210, 1979: 0.2869, 1980: 0.3365, 1981: -0.0835,
+    1982: 0.2259, 1983: 0.5039, 1984: -0.0827, 1985: 0.3244, 1986: 0.0644,
+    1987: -0.0223, 1988: 0.1576, 1989: 0.2690, 1990: -0.1769, 1991: 0.5645,
+    1992: 0.1554, 1993: 0.1446, 1994: -0.0346, 1995: 0.3962, 1996: 0.2212,
+    1997: 0.2156, 1998: 0.3974, 1999: 0.8594, 2000: -0.3910, 2001: -0.2117,
+    2002: -0.3115, 2003: 0.5024, 2004: 0.0853, 2005: 0.0124, 2006: 0.0870,
+    2007: 0.0920, 2008: -0.4063, 2009: 0.4563, 2010: 0.1694, 2011: -0.0195,
+    2012: 0.3028, 2013: 0.3849, 2014: 0.1391, 2015: 0.0585, 2016: 0.0737,
+    2017: 0.3091, 2018: -0.0313, 2019: 0.3521, 2020: 0.4455, 2021: 0.2093,
+    2022: -0.3308, 2023: 0.4037, 2024: 0.2313,
+}
+
+# US 10-Year Treasury total return (price + coupon) 1928-2024
+# Source: Damodaran historical returns (same as S&P 500 source)
+BONDS_ANNUAL_RETURNS: dict[int, float] = {
+    1928: 0.0334, 1929: 0.0348, 1930: 0.0413, 1931: 0.0259, 1932: 0.0952,
+    1933: -0.0280, 1934: 0.0767, 1935: 0.0462, 1936: 0.0691, 1937: -0.0194,
+    1938: 0.0382, 1939: 0.0510, 1940: 0.0478, 1941: 0.0289, 1942: -0.0293,
+    1943: -0.0266, 1944: 0.0228, 1945: 0.1081, 1946: -0.0469, 1947: -0.0222,
+    1948: 0.0284, 1949: 0.0609, 1950: 0.0049, 1951: -0.0319, 1952: 0.0185,
+    1953: 0.0350, 1954: 0.0589, 1955: -0.0129, 1956: -0.0268, 1957: 0.0724,
+    1958: -0.0611, 1959: -0.0290, 1960: 0.1344, 1961: 0.0098, 1962: 0.0684,
+    1963: 0.0121, 1964: 0.0186, 1965: 0.0236, 1966: 0.0359, 1967: 0.0091,
+    1968: 0.0327, 1969: -0.0508, 1970: 0.1210, 1971: 0.1053, 1972: 0.0568,
+    1973: -0.0117, 1974: 0.0435, 1975: 0.0928, 1976: 0.1612, 1977: -0.0068,
+    1978: -0.0176, 1979: -0.0160, 1980: -0.0395, 1981: -0.0925, 1982: 0.4061,
+    1983: -0.0114, 1984: 0.1640, 1985: 0.3097, 1986: 0.2444, 1987: -0.0264,
+    1988: 0.0961, 1989: 0.1812, 1990: 0.0639, 1991: 0.1927, 1992: 0.0797,
+    1993: 0.1175, 1994: -0.0788, 1995: 0.3163, 1996: 0.0591, 1997: 0.0954,
+    1998: 0.1346, 1999: -0.0867, 2000: 0.1566, 2001: 0.0537, 2002: 0.1554,
+    2003: 0.0436, 2004: 0.0426, 2005: 0.0254, 2006: 0.0175, 2007: 0.0997,
+    2008: 0.1427, 2009: -0.0118, 2010: 0.0621, 2011: 0.1606, 2012: 0.0249,
+    2013: -0.0982, 2014: 0.0612, 2015: 0.0122, 2016: 0.0084, 2017: 0.0301,
+    2018: 0.0000, 2019: 0.0886, 2020: 0.0818, 2021: -0.0527, 2022: -0.1656,
+    2023: 0.0397, 2024: 0.0426,
+}
+
+# Russell 2000 (Small-cap) annual total returns 1979-2024
+# Source: FRED RU2000TR + Yahoo Finance IWM data
+RUSSELL2000_ANNUAL_RETURNS: dict[int, float] = {
+    1979: 0.4366, 1980: 0.4063, 1981: 0.0609, 1982: 0.3888, 1983: 0.3968,
+    1984: -0.0769, 1985: 0.2817, 1986: 0.0661, 1987: -0.0893, 1988: 0.1752,
+    1989: 0.2016, 1990: -0.2155, 1991: 0.4444, 1992: 0.1804, 1993: 0.1867,
+    1994: -0.0178, 1995: 0.2887, 1996: 0.1681, 1997: 0.2258, 1998: -0.0198,
+    1999: 0.2056, 2000: -0.0346, 2001: 0.0220, 2002: -0.2022, 2003: 0.4718,
+    2004: 0.1876, 2005: 0.0549, 2006: 0.1861, 2007: -0.0957, 2008: -0.3810,
+    2009: 0.2790, 2010: 0.2694, 2011: -0.0436, 2012: 0.1606, 2013: 0.3824,
+    2014: 0.0408, 2015: -0.0416, 2016: 0.2168, 2017: 0.1307, 2018: -0.1180,
+    2019: 0.2534, 2020: 0.2516, 2021: 0.1455, 2022: -0.2054, 2023: 0.1651,
+    2024: 0.0649,
+}
+
+# Registry: maps index key to its annual returns dict
+INDICES: dict[str, dict[int, float]] = {
+    "sp500":       SP500_ANNUAL_RETURNS,
+    "nasdaq":      NASDAQ_ANNUAL_RETURNS,
+    "bonds":       BONDS_ANNUAL_RETURNS,
+    "russell2000": RUSSELL2000_ANNUAL_RETURNS,
+}
+
+# Per-index start years (minimum available year for each index)
+INDEX_START_YEARS: dict[str, int] = {
+    "sp500":       1928,
+    "nasdaq":      1972,
+    "bonds":       1928,
+    "russell2000": 1979,
+}
+
+DEFAULT_INDEX = "sp500"
+
+# Legacy constants (kept for backward compatibility)
 HISTORICAL_START_YEAR = 1928
 HISTORICAL_END_YEAR = 2024
 
 
-def get_historical_rate_sequence(start_year: int, num_years: int) -> list[float]:
+def get_historical_rate_sequence(
+    start_year: int,
+    num_years: int,
+    index: str = DEFAULT_INDEX,
+) -> list[float]:
     """
-    Generate sequence of annual return rates from S&P 500 historical data.
+    Generate sequence of annual return rates from historical index data.
 
     Wraps around if simulation exceeds available data (e.g., 10-year simulation
-    starting in 2020 uses 2020-2024 then wraps to 1928-1933).
+    starting in 2020 uses 2020-2024 then wraps to start_year of that index).
 
     Args:
-        start_year: Calendar year to begin sequence (must be 1928-2024)
+        start_year: Calendar year to begin sequence (must be within index range)
         num_years: Number of years to generate
+        index: Index key ("sp500", "nasdaq", "bonds", "russell2000"); defaults to "sp500"
 
     Returns:
         List of annual return rates (floats)
 
     Raises:
-        ValueError: If start_year not in available data (1928-2024)
+        ValueError: If index not recognized or start_year out of range
     """
-    if start_year not in SP500_ANNUAL_RETURNS:
+    if index not in INDICES:
         raise ValueError(
-            f"Historical data available for {HISTORICAL_START_YEAR}-{HISTORICAL_END_YEAR}. "
+            f"Unknown index '{index}'. Valid indices: {list(INDICES.keys())}"
+        )
+
+    data = INDICES[index]
+    index_start = INDEX_START_YEARS[index]
+    index_end = max(data.keys())
+
+    if start_year not in data:
+        raise ValueError(
+            f"start_year {start_year} out of range for {index} ({index_start}-{index_end}). "
             f"Got start_year={start_year}"
         )
 
@@ -55,11 +143,11 @@ def get_historical_rate_sequence(start_year: int, num_years: int) -> list[float]
     current_year = start_year
 
     for _ in range(num_years):
-        # Wrap around: when past 2024, jump back to 1928
-        if current_year > HISTORICAL_END_YEAR:
-            current_year = HISTORICAL_START_YEAR + (current_year - HISTORICAL_END_YEAR - 1)
+        # Wrap around: when past index_end, jump back to index_start
+        if current_year > index_end:
+            current_year = index_start + (current_year - index_end - 1)
 
-        rates.append(SP500_ANNUAL_RETURNS[current_year])
+        rates.append(data[current_year])
         current_year += 1
 
     return rates

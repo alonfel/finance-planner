@@ -37,6 +37,7 @@ def run_simulation(body: SimulateRequest, username: str = Depends(get_current_us
         monthly_expenses=ExpenseBreakdown(components={"expenses": body.monthly_expenses}),
         return_rate=body.return_rate,
         historical_start_year=body.historical_start_year,
+        historical_index=body.historical_index,
         withdrawal_rate=body.withdrawal_rate,
         age=body.starting_age,
         initial_portfolio=body.initial_portfolio,

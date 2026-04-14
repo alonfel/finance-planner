@@ -44,8 +44,12 @@ def simulate(scenario: Scenario, years: int = 40) -> SimulationResult:
 
     # Build historical rate sequence if using historical returns
     if scenario.historical_start_year is not None:
-        from domain.historical_returns import get_historical_rate_sequence
-        rate_sequence = get_historical_rate_sequence(scenario.historical_start_year, years)
+        from domain.historical_returns import get_historical_rate_sequence, DEFAULT_INDEX
+        rate_sequence = get_historical_rate_sequence(
+            scenario.historical_start_year,
+            years,
+            index=scenario.historical_index or DEFAULT_INDEX,
+        )
     else:
         rate_sequence = None
 
