@@ -48,20 +48,48 @@
         <div class="param-row">
           <label>Growth Rate</label>
           <div v-if="isEditable" class="index-controls">
-            <!-- TODO: Add index selector buttons like WhatIfView -->
-            <input
-              :value="scenario.return_rate * 100"
-              type="range"
-              min="2"
-              max="15"
-              step="0.5"
-              @input="(e) => $emit('update-field', 'return_rate', Number(e.target.value) / 100)"
-            />
-            <span class="slider-value">{{ (scenario.return_rate * 100).toFixed(1) }}%</span>
+            <!-- Index Selector Buttons -->
+            <div class="index-selector">
+              <button
+                v-for="opt in INDEX_OPTIONS"
+                :key="opt.key"
+                @click="$emit('update-index', opt)"
+                class="btn-index-option"
+                :class="{ active: selectedIndex === opt.key }"
+              >{{ opt.label }}</button>
+            </div>
+            <!-- Growth Rate Slider (Fixed %) or Historical Year Slider (Historical) -->
+            <div class="slider-control" style="margin-top:8px">
+              <input
+                v-if="selectedIndex === 'fixed'"
+                :value="scenario.return_rate * 100"
+                type="range"
+                min="2"
+                max="15"
+                step="0.5"
+                @input="(e) => $emit('update-field', 'return_rate', Number(e.target.value) / 100)"
+              />
+              <input
+                v-else
+                :value="historicalStartYear"
+                type="range"
+                :min="INDEX_OPTIONS.find(o => o.key === selectedIndex)?.minYear ?? 1928"
+                max="2024"
+                step="1"
+                @input="(e) => $emit('update-historical-year', Number(e.target.value))"
+              />
+              <span class="slider-value">
+                {{ selectedIndex === 'fixed' ? (scenario.return_rate * 100).toFixed(1) + '%' : historicalStartYear }}
+              </span>
+            </div>
           </div>
           <div v-else class="static-value">
-            {{ (scenario.return_rate * 100).toFixed(1) }}%
-            <span v-if="scenario.historical_index" class="secondary">({{ scenario.historical_index }})</span>
+            <div v-if="scenario.historical_index && scenario.historical_index !== 'fixed'">
+              {{ scenario.historical_index.toUpperCase() }} ({{ historicalStartYear }})
+            </div>
+            <div v-else>
+              {{ (scenario.return_rate * 100).toFixed(1) }}%
+            </div>
           </div>
         </div>
 
@@ -437,6 +465,14 @@ const props = defineProps({
   simulationResult: {
     type: Object,
     default: null
+  },
+  selectedIndex: {
+    type: String,
+    default: 'fixed'
+  },
+  historicalStartYear: {
+    type: Number,
+    default: 1990
   }
 })
 
@@ -447,8 +483,18 @@ const emit = defineEmits([
   'update-mortgage',
   'add-mortgage',
   'remove-mortgage',
-  'update-pension'
+  'update-pension',
+  'update-index',
+  'update-historical-year'
 ])
+
+const INDEX_OPTIONS = [
+  { key: 'fixed',        label: 'Fixed %',      minYear: null },
+  { key: 'sp500',        label: 'S&P 500',       minYear: 1928 },
+  { key: 'nasdaq',       label: 'NASDAQ',        minYear: 1972 },
+  { key: 'bonds',        label: 'Bonds',         minYear: 1928 },
+  { key: 'russell2000',  label: 'Russell 2000',  minYear: 1979 },
+]
 
 const showMortgage = ref(false)
 const showPension = ref(false)
@@ -846,5 +892,43 @@ const calculateMortgagePayment = (mortgage) => {
   outline: none;
   border-color: #667eea;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* Index Selector */
+.index-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.index-selector {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.btn-index-option {
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: white;
+  color: #555;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-index-option:hover {
+  border-color: #667eea;
+  background-color: #f5f5f5;
+  color: #667eea;
+}
+
+.btn-index-option.active {
+  background-color: #667eea;
+  color: white;
+  border-color: #667eea;
 }
 </style>

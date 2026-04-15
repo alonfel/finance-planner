@@ -38,6 +38,8 @@
             :scenario="isEditMode ? editDraft : currentScenario"
             :is-editable="isEditMode"
             :simulation-result="simulationResult"
+            :selected-index="selectedIndex"
+            :historical-start-year="historicalStartYear"
             @update-field="updateEditDraftField"
             @add-event="addEvent"
             @remove-event="removeEvent"
@@ -45,6 +47,8 @@
             @add-mortgage="addMortgage"
             @remove-mortgage="removeMortgage"
             @update-pension="updatePension"
+            @update-index="updateIndex"
+            @update-historical-year="updateHistoricalYear"
           />
 
           <!-- Action Buttons (Edit Mode Only) -->
@@ -201,6 +205,10 @@ const showCancelConfirm = ref(false)
 const showOverrideConfirm = ref(false)
 const showSaveAsModal = ref(false)
 
+// Index & Historical Year for growth rate picker
+const selectedIndex = ref('fixed')
+const historicalStartYear = ref(1990)
+
 // API config
 const API_BASE_URL = 'http://localhost:8000/api/v1'
 const scenario_id = route.params.resultId
@@ -313,6 +321,15 @@ const loadScenario = async () => {
     originalResults.value = scenarioData // Store original results for comparison in edit mode
     simulationResult.value = scenarioData
 
+    // Initialize index selector based on loaded scenario
+    if (scenarioData.historical_index && scenarioData.historical_index !== 'fixed') {
+      selectedIndex.value = scenarioData.historical_index
+      historicalStartYear.value = scenarioData.historical_start_year || 1990
+    } else {
+      selectedIndex.value = 'fixed'
+      historicalStartYear.value = 1990
+    }
+
     // Determine initial mode from route query param
     if (route.query.mode === 'edit') {
       enterEditMode()
@@ -330,6 +347,15 @@ const enterEditMode = () => {
   editDraft.value = deepClone(currentScenario.value)
   isEditMode.value = true
   isDirty.value = false
+
+  // Initialize index selector from edit draft
+  if (editDraft.value?.historical_index && editDraft.value.historical_index !== 'fixed') {
+    selectedIndex.value = editDraft.value.historical_index
+    historicalStartYear.value = editDraft.value.historical_start_year || 1990
+  } else {
+    selectedIndex.value = 'fixed'
+    historicalStartYear.value = 1990
+  }
 }
 
 // Mode: Toggle
@@ -367,6 +393,34 @@ const cancelEdit = () => {
 const updateEditDraftField = (field, value) => {
   if (editDraft.value) {
     editDraft.value[field] = value
+    isDirty.value = true
+    runSimulation()
+  }
+}
+
+// Index: Update historical index
+const updateIndex = (opt) => {
+  selectedIndex.value = opt.key
+  if (opt.minYear && historicalStartYear.value < opt.minYear) {
+    historicalStartYear.value = opt.minYear
+  }
+  if (editDraft.value) {
+    editDraft.value.historical_index = opt.key !== 'fixed' ? opt.key : null
+    if (opt.key === 'fixed') {
+      editDraft.value.historical_start_year = null
+    } else {
+      editDraft.value.historical_start_year = historicalStartYear.value
+    }
+    isDirty.value = true
+    runSimulation()
+  }
+}
+
+// Index: Update historical start year
+const updateHistoricalYear = (year) => {
+  historicalStartYear.value = year
+  if (editDraft.value) {
+    editDraft.value.historical_start_year = year
     isDirty.value = true
     runSimulation()
   }
