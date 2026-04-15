@@ -150,23 +150,36 @@ const scenarioParams = computed(() => {
   if (detailData.value?.definition) {
     const def = detailData.value.definition
     return {
-      income: def.monthly_income,
-      expenses: def.monthly_expenses,
-      returnRate: (def.return_rate * 100).toFixed(1),
-      withdrawalRate: (def.withdrawal_rate * 100).toFixed(1),
-      startingAge: def.starting_age,
-      initialPortfolio: def.initial_portfolio
+      income: def.monthly_income !== null ? def.monthly_income : null,
+      expenses: def.monthly_expenses !== null ? def.monthly_expenses : null,
+      returnRate: def.return_rate !== null ? (def.return_rate * 100).toFixed(1) : null,
+      withdrawalRate: def.withdrawal_rate !== null ? (def.withdrawal_rate * 100).toFixed(1) : null,
+      startingAge: def.starting_age !== null ? def.starting_age : null,
+      initialPortfolio: def.initial_portfolio !== null ? def.initial_portfolio : null
     }
   }
 
   // Legacy fallback: back-calculate from year_data
   if (yearData.value && yearData.value.length > 0) {
     const firstYear = yearData.value[0]
+    const lastYear = yearData.value[yearData.value.length - 1]
+
+    // Estimate return rate from year-over-year growth (approximation)
+    let estimatedReturnRate = 7.0
+    if (yearData.value.length > 1) {
+      const y1 = yearData.value[0]
+      const y2 = yearData.value[1]
+      if (y1.portfolio > 0) {
+        const growth = (y2.portfolio - y1.portfolio) / y1.portfolio
+        estimatedReturnRate = Math.round(growth * 100 * 10) / 10 // Single year growth
+      }
+    }
+
     return {
       income: Math.round(firstYear.income / 12),
       expenses: Math.round(firstYear.expenses / 12),
-      returnRate: '7.0', // Approximation
-      withdrawalRate: '4.0', // Approximation
+      returnRate: estimatedReturnRate.toFixed(1),
+      withdrawalRate: '4.0', // Default approximation
       startingAge: firstYear.age - 1,
       initialPortfolio: firstYear.portfolio
     }

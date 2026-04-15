@@ -95,13 +95,13 @@
           <section class="metrics-section">
             <h3>Results & Metrics</h3>
             <div class="metrics-grid">
-              <div class="metric-card">
+              <div v-if="displayResult" class="metric-card">
                 <h4>{{ isEditMode ? 'What-If' : 'Scenario' }}</h4>
                 <div class="metric-item">
                   <span class="label">Retirement:</span>
                   <span class="value">
-                    <span v-if="simulationResult.retirement_year">
-                      Year {{ simulationResult.retirement_year }}
+                    <span v-if="displayResult.retirement_year">
+                      Year {{ displayResult.retirement_year }}
                     </span>
                     <span v-else>Never</span>
                   </span>
@@ -109,7 +109,7 @@
                 <div class="metric-item">
                   <span class="label">Final Portfolio:</span>
                   <span class="value">
-                    ₪{{ formatCurrency(simulationResult.final_portfolio) }}
+                    ₪{{ formatCurrency(displayResult.final_portfolio) }}
                   </span>
                 </div>
               </div>
@@ -247,6 +247,26 @@ const chartSpecialPoints = computed(() => {
   })
 })
 
+// Extract final portfolio from year_data if not at top level
+const displayResult = computed(() => {
+  if (!simulationResult.value) return null
+
+  let finalPortfolio = simulationResult.value.final_portfolio
+
+  // If final_portfolio not present, extract from year_data
+  if (finalPortfolio === undefined || finalPortfolio === null) {
+    const yearData = simulationResult.value.year_data
+    if (yearData && yearData.length > 0) {
+      finalPortfolio = yearData[yearData.length - 1].portfolio
+    }
+  }
+
+  return {
+    ...simulationResult.value,
+    final_portfolio: finalPortfolio
+  }
+})
+
 // ─────────────────── Methods ───────────────────
 
 // Lifecycle: Load scenario
@@ -257,9 +277,28 @@ const loadScenario = async () => {
     const res = await axios.get(`${API_BASE_URL}/scenarios/${scenario_id}`, {
       headers: { Authorization: `Bearer ${authStore.token}` }
     })
-    currentScenario.value = res.data
-    originalResults.value = res.data // Store original results for comparison in edit mode
-    simulationResult.value = res.data
+
+    // Merge definition fields into top level for backward compatibility with ParametersSidebar
+    const scenarioData = {
+      ...res.data,
+      // Extract definition fields if available
+      ...(res.data.definition ? {
+        monthly_income: res.data.definition.monthly_income,
+        monthly_expenses: res.data.definition.monthly_expenses,
+        return_rate: res.data.definition.return_rate,
+        withdrawal_rate: res.data.definition.withdrawal_rate,
+        starting_age: res.data.definition.starting_age,
+        initial_portfolio: res.data.definition.initial_portfolio,
+        historical_start_year: res.data.definition.historical_start_year,
+        historical_index: res.data.definition.historical_index,
+        retirement_mode: res.data.definition.retirement_mode,
+        currency: res.data.definition.currency
+      } : {})
+    }
+
+    currentScenario.value = scenarioData
+    originalResults.value = scenarioData // Store original results for comparison in edit mode
+    simulationResult.value = scenarioData
 
     // Determine initial mode from route query param
     if (route.query.mode === 'edit') {
