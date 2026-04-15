@@ -117,7 +117,7 @@ async def monte_carlo(
     # Load scenario from database
     definition = db.query(ScenarioDefinition).filter(
         ScenarioDefinition.id == request.scenario_id,
-        ScenarioDefinition.profile_id == current_user["profile_id"],
+        ScenarioDefinition.profile_id == request.profile_id,
         ScenarioDefinition.is_deleted == False
     ).first()
 

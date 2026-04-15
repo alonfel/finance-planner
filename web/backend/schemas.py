@@ -197,6 +197,7 @@ class DriverRankSchema(BaseModel):
 
 class MonteCarloRequest(BaseModel):
     """Request for Monte Carlo simulation"""
+    profile_id: int
     scenario_id: int
     n_trials: int = 500
     years: int = 40

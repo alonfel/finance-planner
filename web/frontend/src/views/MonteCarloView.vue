@@ -241,6 +241,7 @@ const runMonteCarlo = async () => {
 
   try {
     const payload = {
+      profile_id: parseInt(profileId.value),
       scenario_id: parseInt(selectedScenarioId.value),
       n_trials: mcRequest.value.n_trials,
       years: mcRequest.value.years
