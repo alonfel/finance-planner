@@ -105,31 +105,41 @@
       </section>
 
       <!-- Withdrawal Rate & Retirement Mode -->
-      <section class="parameters-section" v-if="scenario.withdrawal_rate !== undefined || scenario.retirement_mode">
+      <section class="parameters-section" v-if="isEditable || scenario.withdrawal_rate !== undefined || scenario.retirement_mode">
         <h4 class="section-title">Retirement Settings</h4>
 
-        <div v-if="scenario.withdrawal_rate !== undefined" class="param-row">
+        <div class="param-row">
           <label>Withdrawal Rate</label>
           <div v-if="isEditable" class="slider-control">
             <input
-              :value="scenario.withdrawal_rate * 100"
+              :value="(scenario.withdrawal_rate || 0.04) * 100"
               type="range"
               min="1"
               max="10"
               step="0.1"
               @input="(e) => $emit('update-field', 'withdrawal_rate', Number(e.target.value) / 100)"
             />
-            <span class="slider-value">{{ (scenario.withdrawal_rate * 100).toFixed(1) }}%</span>
+            <span class="slider-value">{{ ((scenario.withdrawal_rate || 0.04) * 100).toFixed(1) }}%</span>
           </div>
           <div v-else class="static-value">
-            {{ (scenario.withdrawal_rate * 100).toFixed(1) }}%
+            {{ ((scenario.withdrawal_rate || 0.04) * 100).toFixed(1) }}%
           </div>
         </div>
 
-        <div v-if="scenario.retirement_mode" class="param-row">
+        <div class="param-row">
           <label>Retirement Mode</label>
-          <div class="static-value">
-            {{ scenario.retirement_mode === 'liquid_only' ? 'Liquid Only' : 'Pension Bridged' }}
+          <div v-if="isEditable" class="slider-control mode-selector">
+            <select
+              :value="scenario.retirement_mode || 'liquid_only'"
+              @input="(e) => $emit('update-field', 'retirement_mode', e.target.value)"
+              class="mode-dropdown"
+            >
+              <option value="liquid_only">Liquid Only</option>
+              <option value="pension_bridged">Pension Bridged</option>
+            </select>
+          </div>
+          <div v-else class="static-value">
+            {{ (scenario.retirement_mode || 'liquid_only') === 'liquid_only' ? 'Liquid Only' : 'Pension Bridged' }}
           </div>
         </div>
       </section>
@@ -808,5 +818,33 @@ const calculateMortgagePayment = (mortgage) => {
   padding: 0;
   width: 20px;
   cursor: pointer;
+}
+
+/* Retirement Mode Selector */
+.mode-selector {
+  gap: 8px;
+}
+
+.mode-dropdown {
+  flex: 1;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  background-color: white;
+  cursor: pointer;
+}
+
+.mode-dropdown:hover {
+  border-color: #667eea;
+  background-color: #f9f9f9;
+}
+
+.mode-dropdown:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 </style>
