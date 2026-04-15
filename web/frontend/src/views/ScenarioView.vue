@@ -204,7 +204,7 @@ const showSaveAsModal = ref(false)
 
 // API config
 const API_BASE_URL = 'http://localhost:8000/api/v1'
-const scenario_id = route.params.scenario_id
+const scenario_id = route.params.resultId
 
 // ─────────────────── Computed ───────────────────
 const scenarioTitle = computed(() => {
@@ -236,7 +236,9 @@ const loadScenario = async () => {
   loading.value = true
   error.value = null
   try {
-    const res = await axios.get(`${API_BASE_URL}/scenarios/${scenario_id}`)
+    const res = await axios.get(`${API_BASE_URL}/scenarios/${scenario_id}`, {
+      headers: { Authorization: `Bearer ${authStore.token}` }
+    })
     currentScenario.value = res.data
     originalResults.value = res.data // Store original results for comparison in edit mode
     simulationResult.value = res.data

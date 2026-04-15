@@ -6,6 +6,7 @@ import ScenariosView from '../views/ScenariosView.vue'
 import ScenarioDetailView from '../views/ScenarioDetailView.vue'
 import ComparisonView from '../views/ComparisonView.vue'
 import WhatIfView from '../views/WhatIfView.vue'
+import ScenarioView from '../views/ScenarioView.vue'
 
 const routes = [
   {
@@ -42,6 +43,12 @@ const routes = [
     path: '/profiles/:profileId/whatif',
     name: 'WhatIf',
     component: WhatIfView,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/profiles/:profileId/scenario/:resultId',
+    name: 'Scenario',
+    component: ScenarioView,
     meta: { requiresAuth: true }
   }
 ]
