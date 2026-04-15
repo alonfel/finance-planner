@@ -7,10 +7,10 @@ from domain.monte_carlo import run_monte_carlo
 from domain.sensitivity import run_oat_sensitivity
 from domain.breakdown import IncomeBreakdown, ExpenseBreakdown
 from domain.models import Scenario, Mortgage, Pension, Event
-from web.backend.auth import get_current_user
-from web.backend.database import get_db
-from web.backend.models import Profile, ScenarioDefinition
-from web.backend.schemas import MonteCarloRequest, MonteCarloResponse, PercentileBandsSchema, DriverRankSchema
+from auth import get_current_user
+from database import get_db
+from models import Profile, ScenarioDefinition
+from schemas import MonteCarloRequest, MonteCarloResponse, PercentileBandsSchema, DriverRankSchema
 
 
 router = APIRouter(prefix="/api/v1", tags=["monte-carlo"])

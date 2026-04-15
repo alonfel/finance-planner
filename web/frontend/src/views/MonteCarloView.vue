@@ -161,7 +161,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import axios from 'axios'
 import FanChart from '../components/FanChart.vue'
 import { useAuthStore } from '../stores/auth'
@@ -184,10 +184,14 @@ const mcRequest = ref({
 })
 
 // Computed
+const route = useRoute()
+
 const apiUrl = computed(() => {
   const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000'
   return baseUrl
 })
+
+const profileId = computed(() => route.params.profileId)
 
 // Methods
 const formatDate = (dateStr) => {
@@ -197,7 +201,7 @@ const formatDate = (dateStr) => {
 
 const loadRuns = async () => {
   try {
-    const response = await axios.get(`${apiUrl.value}/api/v1/runs`, {
+    const response = await axios.get(`${apiUrl.value}/api/v1/profiles/${profileId.value}/runs`, {
       headers: { Authorization: `Bearer ${authStore.token}` }
     })
     availableRuns.value = response.data
