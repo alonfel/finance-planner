@@ -389,9 +389,12 @@
 
           <!-- Middle: Chart (Visible without scrolling) -->
           <div v-if="whatIfResult" class="chart-section">
+            <ScenarioInsights :special-points="chartSpecialPoints" />
             <ComparisonChart
               :scenarios="[originalScenario, whatIfResult]"
               :yearRange="{ min: 1, max: 20 }"
+              :special-points="chartSpecialPoints"
+              :base-year="BASE_YEAR"
             />
           </div>
 
@@ -484,7 +487,9 @@ import { useRouter, useRoute } from 'vue-router'
 import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
 import ComparisonChart from '../components/ComparisonChart.vue'
+import ScenarioInsights from '../components/ScenarioInsights.vue'
 import ScenarioGeneratorModal from '../components/ScenarioGeneratorModal.vue'
+import { computeSpecialPoints, BASE_YEAR } from '../utils/specialPoints'
 
 const router = useRouter()
 const route = useRoute()
@@ -551,6 +556,28 @@ const originalStartingAge = computed(() => {
     return 41
   }
   return originalScenario.value.year_data[0].age - 1
+})
+
+// Computed special milestone points (retirement, pension unlock, etc.)
+const originalSpecialPoints = computed(() =>
+  computeSpecialPoints(originalScenario.value?.year_data ?? [], {
+    baseYear: BASE_YEAR,
+    retirementYear: originalScenario.value?.retirement_year ?? null
+  })
+)
+
+const whatIfSpecialPoints = computed(() =>
+  computeSpecialPoints(whatIfResult.value?.year_data ?? [], {
+    baseYear: BASE_YEAR,
+    retirementYear: whatIfResult.value?.retirement_year ?? null
+  })
+)
+
+// Merged special points for chart annotations (deduplicated by id, earliest wins)
+const chartSpecialPoints = computed(() => {
+  const seen = new Set()
+  return [...originalSpecialPoints.value, ...whatIfSpecialPoints.value]
+    .filter(p => seen.has(p.id) ? false : (seen.add(p.id), true))
 })
 
 // Lifecycle
