@@ -247,22 +247,22 @@ const chartSpecialPoints = computed(() => {
   })
 })
 
-// Extract final portfolio from year_data if not at top level
+// Ensure retirement year and final portfolio are always available for display
 const displayResult = computed(() => {
   if (!simulationResult.value) return null
 
-  let finalPortfolio = simulationResult.value.final_portfolio
+  // Extract values, with fallbacks
+  let retirementYear = simulationResult.value.retirement_year || null
+  let finalPortfolio = simulationResult.value.final_portfolio || 0
 
-  // If final_portfolio not present, extract from year_data
-  if (finalPortfolio === undefined || finalPortfolio === null) {
-    const yearData = simulationResult.value.year_data
-    if (yearData && yearData.length > 0) {
-      finalPortfolio = yearData[yearData.length - 1].portfolio
-    }
+  // If final_portfolio still missing, extract from year_data
+  if (!finalPortfolio && simulationResult.value.year_data?.length > 0) {
+    finalPortfolio = simulationResult.value.year_data[simulationResult.value.year_data.length - 1].portfolio
   }
 
   return {
     ...simulationResult.value,
+    retirement_year: retirementYear,
     final_portfolio: finalPortfolio
   }
 })
@@ -279,7 +279,7 @@ const loadScenario = async () => {
     })
 
     // Merge definition fields into top level for backward compatibility with ParametersSidebar
-    const scenarioData = {
+    let scenarioData = {
       ...res.data,
       // Extract definition fields if available
       ...(res.data.definition ? {
@@ -294,6 +294,19 @@ const loadScenario = async () => {
         retirement_mode: res.data.definition.retirement_mode,
         currency: res.data.definition.currency
       } : {})
+    }
+
+    // Map events: convert portfolio_injection to amount field
+    if (scenarioData.events && Array.isArray(scenarioData.events)) {
+      scenarioData.events = scenarioData.events.map(e => ({
+        ...e,
+        amount: e.amount !== undefined ? e.amount : (e.portfolio_injection || 0)
+      }))
+    }
+
+    // Calculate final_portfolio if not present (for /scenarios endpoint which doesn't return it)
+    if (!scenarioData.final_portfolio && scenarioData.year_data && scenarioData.year_data.length > 0) {
+      scenarioData.final_portfolio = scenarioData.year_data[scenarioData.year_data.length - 1].portfolio
     }
 
     currentScenario.value = scenarioData
