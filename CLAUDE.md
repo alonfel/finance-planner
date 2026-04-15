@@ -200,6 +200,43 @@ print(f"Retirement year: {result.retirement_year}")
 
 ---
 
+## Monte Carlo Simulation (April 15, 2026)
+
+Probabilistic financial planning via 500-trial lognormal return sampling.
+
+**Access:** Dashboard → Profile → 📊 Monte Carlo
+
+**What it does:**
+- Generates N independent return sequences from a lognormal distribution (σ=15% default)
+- Simulates each trial independently, aggregates to p5/p50/p95 percentile bands
+- Reports retirement probability (% trials that retire within timeline) and survival probability (% trials portfolio > 0 at end)
+- Runs OAT sensitivity analysis: varies return rate ±2pp, income ±20%, horizon ±5yr to rank which inputs matter most
+
+**Python usage:**
+```python
+from domain.monte_carlo import run_monte_carlo
+from domain.sensitivity import run_oat_sensitivity
+
+result = run_monte_carlo(scenario, n_trials=500, years=40)
+print(f"Retirement probability: {result.retirement_probability:.1%}")
+print(f"Median portfolio year 20: ₪{result.percentile_p50[19]:,.0f}")
+
+sensitivity = run_oat_sensitivity(scenario, n_trials=500, years=40)
+for driver in sensitivity.drivers[:3]:
+    print(f"{driver.name} {driver.direction}: {driver.delta:+.1%}")
+```
+
+**Files:**
+- `domain/monte_carlo.py` — Core engine (`run_monte_carlo`, `MonteCarloResult`)
+- `domain/sensitivity.py` — OAT analysis (`run_oat_sensitivity`, `SensitivityResult`)
+- `web/backend/routers/monte_carlo.py` — `POST /api/v1/monte-carlo`
+- `web/frontend/src/views/MonteCarloView.vue` — UI
+- `web/frontend/src/components/FanChart.vue` — p5/p50/p95 fan chart
+
+**Tests:** `tests/test_monte_carlo.py` — 23 tests (structure, probabilities, sensitivity, regression)
+
+---
+
 ## Quick Start
 
 ### Running the Simulation

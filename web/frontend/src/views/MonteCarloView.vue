@@ -94,7 +94,7 @@
       </div>
 
       <!-- Results Section -->
-      <div v-if="mcResult" class="results-section">
+      <div v-if="mcResult" class="results-section" ref="resultsSection">
         <!-- Metrics Cards -->
         <div class="metrics-row">
           <div class="metric-card success">
@@ -160,7 +160,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import axios from 'axios'
 import FanChart from '../components/FanChart.vue'
@@ -177,6 +177,7 @@ const scenarios = ref([])
 const isLoading = ref(false)
 const errorMessage = ref('')
 const mcResult = ref(null)
+const resultsSection = ref(null)
 
 const mcRequest = ref({
   n_trials: 500,
@@ -254,6 +255,8 @@ const runMonteCarlo = async () => {
     )
 
     mcResult.value = response.data
+    await nextTick()
+    resultsSection.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   } catch (error) {
     console.error('Monte Carlo error:', error)
     errorMessage.value = error.response?.data?.detail || 'Failed to run Monte Carlo'

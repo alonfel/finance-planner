@@ -173,7 +173,6 @@ def run_monte_carlo(
     Returns:
         MonteCarloResult with percentile bands, success probabilities, and ages
     """
-    # F-1.1: Generate lognormal returns
     returns_matrix = _generate_lognormal_returns(
         return_rate=scenario.return_rate,
         sigma=sigma,
@@ -181,19 +180,11 @@ def run_monte_carlo(
         n_trials=n_trials
     )
 
-    # F-1.3a: Run all trials
     trials_results = _run_trials(scenario, returns_matrix, years)
-
-    # F-1.3b: Aggregate percentiles
     p5, p50, p95 = _compute_percentiles(trials_results, years)
-
-    # F-1.4a: Compute success metrics
     retirement_prob, survival_prob = _compute_success_metrics(trials_results)
-
-    # F-1.4b: Generate ages list
     ages = [scenario.age + year_num for year_num in range(1, years + 1)]
 
-    # F-1.4c: Return result
     return MonteCarloResult(
         percentile_p5=p5,
         percentile_p50=p50,

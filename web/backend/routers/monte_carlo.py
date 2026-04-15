@@ -1,5 +1,6 @@
 """Monte Carlo simulation endpoint."""
 
+import json
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -9,7 +10,7 @@ from domain.breakdown import IncomeBreakdown, ExpenseBreakdown
 from domain.models import Scenario, Mortgage, Pension, Event
 from auth import get_current_user
 from database import get_db
-from models import Profile, ScenarioDefinition
+from models import ScenarioDefinition
 from schemas import MonteCarloRequest, MonteCarloResponse, PercentileBandsSchema, DriverRankSchema
 
 
@@ -24,8 +25,6 @@ def _build_scenario_from_definition(
 
     Preserves income/expense components for OAT sensitivity analysis.
     """
-    import json
-
     # Parse income/expenses from JSON strings to preserve components
     income_dict = json.loads(definition.monthly_income) if isinstance(definition.monthly_income, str) else definition.monthly_income
     expense_dict = json.loads(definition.monthly_expenses) if isinstance(definition.monthly_expenses, str) else definition.monthly_expenses
