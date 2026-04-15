@@ -43,8 +43,8 @@ def _build_scenario_from_definition(
 
     # Reconstruct optional fields
     mortgage = None
-    if definition.scenario_mortgages:
-        m = definition.scenario_mortgages[0]
+    if definition.mortgage:
+        m = definition.mortgage
         mortgage = Mortgage(
             principal=m.principal,
             annual_rate=m.annual_rate / 100,  # Convert from percentage to decimal
@@ -53,8 +53,8 @@ def _build_scenario_from_definition(
         )
 
     pension = None
-    if definition.scenario_pensions:
-        p = definition.scenario_pensions[0]
+    if definition.pension:
+        p = definition.pension
         pension = Pension(
             initial_value=p.initial_value,
             monthly_contribution=p.monthly_contribution,
@@ -64,8 +64,8 @@ def _build_scenario_from_definition(
 
     # Reconstruct events
     events = []
-    if definition.scenario_events:
-        for e in definition.scenario_events:
+    if definition.events:
+        for e in definition.events:
             events.append(Event(
                 year=e.year,
                 portfolio_injection=e.portfolio_injection,
