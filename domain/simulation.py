@@ -28,13 +28,14 @@ class SimulationResult:
     retirement_year: Optional[int]  # First year where portfolio >= required_capital
 
 
-def simulate(scenario: Scenario, years: int = 40) -> SimulationResult:
+def simulate(scenario: Scenario, years: int = 40, rate_sequence_override: Optional[list[float]] = None) -> SimulationResult:
     """
     Simulate a scenario year-by-year.
 
     Args:
         scenario: The financial scenario to simulate
         years: Number of years to simulate (default 40)
+        rate_sequence_override: Optional list of annual returns to use instead of scenario's return_rate or historical data
 
     Returns:
         SimulationResult with year-by-year data and retirement year
@@ -44,8 +45,12 @@ def simulate(scenario: Scenario, years: int = 40) -> SimulationResult:
     retirement_year: Optional[int] = None
     year_data_list: list[YearData] = []
 
-    # Build historical rate sequence if using historical returns
-    if scenario.historical_start_year is not None:
+    # Determine which rate sequence to use
+    if rate_sequence_override is not None:
+        # Override takes highest precedence
+        rate_sequence = rate_sequence_override
+    elif scenario.historical_start_year is not None:
+        # Build historical rate sequence if using historical returns
         from domain.historical_returns import get_historical_rate_sequence, DEFAULT_INDEX
         rate_sequence = get_historical_rate_sequence(
             scenario.historical_start_year,

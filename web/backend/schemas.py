@@ -178,3 +178,35 @@ class ScenarioNodeSchema(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# Monte Carlo schemas
+class PercentileBandsSchema(BaseModel):
+    """Percentile bands for portfolio values across trials"""
+    p5: List[float]  # 5th percentile
+    p50: List[float]  # Median (50th percentile)
+    p95: List[float]  # 95th percentile
+
+
+class DriverRankSchema(BaseModel):
+    """OAT sensitivity ranking for one driver"""
+    name: str  # "Return Rate", "Monthly Income", "Time Horizon"
+    direction: str  # "+" or "-"
+    delta: float  # Change in retirement probability
+
+
+class MonteCarloRequest(BaseModel):
+    """Request for Monte Carlo simulation"""
+    scenario_id: int
+    n_trials: int = 500
+    years: int = 40
+
+
+class MonteCarloResponse(BaseModel):
+    """Response from Monte Carlo simulation"""
+    scenario_name: str
+    retirement_probability: float  # 0.0 to 1.0
+    survival_probability: float  # 0.0 to 1.0
+    percentile_bands: PercentileBandsSchema
+    driver_rankings: List[DriverRankSchema]
+    ages: List[int]

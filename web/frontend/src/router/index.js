@@ -7,6 +7,7 @@ import ScenarioDetailView from '../views/ScenarioDetailView.vue'
 import ComparisonView from '../views/ComparisonView.vue'
 import WhatIfView from '../views/WhatIfView.vue'
 import ScenarioView from '../views/ScenarioView.vue'
+import MonteCarloView from '../views/MonteCarloView.vue'
 
 const routes = [
   {
@@ -49,6 +50,12 @@ const routes = [
     path: '/profiles/:profileId/scenario/:resultId',
     name: 'Scenario',
     component: ScenarioView,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/profiles/:profileId/monte-carlo',
+    name: 'MonteCarlo',
+    component: MonteCarloView,
     meta: { requiresAuth: true }
   }
 ]
