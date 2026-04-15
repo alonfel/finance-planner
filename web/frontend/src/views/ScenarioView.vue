@@ -83,9 +83,8 @@
           <!-- Chart Section -->
           <section class="chart-section">
             <ComparisonChart
-              v-if="isEditMode || (currentScenario && originalResults)"
-              :scenarios="isEditMode ? [currentScenario, editDraft] : [currentScenario]"
-              :results="simulationResult"
+              v-if="chartScenarios.length > 0"
+              :scenarios="chartScenarios"
               :year-range="{ min: 1, max: 30 }"
               :special-points="chartSpecialPoints"
               :base-year="BASE_YEAR"
@@ -219,6 +218,25 @@ const defaultScenarioName = computed(() => {
   const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
   const baseName = currentScenario.value?.scenario_name || 'Scenario'
   return `${baseName} - Modified ${time}`
+})
+
+const chartScenarios = computed(() => {
+  if (!isEditMode.value) {
+    return [currentScenario.value]
+  }
+  // In edit mode, combine editDraft with simulation results
+  if (simulationResult.value) {
+    return [
+      currentScenario.value,
+      {
+        ...editDraft.value,
+        year_data: simulationResult.value.year_data,
+        retirement_year: simulationResult.value.retirement_year,
+        final_portfolio: simulationResult.value.final_portfolio
+      }
+    ]
+  }
+  return [currentScenario.value]
 })
 
 const chartSpecialPoints = computed(() => {
