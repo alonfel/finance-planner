@@ -12,16 +12,44 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from fastapi import APIRouter, HTTPException, Depends
-from typing import Dict, Any, Optional
-from pydantic import BaseModel
+from typing import Dict, Any, Optional, List
+from pydantic import BaseModel, Field
 import logging
 
 from services.scenario_generator import get_service
 from database import get_db
 from models import ScenarioDefinition, SimulationRun, ScenarioResult, YearData
+from schemas import EventSchema, MortgageSchema, PensionSchema
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/questionnaire", tags=["questionnaire"])
+
+
+# ============ HELPER FUNCTIONS ============
+
+def _mortgage_to_dict(mortgage) -> Optional[Dict[str, Any]]:
+    """Convert Mortgage domain object to API dict."""
+    if not mortgage:
+        return None
+    return {
+        'principal': mortgage.principal,
+        'annual_rate': mortgage.annual_rate,
+        'duration_years': mortgage.duration_years,
+        'currency': mortgage.currency or 'ILS',
+        'monthly_payment': mortgage.monthly_payment
+    }
+
+
+def _pension_to_dict(pension) -> Optional[Dict[str, Any]]:
+    """Convert Pension domain object to API dict."""
+    if not pension:
+        return None
+    return {
+        'initial_value': pension.initial_value,
+        'monthly_contribution': pension.monthly_contribution,
+        'annual_growth_rate': pension.annual_growth_rate,
+        'accessible_at_age': pension.accessible_at_age
+    }
 
 
 # ============ REQUEST/RESPONSE MODELS ============
@@ -41,7 +69,7 @@ class QuestionnaireCompletenessResponse(BaseModel):
 
 
 class GenerateScenarioResponse(BaseModel):
-    """Generated scenario response."""
+    """Generated scenario response - includes all fields needed for saving."""
     scenario_id: str
     name: str
     retirement_year: int
@@ -54,14 +82,26 @@ class GenerateScenarioResponse(BaseModel):
     emoji: str
     message: str
     hint: str
+    # Fields needed for saving (from WhatIfScenarioSchema)
+    return_rate: float
+    historical_start_year: Optional[int] = None
+    historical_index: Optional[str] = None
+    withdrawal_rate: float = 0.04
+    starting_age: int
+    years: int = 20
+    retirement_mode: str = "liquid_only"
+    currency: str = "ILS"
+    events: List[EventSchema] = Field(default_factory=list)
+    mortgage: Optional[Dict[str, Any]] = None
+    pension: Optional[Dict[str, Any]] = None
 
 
 class QuestionnaireConfigResponse(BaseModel):
     """Questionnaire configuration response."""
     version: str
-    questions: list
-    sections: dict
-    scoring: dict
+    questions: List[Dict[str, Any]]
+    sections: Dict[str, Any]
+    scoring: Dict[str, Any]
 
 
 # ============ ENDPOINTS ============
@@ -145,7 +185,11 @@ async def generate_scenario(
         completeness = generation_result['completeness_score']
         verdict = generation_result['verdict']
 
-        # Build response
+        # Serialize mortgage and pension objects to dicts
+        mortgage_dict = _mortgage_to_dict(scenario.mortgage)
+        pension_dict = _pension_to_dict(scenario.pension)
+
+        # Build response with all fields needed for saving
         response = GenerateScenarioResponse(
             scenario_id=f"gen-{id(scenario)}",  # Temp ID until saved
             name=scenario.name,
@@ -158,7 +202,18 @@ async def generate_scenario(
             verdict=verdict['verdict'],
             emoji=verdict.get('emoji', ''),
             message=verdict['message'],
-            hint=verdict['hint']
+            hint=verdict['hint'],
+            return_rate=scenario.return_rate,
+            historical_start_year=scenario.historical_start_year,
+            historical_index=scenario.historical_index,
+            withdrawal_rate=scenario.withdrawal_rate,
+            starting_age=scenario.age,
+            years=30,  # User-facing default (backend simulates 50 internally for robustness)
+            retirement_mode=scenario.retirement_mode,
+            currency=scenario.currency,
+            events=[],  # Generated scenarios don't have events
+            mortgage=mortgage_dict,
+            pension=pension_dict
         )
 
         logger.info(f"Generated scenario: {scenario.name} (retirement_year={result.retirement_year})")

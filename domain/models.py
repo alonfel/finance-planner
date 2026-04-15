@@ -62,6 +62,11 @@ class Scenario:
     events: list[Event] = field(default_factory=list)  # One-time events
     retirement_mode: str = "liquid_only"  # "liquid_only" | "pension_bridged" (bridge with pension until accessible)
 
+    # Retirement Lifestyle (new)
+    retirement_lifestyle_mode: Optional[str] = None  # "full" | "partial" | None (disabled)
+    retirement_lifestyle_age: Optional[int] = None  # Age when retirement lifestyle starts (40-95)
+    partial_retirement_income: Optional[float] = None  # Monthly income if partial retirement
+
 
 @dataclass
 class ScenarioNode:
@@ -88,6 +93,9 @@ class ScenarioNode:
     withdrawal_rate: Optional[float] = None
     currency: Optional[str] = None
     retirement_mode: Optional[str] = None  # "liquid_only" | "pension_bridged"
+    retirement_lifestyle_mode: Optional[str] = None  # "full" | "partial" | None
+    retirement_lifestyle_age: Optional[int] = None
+    partial_retirement_income: Optional[float] = None
 
     # Mortgage and pension overrides — replace resolved parent's if set
     mortgage: Optional[Mortgage] = None
@@ -127,7 +135,7 @@ class ScenarioNode:
         for i, node in enumerate(ancestor_chain):
             # Apply scalar overrides
             overrides = {}
-            for field_name in ['age', 'initial_portfolio', 'return_rate', 'historical_start_year', 'historical_index', 'withdrawal_rate', 'currency', 'retirement_mode']:
+            for field_name in ['age', 'initial_portfolio', 'return_rate', 'historical_start_year', 'historical_index', 'withdrawal_rate', 'currency', 'retirement_mode', 'retirement_lifestyle_mode', 'retirement_lifestyle_age', 'partial_retirement_income']:
                 val = getattr(node, field_name)
                 if val is not None:
                     overrides[field_name] = val

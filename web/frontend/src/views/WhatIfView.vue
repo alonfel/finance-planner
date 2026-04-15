@@ -235,6 +235,93 @@
               </div>
             </div>
 
+            <!-- Retirement Lifestyle Section -->
+            <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e0e0e0;">
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px;">
+                <h4 style="margin: 0; font-size: 13px; font-weight: 600; color: #333;">🏖️ Retirement Lifestyle</h4>
+              </div>
+
+              <!-- Toggle Retirement Lifestyle -->
+              <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                  <input
+                    v-model="retirementEnabled"
+                    type="checkbox"
+                    @change="onSliderChange"
+                  />
+                  <span style="font-size: 13px; color: #555;">Enable Retirement Mode</span>
+                </label>
+              </div>
+
+              <div v-if="retirementEnabled" style="background: #f9f9f9; padding: 12px; border-radius: 6px; margin-bottom: 12px;">
+                <!-- Retirement Type -->
+                <div style="margin-bottom: 12px;">
+                  <label style="display: block; font-size: 12px; font-weight: 600; color: #555; margin-bottom: 8px;">Type:</label>
+                  <div style="display: flex; gap: 12px;">
+                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                      <input
+                        v-model="retirementType"
+                        type="radio"
+                        value="full"
+                        @change="onSliderChange"
+                      />
+                      <span style="font-size: 12px;">Full Retirement</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                      <input
+                        v-model="retirementType"
+                        type="radio"
+                        value="partial"
+                        @change="onSliderChange"
+                      />
+                      <span style="font-size: 12px;">Partial Retirement</span>
+                    </label>
+                  </div>
+                </div>
+
+                <!-- Retirement Age Slider -->
+                <div style="margin-bottom: 12px;">
+                  <label style="font-size: 12px; font-weight: 600; color: #555; display: block; margin-bottom: 6px;">
+                    Retire at Age: <span style="color: #667eea; font-weight: bold;">{{ retirementAge }}</span>
+                  </label>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <input
+                      v-model.number="retirementAge"
+                      type="range"
+                      min="40"
+                      max="95"
+                      step="1"
+                      style="flex: 1; cursor: pointer;"
+                      @input="onSliderChange"
+                    />
+                    <span style="font-size: 12px; color: #888; min-width: 30px;">{{ retirementAge }}</span>
+                  </div>
+                </div>
+
+                <!-- Partial Retirement Income (if partial mode) -->
+                <div v-if="retirementType === 'partial'" style="margin-bottom: 0;">
+                  <label style="font-size: 12px; font-weight: 600; color: #555; display: block; margin-bottom: 6px;">
+                    New Monthly Income (₪): <span style="color: #667eea; font-weight: bold;">{{ formatNumber(partialRetirementIncome) }}</span>
+                  </label>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <input
+                      v-model.number="partialRetirementIncome"
+                      type="range"
+                      min="0"
+                      max="100000"
+                      step="1000"
+                      style="flex: 1; cursor: pointer;"
+                      @input="onSliderChange"
+                    />
+                    <span style="font-size: 12px; color: #888; min-width: 60px;">₪{{ formatNumber(partialRetirementIncome) }}</span>
+                  </div>
+                  <div style="font-size: 11px; color: #999; margin-top: 4px;">
+                    e.g., consulting, freelance income
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <!-- Events as part of scenario parameters -->
             <div class="events-in-parameters">
               <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #e0e0e0;">
@@ -302,9 +389,12 @@
 
           <!-- Middle: Chart (Visible without scrolling) -->
           <div v-if="whatIfResult" class="chart-section">
+            <ScenarioInsights :special-points="chartSpecialPoints" />
             <ComparisonChart
               :scenarios="[originalScenario, whatIfResult]"
               :yearRange="{ min: 1, max: 20 }"
+              :special-points="chartSpecialPoints"
+              :base-year="BASE_YEAR"
             />
           </div>
 
@@ -317,7 +407,7 @@
                   <span class="label">Retirement:</span>
                   <span class="value">
                     <span v-if="originalScenario.retirement_year">
-                      Y{{ originalScenario.retirement_year }} / Age {{ retirementAge(originalScenario.retirement_year, originalStartingAge) }}
+                      Y{{ originalScenario.retirement_year }} / Age {{ calculateRetirementAge(originalScenario.retirement_year, originalStartingAge) }}
                     </span>
                     <span v-else>Never</span>
                   </span>
@@ -334,7 +424,7 @@
                   <span class="label">Retirement:</span>
                   <span class="value">
                     <span v-if="whatIfResult.retirement_year">
-                      Y{{ whatIfResult.retirement_year }} / Age {{ retirementAge(whatIfResult.retirement_year, sliders.startingAge) }}
+                      Y{{ whatIfResult.retirement_year }} / Age {{ calculateRetirementAge(whatIfResult.retirement_year, sliders.startingAge) }}
                     </span>
                     <span v-else>Never</span>
                   </span>
@@ -392,12 +482,14 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
 import ComparisonChart from '../components/ComparisonChart.vue'
+import ScenarioInsights from '../components/ScenarioInsights.vue'
 import ScenarioGeneratorModal from '../components/ScenarioGeneratorModal.vue'
+import { computeSpecialPoints, BASE_YEAR } from '../utils/specialPoints'
 
 const router = useRouter()
 const route = useRoute()
@@ -432,8 +524,15 @@ const mortgage = ref(null)
 const pension = ref(null)
 const showMortgage = ref(false)
 
+// Retirement Lifestyle
+const retirementEnabled = ref(false)
+const retirementType = ref('full')          // 'full' | 'partial'
+const retirementAge = ref(65)               // 40-95
+const partialRetirementIncome = ref(40000)  // Monthly income if partial retirement
+
 const selectedIndex = ref('fixed')        // 'fixed' | 'sp500' | 'nasdaq' | 'bonds' | 'russell2000'
 const historicalStartYear = ref(1990)
+const originalDefinition = ref(null)      // Save original definition for refreshing
 
 const INDEX_OPTIONS = [
   { key: 'fixed',        label: 'Fixed %',      minYear: null },
@@ -449,6 +548,7 @@ const saveStatus = ref(null)   // null | 'saving' | 'success' | 'error'
 const saveError = ref('')
 
 const showGeneratorModal = ref(false)
+let saveStatusTimeoutId = null
 
 const profileId = computed(() => route.params.profileId)
 const originalStartingAge = computed(() => {
@@ -456,6 +556,28 @@ const originalStartingAge = computed(() => {
     return 41
   }
   return originalScenario.value.year_data[0].age - 1
+})
+
+// Computed special milestone points (retirement, pension unlock, etc.)
+const originalSpecialPoints = computed(() =>
+  computeSpecialPoints(originalScenario.value?.year_data ?? [], {
+    baseYear: BASE_YEAR,
+    retirementYear: originalScenario.value?.retirement_year ?? null
+  })
+)
+
+const whatIfSpecialPoints = computed(() =>
+  computeSpecialPoints(whatIfResult.value?.year_data ?? [], {
+    baseYear: BASE_YEAR,
+    retirementYear: whatIfResult.value?.retirement_year ?? null
+  })
+)
+
+// Merged special points for chart annotations (deduplicated by id, earliest wins)
+const chartSpecialPoints = computed(() => {
+  const seen = new Set()
+  return [...originalSpecialPoints.value, ...whatIfSpecialPoints.value]
+    .filter(p => seen.has(p.id) ? false : (seen.add(p.id), true))
 })
 
 // Lifecycle
@@ -505,6 +627,7 @@ const onScenarioSelect = async () => {
 
     // Use exact definition values if available (What-If Saves or new scenarios)
     if (response.data.definition) {
+      originalDefinition.value = { ...response.data.definition }  // Save original for refresh
       fromDefinition(response.data.definition)
     } else {
       // Legacy fallback: back-calculate from year_data for old seeded scenarios
@@ -554,9 +677,27 @@ const onScenarioSelect = async () => {
 }
 
 const refreshOriginalScenario = async () => {
-  if (!originalScenario.value) return
+  if (!originalScenario.value || !originalDefinition.value) return
   try {
-    const response = await axios.post(`${API_BASE_URL}/simulate`, toApiRequest(), {
+    // Build request from ORIGINAL definition, not current sliders
+    const request = {
+      monthly_income: originalDefinition.value.monthly_income,
+      monthly_expenses: originalDefinition.value.monthly_expenses,
+      return_rate: originalDefinition.value.return_rate ?? 0.07,
+      historical_start_year: originalDefinition.value.historical_start_year,
+      historical_index: originalDefinition.value.historical_index,
+      withdrawal_rate: originalDefinition.value.withdrawal_rate ?? 0.04,
+      starting_age: originalDefinition.value.starting_age,
+      initial_portfolio: originalDefinition.value.initial_portfolio,
+      years: 20,
+      retirement_mode: originalDefinition.value.retirement_mode ?? 'liquid_only',
+      currency: originalDefinition.value.currency ?? 'ILS',
+      events: originalDefinition.value.events ?? [],
+      mortgage: originalDefinition.value.mortgage ?? null,
+      pension: originalDefinition.value.pension ?? null
+    }
+
+    const response = await axios.post(`${API_BASE_URL}/simulate`, request, {
       headers: { Authorization: `Bearer ${authStore.token}` }
     })
 
@@ -644,7 +785,12 @@ const toApiRequest = () => ({
     duration_years: mortgage.value.duration_years,
     currency: mortgage.value.currency || 'ILS'
   } : null,
-  pension: pension.value ? { ...pension.value } : null
+  pension: pension.value ? { ...pension.value } : null,
+  retirement_lifestyle: retirementEnabled.value ? {
+    mode: retirementType.value,
+    age: retirementAge.value,
+    partial_income: retirementType.value === 'partial' ? partialRetirementIncome.value : null
+  } : null
 })
 
 // Pure mapping function: restores exact values from loaded definition
@@ -677,6 +823,19 @@ const fromDefinition = (def) => {
 
   mortgage.value = def.mortgage ? { ...def.mortgage } : null
   pension.value = def.pension ? { ...def.pension } : null
+
+  // Restore retirement lifestyle settings
+  if (def.retirement_lifestyle) {
+    retirementEnabled.value = true
+    retirementType.value = def.retirement_lifestyle.mode || 'full'
+    retirementAge.value = def.retirement_lifestyle.age || 65
+    partialRetirementIncome.value = def.retirement_lifestyle.partial_income || 40000
+  } else {
+    retirementEnabled.value = false
+    retirementType.value = 'full'
+    retirementAge.value = 65
+    partialRetirementIncome.value = 40000
+  }
 }
 
 const calculateMortgagePayment = (m) => {
@@ -709,7 +868,7 @@ const formatPortfolio = (value) => {
   return Math.round(millions).toLocaleString('en-US')
 }
 
-const retirementAge = (retirementYear, startingAge) => {
+const calculateRetirementAge = (retirementYear, startingAge) => {
   return startingAge + retirementYear
 }
 
@@ -752,18 +911,44 @@ const saveScenario = async () => {
   }
 }
 
+const generatedResultToSaveRequest = (scenarioName, result) => ({
+  scenario_name: scenarioName,
+  monthly_income: result.monthly_income,
+  monthly_expenses: result.monthly_expenses,
+  return_rate: result.return_rate,
+  historical_start_year: result.historical_start_year,
+  historical_index: result.historical_index,
+  withdrawal_rate: result.withdrawal_rate,
+  starting_age: result.starting_age,
+  years: result.years,
+  retirement_mode: result.retirement_mode,
+  currency: result.currency,
+  events: result.events,
+  mortgage: result.mortgage,
+  pension: result.pension,
+  initial_portfolio: result.initial_portfolio
+})
+
 const handleGeneratedScenarioSaved = async (eventData) => {
-  // eventData has { name, answers, result }
-  // Save the generated scenario using the existing whatif-saves endpoint
+  // eventData = { name: scenarioName, answers: answers, result: generationResult }
   saveStatus.value = 'saving'
   saveError.value = ''
   try {
-    // TODO: Call /api/whatif-saves endpoint with the generated scenario data
-    // For now, just close the modal and show success
+    const saveRequest = generatedResultToSaveRequest(eventData.name, eventData.result)
+
+    const response = await axios.post(
+      `${API_BASE_URL}/profiles/${profileId.value}/saved-scenarios`,
+      saveRequest,
+      { headers: { Authorization: `Bearer ${authStore.token}` } }
+    )
+
     showGeneratorModal.value = false
     saveStatus.value = 'success'
-    setTimeout(() => {
+    // Clear any pending timeout before setting a new one
+    if (saveStatusTimeoutId) clearTimeout(saveStatusTimeoutId)
+    saveStatusTimeoutId = setTimeout(() => {
       saveStatus.value = null
+      saveStatusTimeoutId = null
     }, 1500)
     // Refresh scenarios list
     await fetchRuns()
@@ -781,6 +966,14 @@ const logout = () => {
   authStore.logout()
   router.push({ name: 'Login' })
 }
+
+// Cleanup on unmount
+onBeforeUnmount(() => {
+  if (saveStatusTimeoutId) {
+    clearTimeout(saveStatusTimeoutId)
+    saveStatusTimeoutId = null
+  }
+})
 
 // Initialize on mount
 fetchRuns()

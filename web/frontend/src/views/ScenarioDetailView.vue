@@ -108,7 +108,8 @@
 
         <div class="chart-section">
           <h3>Portfolio Growth</h3>
-          <PortfolioChart :year-data="yearData" :retirement-year="summary.retirement_year" />
+          <ScenarioInsights :special-points="specialPoints" />
+          <PortfolioChart :year-data="yearData" :retirement-year="summary.retirement_year" :special-points="specialPoints" :base-year="BASE_YEAR" />
         </div>
 
         <div class="table-section">
@@ -127,6 +128,8 @@ import { useAuthStore } from '../stores/auth'
 import axios from 'axios'
 import PortfolioChart from '../components/PortfolioChart.vue'
 import YearDataTable from '../components/YearDataTable.vue'
+import ScenarioInsights from '../components/ScenarioInsights.vue'
+import { computeSpecialPoints, BASE_YEAR } from '../utils/specialPoints'
 
 const router = useRouter()
 const route = useRoute()
@@ -179,6 +182,14 @@ const scenarioParams = computed(() => {
     initialPortfolio: null
   }
 })
+
+// Computed special milestone points (retirement, pension unlock, etc.)
+const specialPoints = computed(() =>
+  computeSpecialPoints(yearData.value, {
+    baseYear: BASE_YEAR,
+    retirementYear: summary.value?.retirement_year ?? null
+  })
+)
 
 onMounted(async () => {
   try {

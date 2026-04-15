@@ -9,7 +9,8 @@ from schemas import (
     WhatIfScenarioSchema,
     EventSchema,
     MortgageSchema,
-    PensionSchema
+    PensionSchema,
+    RetirementLifestyleSchema
 )
 from models import ScenarioResult, YearData, Profile, SimulationRun, ScenarioDefinition, ScenarioEvent, ScenarioMortgage, ScenarioPension
 from auth import get_current_user
@@ -80,6 +81,15 @@ def _build_definition(db: Session, scenario_id: int):
                 accessible_at_age=pension.accessible_at_age
             )
 
+        # Get retirement lifestyle
+        retirement_lifestyle_data = None
+        if definition.retirement_lifestyle_mode:
+            retirement_lifestyle_data = RetirementLifestyleSchema(
+                mode=definition.retirement_lifestyle_mode,
+                age=definition.retirement_lifestyle_age,
+                partial_income=definition.partial_retirement_income
+            )
+
         # Build the full scenario definition schema
         definition_schema = WhatIfScenarioSchema(
             monthly_income=monthly_income,
@@ -95,7 +105,8 @@ def _build_definition(db: Session, scenario_id: int):
             currency=definition.currency,
             events=events,
             mortgage=mortgage_data,
-            pension=pension_data
+            pension=pension_data,
+            retirement_lifestyle=retirement_lifestyle_data
         )
 
         return definition_schema

@@ -54,6 +54,32 @@ def run_migration(db: Session) -> None:
         db.execute(text("ALTER TABLE scenario_definitions ADD COLUMN historical_index TEXT"))
         db.commit()
 
+    # Add retirement_lifestyle columns to scenario_definitions if they don't exist
+    columns = [c['name'] for c in inspector.get_columns('scenario_definitions')]
+    if 'retirement_lifestyle_mode' not in columns:
+        print("  Adding retirement_lifestyle_mode column to scenario_definitions...")
+        db.execute(text("ALTER TABLE scenario_definitions ADD COLUMN retirement_lifestyle_mode TEXT"))
+        db.commit()
+    if 'retirement_lifestyle_age' not in columns:
+        print("  Adding retirement_lifestyle_age column to scenario_definitions...")
+        db.execute(text("ALTER TABLE scenario_definitions ADD COLUMN retirement_lifestyle_age INTEGER"))
+        db.commit()
+    if 'partial_retirement_income' not in columns:
+        print("  Adding partial_retirement_income column to scenario_definitions...")
+        db.execute(text("ALTER TABLE scenario_definitions ADD COLUMN partial_retirement_income REAL"))
+        db.commit()
+
+    # Add retirement and active_income columns to year_data if they don't exist
+    columns = [c['name'] for c in inspector.get_columns('year_data')]
+    if 'is_retired' not in columns:
+        print("  Adding is_retired column to year_data...")
+        db.execute(text("ALTER TABLE year_data ADD COLUMN is_retired BOOLEAN DEFAULT 0"))
+        db.commit()
+    if 'active_income' not in columns:
+        print("  Adding active_income column to year_data...")
+        db.execute(text("ALTER TABLE year_data ADD COLUMN active_income REAL DEFAULT 0.0"))
+        db.commit()
+
     # Check if migration has already run
     if db.query(ScenarioDefinition).first():
         print("✓ Migration already completed (scenario_definitions table has rows)")

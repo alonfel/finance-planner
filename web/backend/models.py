@@ -51,6 +51,9 @@ class ScenarioDefinition(Base):
     historical_index = Column(String, nullable=True)  # "sp500" | "nasdaq" | "bonds" | "russell2000"
     withdrawal_rate = Column(Float, nullable=False, default=0.04)
     retirement_mode = Column(String, nullable=False, default="liquid_only")
+    retirement_lifestyle_mode = Column(String, nullable=True)  # "full" | "partial" | None
+    retirement_lifestyle_age = Column(Integer, nullable=True)  # Age when retirement starts (40-95)
+    partial_retirement_income = Column(Float, nullable=True)  # Monthly income if partial mode
     saved_from = Column(String, nullable=True)
     saved_at = Column(String, nullable=True)
     is_deleted = Column(Boolean, nullable=False, default=False)
@@ -206,5 +209,7 @@ class YearData(Base):
     mortgage_active = Column(Boolean, nullable=False, default=False)
     pension_value = Column(Float, nullable=False, default=0.0)
     pension_accessible = Column(Boolean, nullable=False, default=False)
+    is_retired = Column(Boolean, nullable=False, default=False)
+    active_income = Column(Float, nullable=False, default=0.0)
 
     result = relationship("ScenarioResult", back_populates="year_data")

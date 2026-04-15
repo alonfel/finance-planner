@@ -12,6 +12,21 @@
     <div class="chart-container">
       <Line :data="chartData" :options="chartOptions" />
     </div>
+    <!-- Milestone Legend -->
+    <div v-if="specialPoints.length > 0" class="milestone-legend">
+      <span class="milestone-legend-title">Milestones:</span>
+      <span
+        v-for="point in specialPoints"
+        :key="point.id"
+        class="milestone-legend-item"
+      >
+        <span
+          class="milestone-legend-swatch"
+          :style="{ borderLeftColor: point.color }"
+        ></span>
+        {{ point.emoji }} {{ point.label }}
+      </span>
+    </div>
   </div>
 </template>
 
@@ -34,6 +49,7 @@ import {
   Tooltip,
   Legend
 } from 'chart.js'
+import AnnotationPlugin from 'chartjs-plugin-annotation'
 
 ChartJS.register(
   CategoryScale,
@@ -43,7 +59,8 @@ ChartJS.register(
   LineElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  AnnotationPlugin
 )
 
 const props = defineProps({
@@ -56,6 +73,16 @@ const props = defineProps({
   yearRange: {
     type: Object,
     required: true
+  },
+  /** Array of special milestone points (retirement, pension unlock, etc.) */
+  specialPoints: {
+    type: Array,
+    default: () => []
+  },
+  /** Base calendar year for x-axis labels (year 1 = baseYear + 1) */
+  baseYear: {
+    type: Number,
+    default: () => new Date().getFullYear() - 1
   }
 })
 
@@ -74,10 +101,14 @@ const colors = [
 /** Computed chart data from scenarios. Generates datasets with retirement year highlighting. */
 const chartData = computed(() => {
   const maxYear = Math.max(...props.scenarios.flatMap(s => s.year_data.map(y => y.year)))
+  // Use first scenario's age data for x-axis labels
+  const firstScenarioYearData = props.scenarios[0]?.year_data || []
   const labels = Array.from({ length: maxYear }, (_, i) => {
     const simulationYear = i + 1
-    const absoluteYear = 2025 + simulationYear
-    return `${absoluteYear}\n(+${simulationYear}y)`
+    const absoluteYear = props.baseYear + simulationYear
+    const ageData = firstScenarioYearData.find(d => d.year === simulationYear)
+    const age = ageData?.age || ''
+    return `${absoluteYear}\nage ${age}`
   })
 
   const datasets = props.scenarios.map((scenario, idx) => {
@@ -94,14 +125,8 @@ const chartData = computed(() => {
       tension: 0.4,
       pointBackgroundColor: color.border,
       pointBorderColor: '#fff',
-      pointBorderWidth: (context) => {
-        // Emphasize retirement year point with thicker border
-        return retirementYear && context.dataIndex === retirementYear - 1 ? 3 : 2
-      },
-      pointRadius: (context) => {
-        // Make retirement year point larger for visibility
-        return retirementYear && context.dataIndex === retirementYear - 1 ? 7 : 4
-      },
+      pointBorderWidth: 2,
+      pointRadius: 4,
       pointHoverRadius: 6
     }
   })
@@ -145,6 +170,31 @@ const chartOptions = computed(() => ({
     title: {
       display: false
     },
+    annotation: {
+      annotations: Object.fromEntries(
+        props.specialPoints.map(point => [
+          point.id,
+          {
+            type: 'line',
+            scaleID: 'x',
+            value: point.yearIndex,
+            borderColor: point.color,
+            borderWidth: 2,
+            borderDash: [6, 4],
+            label: {
+              display: true,
+              content: `${point.emoji} ${point.label}`,
+              position: 'start',
+              backgroundColor: point.color,
+              color: '#fff',
+              font: { size: 10, weight: 'bold' },
+              padding: { x: 6, y: 3 },
+              yAdjust: -4
+            }
+          }
+        ])
+      )
+    },
     tooltip: {
       backgroundColor: 'rgba(0, 0, 0, 0.9)',
       titleFont: { size: 13, weight: 'bold' },
@@ -159,8 +209,8 @@ const chartOptions = computed(() => ({
           const yearData = scenario.year_data[dataIndex]
 
           if (yearData) {
-            const year = 2025 + yearData.year
-            return `Year ${yearData.year} (${year}) | Age ${yearData.age}`
+            const year = props.baseYear + yearData.year
+            return `Year #${yearData.year} · ${year} · Age ${yearData.age}`
           }
           return `Year ${dataIndex + 1}`
         },
@@ -178,17 +228,6 @@ const chartOptions = computed(() => ({
 
           return label
         },
-        afterLabel: function(context) {
-          const dataIndex = context.dataIndex
-          const scenarioIdx = context.datasetIndex
-          const scenario = props.scenarios[scenarioIdx]
-          const yearData = scenario.year_data[dataIndex]
-
-          if (yearData && scenario.retirement_year === yearData.year) {
-            return '🎉 RETIREMENT YEAR'
-          }
-          return ''
-        }
       }
     }
   },
@@ -199,19 +238,14 @@ const chartOptions = computed(() => ({
         color: 'rgba(0, 0, 0, 0.05)'
       },
       ticks: {
+        callback: function(value, index) {
+          const label = this.chart.data.labels[index]
+          return label ? label.split('\n') : ''
+        },
         font: { size: 10 },
         maxTicksLimit: 20,
         maxRotation: 0,
-        minRotation: 0,
-        callback: function(value, index) {
-          const labels = this.chart.data.labels
-          if (labels && labels[index]) {
-            const label = labels[index]
-            const parts = label.split('\n')
-            return parts[0] // Extract year from "2026\n(+1y)" format
-          }
-          return ''
-        }
+        minRotation: 0
       }
     },
     y: {
@@ -277,5 +311,33 @@ const chartOptions = computed(() => ({
   margin: 0;
   flex: 1;
   max-height: 280px;
+}
+
+.milestone-legend {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #555;
+  flex-wrap: wrap;
+}
+
+.milestone-legend-title {
+  font-weight: 600;
+  color: #333;
+}
+
+.milestone-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.milestone-legend-swatch {
+  display: inline-block;
+  width: 0;
+  height: 14px;
+  border-left: 2px dashed;
 }
 </style>

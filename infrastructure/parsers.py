@@ -89,6 +89,28 @@ def parse_pension(d: dict) -> Pension | None:
     )
 
 
+def parse_retirement_lifestyle(d: dict) -> tuple[str | None, int | None, float | None]:
+    """Parse retirement lifestyle configuration from dict.
+
+    Args:
+        d: Dictionary with optional keys 'mode', 'age', 'partial_income'
+           mode: "full" | "partial" | None (disabled)
+           age: Age when retirement starts (40-95)
+           partial_income: Monthly income if partial mode
+
+    Returns:
+        Tuple of (mode, age, partial_income) with None values if not present
+    """
+    if not d:
+        return None, None, None
+
+    mode = d.get("mode")
+    age = d.get("age")
+    partial_income = d.get("partial_income")
+
+    return mode, age, partial_income
+
+
 def parse_events(event_list: list) -> list[Event]:
     """Parse a list of event dicts into Event objects.
 
@@ -113,7 +135,7 @@ def parse_scenario(d: dict, default_return_rate: float = 0.07, default_withdrawa
 
     Args:
         d: Dictionary with required keys 'name', 'monthly_income', 'monthly_expenses',
-           optional keys for mortgage, pension, events, return_rate, withdrawal_rate, currency, age, initial_portfolio, retirement_mode
+           optional keys for mortgage, pension, events, return_rate, withdrawal_rate, currency, age, initial_portfolio, retirement_mode, retirement_lifestyle
         default_return_rate: Default return rate if not in dict
         default_withdrawal_rate: Default withdrawal rate if not in dict
 
@@ -123,6 +145,7 @@ def parse_scenario(d: dict, default_return_rate: float = 0.07, default_withdrawa
     mortgage = parse_mortgage(d.get("mortgage"))
     pension = parse_pension(d.get("pension"))
     events = parse_events(d.get("events", []))
+    retirement_lifestyle_mode, retirement_lifestyle_age, partial_retirement_income = parse_retirement_lifestyle(d.get("retirement_lifestyle"))
 
     return Scenario(
         name=d["name"],
@@ -138,6 +161,9 @@ def parse_scenario(d: dict, default_return_rate: float = 0.07, default_withdrawa
         age=d.get("age", 30),
         events=events,
         retirement_mode=d.get("retirement_mode", "liquid_only"),
+        retirement_lifestyle_mode=retirement_lifestyle_mode,
+        retirement_lifestyle_age=retirement_lifestyle_age,
+        partial_retirement_income=partial_retirement_income,
     )
 
 
@@ -178,6 +204,7 @@ def parse_scenario_node(d: dict, all_scenarios: dict) -> ScenarioNode:
     # Parse mortgage and pension
     mortgage = parse_mortgage(d.get("mortgage"))
     pension = parse_pension(d.get("pension"))
+    retirement_lifestyle_mode, retirement_lifestyle_age, partial_retirement_income = parse_retirement_lifestyle(d.get("retirement_lifestyle"))
 
     return ScenarioNode(
         name=d["name"],
@@ -192,6 +219,9 @@ def parse_scenario_node(d: dict, all_scenarios: dict) -> ScenarioNode:
         withdrawal_rate=d.get("withdrawal_rate"),
         currency=d.get("currency"),
         retirement_mode=d.get("retirement_mode"),
+        retirement_lifestyle_mode=retirement_lifestyle_mode,
+        retirement_lifestyle_age=retirement_lifestyle_age,
+        partial_retirement_income=partial_retirement_income,
         mortgage=mortgage,
         pension=pension,
         event_mode=event_mode,

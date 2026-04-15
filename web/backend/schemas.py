@@ -13,6 +13,8 @@ class YearDataSchema(BaseModel):
     mortgage_active: bool
     pension_value: float
     pension_accessible: bool
+    is_retired: bool = False
+    active_income: float = 0.0
 
     class Config:
         from_attributes = True
@@ -34,6 +36,11 @@ class PensionSchema(BaseModel):
     annual_growth_rate: float
     accessible_at_age: int = 67
 
+class RetirementLifestyleSchema(BaseModel):
+    mode: str  # "full" | "partial"
+    age: int   # 40-95
+    partial_income: Optional[float] = None  # Monthly income if partial mode
+
 # Core request/response schemas
 class WhatIfScenarioSchema(BaseModel):
     """Canonical shape for all What-If scenario state"""
@@ -51,6 +58,7 @@ class WhatIfScenarioSchema(BaseModel):
     events: List[EventSchema] = []
     mortgage: Optional[MortgageSchema] = None
     pension: Optional[PensionSchema] = None
+    retirement_lifestyle: Optional[RetirementLifestyleSchema] = None
 
 class SimulateRequest(WhatIfScenarioSchema):
     """Request for one-off simulation - inherits all fields from WhatIfScenarioSchema"""

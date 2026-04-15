@@ -87,9 +87,25 @@ export default {
       return grouped
     })
 
+    const isQuestionVisible = (question) => {
+      const condition = question.visible_when
+      if (!condition) return true
+
+      // Evaluate conditional visibility safely
+      // Use new Function() with explicit parameters so missing keys default to false
+      try {
+        const keys = Object.keys(props.answers)
+        const vals = keys.map(k => props.answers[k] ?? false)
+        return new Function(...keys, `return ${condition}`)(...vals)
+      } catch (e) {
+        console.warn('Error evaluating visibility condition:', e, 'for condition:', condition)
+        return false  // Fail closed: hide unknown conditions
+      }
+    }
+
     const requiredQuestions = computed(
       () => allQuestions.value
-        .filter(q => q.required && !q.conditional)
+        .filter(q => (q.required && !q.conditional) || (q.weight > 0 && isQuestionVisible(q)))
         .map(q => q.id)
     )
 
@@ -103,26 +119,6 @@ export default {
     const canGenerate = computed(
       () => completeness.value > 0 // Can generate with any answers
     )
-
-    const isQuestionVisible = (question) => {
-      const condition = question.visible_when
-      if (!condition) return true
-
-      // Evaluate conditional visibility safely
-      try {
-        // Replace question IDs with their values from answers
-        let evaluableCondition = condition
-        for (const [key, value] of Object.entries(props.answers)) {
-          if (typeof value === 'boolean') {
-            evaluableCondition = evaluableCondition.replace(new RegExp(`\\b${key}\\b`, 'g'), value)
-          }
-        }
-        return eval(evaluableCondition)
-      } catch (e) {
-        console.warn('Error evaluating visibility condition:', e)
-        return true
-      }
-    }
 
     return {
       sectionMetadata,

@@ -40,6 +40,16 @@
         <div class="metric-label">Initial Portfolio</div>
         <div class="metric-value">₪{{ formatNumber(generationResult.initial_portfolio) }}</div>
       </div>
+
+      <div v-if="generationResult.mortgage" class="metric">
+        <div class="metric-label">Mortgage Payment</div>
+        <div class="metric-value">₪{{ formatNumber(generationResult.mortgage.monthly_payment || 0) }}</div>
+      </div>
+
+      <div v-if="generationResult.pension" class="metric">
+        <div class="metric-label">Pension Value</div>
+        <div class="metric-value">₪{{ formatNumber(generationResult.pension.initial_value || 0) }}</div>
+      </div>
     </div>
 
     <!-- Actions -->

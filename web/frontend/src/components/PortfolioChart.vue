@@ -12,6 +12,21 @@
     <div class="chart-container">
       <Line :data="chartData" :options="chartOptions" />
     </div>
+    <!-- Milestone Legend -->
+    <div v-if="specialPoints.length > 0" class="milestone-legend">
+      <span class="milestone-legend-title">Milestones:</span>
+      <span
+        v-for="point in specialPoints"
+        :key="point.id"
+        class="milestone-legend-item"
+      >
+        <span
+          class="milestone-legend-swatch"
+          :style="{ borderLeftColor: point.color }"
+        ></span>
+        {{ point.emoji }} {{ point.label }}
+      </span>
+    </div>
   </div>
 </template>
 
@@ -34,6 +49,7 @@ import {
   Tooltip,
   Legend
 } from 'chart.js'
+import AnnotationPlugin from 'chartjs-plugin-annotation'
 
 ChartJS.register(
   CategoryScale,
@@ -43,7 +59,8 @@ ChartJS.register(
   LineElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  AnnotationPlugin
 )
 
 /** Toggle for logarithmic vs linear scale (enabled by default for growth visibility) */
@@ -55,15 +72,25 @@ const props = defineProps({
     type: Array,
     required: true
   },
-  /** Year of retirement (optional) for highlighting */
+  /** Year of retirement (deprecated, kept for backward compat — now included in specialPoints) */
   retirementYear: {
     type: Number,
     default: null
+  },
+  /** Array of special milestone points (retirement, pension unlock, etc.) */
+  specialPoints: {
+    type: Array,
+    default: () => []
+  },
+  /** Base calendar year for x-axis labels (year 1 = baseYear + 1) */
+  baseYear: {
+    type: Number,
+    default: () => new Date().getFullYear() - 1
   }
 })
 
 const chartData = computed(() => ({
-  labels: props.yearData.map(d => `Year ${d.year}`),
+  labels: props.yearData.map(d => `${props.baseYear + d.year}\nage ${d.age}`),
   datasets: [
     {
       label: 'Portfolio Value',
@@ -140,10 +167,39 @@ const chartOptions = computed(() => ({
       padding: 12,
       cornerRadius: 4,
       callbacks: {
+        title: (context) => {
+          const d = props.yearData[context[0].dataIndex]
+          return d ? `Year #${d.year} · ${props.baseYear + d.year} · Age ${d.age}` : ''
+        },
         label: function(context) {
           return context.dataset.label + ': ₪' + context.parsed.y.toFixed(2) + 'M'
         }
       }
+    },
+    annotation: {
+      annotations: Object.fromEntries(
+        props.specialPoints.map(point => [
+          point.id,
+          {
+            type: 'line',
+            scaleID: 'x',
+            value: point.yearIndex,
+            borderColor: point.color,
+            borderWidth: 2,
+            borderDash: [6, 4],
+            label: {
+              display: true,
+              content: `${point.emoji} ${point.label}`,
+              position: 'start',
+              backgroundColor: point.color,
+              color: '#fff',
+              font: { size: 10, weight: 'bold' },
+              padding: { x: 6, y: 3 },
+              yAdjust: -4
+            }
+          }
+        ])
+      )
     }
   },
   scales: {
@@ -153,8 +209,13 @@ const chartOptions = computed(() => ({
         color: 'rgba(0, 0, 0, 0.05)'
       },
       ticks: {
+        callback: function(value, index) {
+          const label = this.chart.data.labels[index]
+          return label ? label.split('\n') : ''
+        },
         font: { size: 11 },
-        maxTicksLimit: 10
+        maxTicksLimit: 10,
+        maxRotation: 0
       }
     },
     y: {
@@ -218,5 +279,33 @@ const chartOptions = computed(() => ({
   position: relative;
   height: 400px;
   margin: 0;
+}
+
+.milestone-legend {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #555;
+  flex-wrap: wrap;
+}
+
+.milestone-legend-title {
+  font-weight: 600;
+  color: #333;
+}
+
+.milestone-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.milestone-legend-swatch {
+  display: inline-block;
+  width: 0;
+  height: 14px;
+  border-left: 2px dashed;
 }
 </style>

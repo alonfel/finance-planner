@@ -795,7 +795,7 @@ class TestScenarioNode(unittest.TestCase):
         self.assertEqual(resolved.mortgage.annual_rate, 0.03)
         self.assertEqual(resolved.mortgage.duration_years, 25)
 
-def test_resolved_node_is_valid_for_simulation(self):
+    def test_resolved_node_is_valid_for_simulation(self):
         """A resolved ScenarioNode can be passed to simulate() without error."""
         base = Scenario(
             name="Baseline",
@@ -1096,6 +1096,143 @@ class TestHistoricalReturns(unittest.TestCase):
             result_nasdaq.year_data[-1].portfolio,
             result_sp500.year_data[-1].portfolio
         )
+
+
+class TestRetirementLifestyle(unittest.TestCase):
+    """Test retirement lifestyle feature."""
+
+    def test_full_retirement_at_50_income_drops_to_zero(self):
+        """Full retirement at age 50 → income drops to 0."""
+        scenario = Scenario(
+            name="Full Retire at 50",
+            monthly_income=IncomeBreakdown({"salary": 100_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 60_000}),
+            initial_portfolio=2_000_000,
+            age=40,  # Start at age 40
+            retirement_lifestyle_mode="full",
+            retirement_lifestyle_age=50,
+        )
+        result = simulate(scenario, years=30)
+
+        # Before age 50 (years 1-10): income should be 100k
+        for year_num in range(1, 11):
+            year_data = result.year_data[year_num - 1]
+            expected_age = 40 + year_num
+            if expected_age < 50:
+                # Income not yet affected
+                self.assertEqual(year_data.active_income, 100_000 * 12)
+                self.assertFalse(year_data.is_retired)
+
+        # At age 50 (year 11): income drops to 0
+        year_50 = result.year_data[10]  # Year 11
+        self.assertEqual(year_50.active_income, 0)
+        self.assertTrue(year_50.is_retired)
+
+    def test_partial_retirement_income_reduction(self):
+        """Partial retirement at age 45 with reduced income."""
+        scenario = Scenario(
+            name="Partial Retire at 45",
+            monthly_income=IncomeBreakdown({"salary": 100_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 60_000}),
+            initial_portfolio=2_000_000,
+            age=40,
+            retirement_lifestyle_mode="partial",
+            retirement_lifestyle_age=45,
+            partial_retirement_income=40_000,  # Consulting income
+        )
+        result = simulate(scenario, years=30)
+
+        # Before age 45: income = 100k
+        year_before = result.year_data[3]  # Year 4, age 44
+        self.assertEqual(year_before.active_income, 100_000 * 12)
+        self.assertFalse(year_before.is_retired)
+
+        # At age 45: income = 40k
+        year_at_45 = result.year_data[4]  # Year 5, age 45
+        self.assertEqual(year_at_45.active_income, 40_000 * 12)
+        self.assertTrue(year_at_45.is_retired)
+
+    def test_no_retirement_lifestyle_backward_compatible(self):
+        """Scenario without retirement lifestyle behaves same as before."""
+        scenario_no_retire = Scenario(
+            name="No Retirement Lifestyle",
+            monthly_income=IncomeBreakdown({"salary": 100_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 60_000}),
+            initial_portfolio=2_000_000,
+            age=40,
+            # No retirement_lifestyle settings
+        )
+        result = simulate(scenario_no_retire, years=30)
+
+        # Income should stay constant
+        for year_data in result.year_data:
+            self.assertEqual(year_data.active_income, 100_000 * 12)
+            self.assertFalse(year_data.is_retired)
+
+    def test_retirement_age_properly_tracked(self):
+        """Retirement age transition is properly tracked in year_data."""
+        scenario = Scenario(
+            name="Track Retirement Age",
+            monthly_income=IncomeBreakdown({"salary": 80_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 60_000}),
+            initial_portfolio=1_000_000,
+            age=40,
+            retirement_lifestyle_mode="full",
+            retirement_lifestyle_age=55,
+        )
+        result = simulate(scenario, years=25)
+
+        # Age 55 is reached at year_num = 55 - 40 = 15
+        # So years 15-25 (inclusive) should have is_retired=True
+        retired_years = [yd for yd in result.year_data if yd.is_retired]
+        expected_retired_count = 25 - 15 + 1  # Years 15-25 inclusive = 11 years
+
+        self.assertEqual(len(retired_years), expected_retired_count)
+
+    def test_full_retirement_unsustainable(self):
+        """Full retirement with low income/high expenses becomes unsustainable."""
+        scenario = Scenario(
+            name="Unsustainable Full Retire",
+            monthly_income=IncomeBreakdown({"salary": 50_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 80_000}),  # High expenses
+            initial_portfolio=100_000,  # Small portfolio
+            age=40,
+            retirement_lifestyle_mode="full",
+            retirement_lifestyle_age=50,
+        )
+        result = simulate(scenario, years=30)
+
+        # Portfolio should deplete before the 30-year mark
+        final_portfolio = result.year_data[-1].portfolio
+        self.assertLess(final_portfolio, 0)
+
+    def test_retirement_with_pension_unlocks_at_67(self):
+        """Partial retirement before 67, pension unlocks at 67 to help sustain."""
+        from domain.models import Pension
+
+        pension = Pension(
+            initial_value=1_000_000,
+            monthly_contribution=10_000,
+            annual_growth_rate=0.06,
+            accessible_at_age=67,
+        )
+
+        scenario = Scenario(
+            name="Retire at 50, Pension at 67",
+            monthly_income=IncomeBreakdown({"salary": 100_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 70_000}),
+            initial_portfolio=1_500_000,
+            age=40,
+            pension=pension,
+            retirement_lifestyle_mode="partial",
+            retirement_lifestyle_age=50,
+            partial_retirement_income=40_000,
+        )
+        result = simulate(scenario, years=30)
+
+        # At age 67 (year 28), pension should unlock
+        year_67 = result.year_data[27]  # Year 28, age 67
+        self.assertTrue(year_67.pension_accessible)
 
 
 if __name__ == "__main__":
