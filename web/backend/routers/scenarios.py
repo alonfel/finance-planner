@@ -133,7 +133,7 @@ def list_scenarios(
 
         final_portfolio = final_year.portfolio if final_year else 0.0
         cards.append({
-            "id": result.id,
+            "id": result.scenario_id,  # Return ScenarioDefinition.id for lookup by Monte Carlo endpoint
             "scenario_name": result.scenario_name,
             "retirement_year": result.retirement_year,
             "final_portfolio": final_portfolio
