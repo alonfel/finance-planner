@@ -41,6 +41,7 @@
             :selected-index="selectedIndex"
             :historical-start-year="historicalStartYear"
             @update-field="updateEditDraftField"
+            @update-retirement-lifestyle="updateRetirementLifestyle"
             @add-event="addEvent"
             @remove-event="removeEvent"
             @update-mortgage="updateMortgage"
@@ -300,6 +301,7 @@ const loadScenario = async () => {
         historical_start_year: res.data.definition.historical_start_year,
         historical_index: res.data.definition.historical_index,
         retirement_mode: res.data.definition.retirement_mode,
+        retirement_lifestyle: res.data.definition.retirement_lifestyle,
         currency: res.data.definition.currency
       } : {})
     }
@@ -393,6 +395,15 @@ const cancelEdit = () => {
 const updateEditDraftField = (field, value) => {
   if (editDraft.value) {
     editDraft.value[field] = value
+    isDirty.value = true
+    runSimulation()
+  }
+}
+
+// Edit: Update retirement lifestyle
+const updateRetirementLifestyle = (lifestyle) => {
+  if (editDraft.value) {
+    editDraft.value.retirement_lifestyle = lifestyle
     isDirty.value = true
     runSimulation()
   }
@@ -533,7 +544,7 @@ const runSimulation = async () => {
           annual_growth_rate: editDraft.value.pension.annual_growth_rate,
           accessible_at_age: editDraft.value.pension.accessible_at_age
         } : null,
-        retirement_lifestyle: null
+        retirement_lifestyle: editDraft.value.retirement_lifestyle || null
       }
 
       const res = await axios.post(`${API_BASE_URL}/simulate`, requestPayload, {
@@ -552,37 +563,67 @@ const saveAsNewScenario = () => {
 }
 
 const performSaveAsNew = async (scenarioName) => {
+  if (!scenarioName.trim()) return
+
   try {
+    // Build payload in SaveScenarioRequest format
     const payload = {
-      ...editDraft.value,
-      scenario_name: scenarioName,
-      saved_from: 'scenario_view_edit'
+      scenario_name: scenarioName.trim(),
+      monthly_income: editDraft.value.monthly_income || 0,
+      monthly_expenses: editDraft.value.monthly_expenses || 0,
+      return_rate: editDraft.value.return_rate || 0.07,
+      historical_start_year: editDraft.value.historical_start_year || null,
+      historical_index: editDraft.value.historical_index || null,
+      withdrawal_rate: editDraft.value.withdrawal_rate || 0.04,
+      starting_age: editDraft.value.starting_age || 40,
+      initial_portfolio: editDraft.value.initial_portfolio || 0,
+      years: editDraft.value.years || 30,
+      retirement_mode: editDraft.value.retirement_mode || 'liquid_only',
+      currency: editDraft.value.currency || 'ILS',
+      events: (editDraft.value.events || [])
+        .filter(e => e.enabled)
+        .map(e => ({
+          year: e.year,
+          portfolio_injection: e.amount || e.portfolio_injection || 0,
+          description: e.description || ''
+        })),
+      mortgage: editDraft.value.mortgage ? {
+        principal: editDraft.value.mortgage.principal,
+        annual_rate: editDraft.value.mortgage.annual_rate,
+        duration_years: editDraft.value.mortgage.duration_years,
+        currency: editDraft.value.mortgage.currency || 'ILS'
+      } : null,
+      pension: editDraft.value.pension ? {
+        initial_value: editDraft.value.pension.initial_value,
+        monthly_contribution: editDraft.value.pension.monthly_contribution,
+        annual_growth_rate: editDraft.value.pension.annual_growth_rate,
+        accessible_at_age: editDraft.value.pension.accessible_at_age || 67
+      } : null,
+      retirement_lifestyle: editDraft.value.retirement_lifestyle || null
     }
-    // TODO: Send to /whatif-saves endpoint
-    // const res = await axios.post(`${API_BASE_URL}/whatif-saves`, payload)
-    // const newScenarioId = res.data.scenario_id
-    // Navigate to new scenario
-    // await router.push(`/scenario/${newScenarioId}?mode=view`)
+
+    const profileId = route.params.profileId
+    const res = await axios.post(
+      `${API_BASE_URL}/profiles/${profileId}/saved-scenarios`,
+      payload,
+      { headers: { Authorization: `Bearer ${authStore.token}` } }
+    )
+
+    // Success: close modal and navigate to new scenario
     showSaveAsModal.value = false
+    const newScenarioId = res.data.scenario_result_id
+    await router.push(`/profiles/${profileId}/scenario/${newScenarioId}`)
   } catch (err) {
-    error.value = 'Failed to save scenario'
+    error.value = err.response?.data?.detail || 'Failed to save scenario'
     console.error('Save error:', err)
   }
 }
 
 // Override: Update existing scenario
 const performOverride = async () => {
-  try {
-    // TODO: Send to /scenarios/:id (PUT/POST) endpoint
-    // const res = await axios.post(`${API_BASE_URL}/scenarios/${scenario_id}`, editDraft.value)
-    // Reload current scenario
-    // await loadScenario()
-    // leaveEditMode()
-    showOverrideConfirm.value = false
-  } catch (err) {
-    error.value = 'Failed to override scenario'
-    console.error('Override error:', err)
-  }
+  // Override endpoint not yet implemented
+  error.value = 'Override not yet implemented. Use "💾 Save as New" to create a variation instead.'
+  showOverrideConfirm.value = false
 }
 
 // Navigation

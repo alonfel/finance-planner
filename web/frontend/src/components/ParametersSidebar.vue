@@ -133,7 +133,7 @@
       </section>
 
       <!-- Withdrawal Rate & Retirement Mode -->
-      <section class="parameters-section" v-if="isEditable || scenario.withdrawal_rate !== undefined || scenario.retirement_mode">
+      <section class="parameters-section">
         <h4 class="section-title">Retirement Settings</h4>
 
         <div class="param-row">
@@ -168,6 +168,90 @@
           </div>
           <div v-else class="static-value">
             {{ (scenario.retirement_mode || 'liquid_only') === 'liquid_only' ? 'Liquid Only' : 'Pension Bridged' }}
+          </div>
+        </div>
+      </section>
+
+      <!-- Partial Retirement Settings -->
+      <section class="parameters-section">
+        <h4 class="section-title">Retirement Lifestyle</h4>
+
+        <div class="param-row">
+          <label>Enable Partial Retirement</label>
+          <div v-if="isEditable" class="slider-control">
+            <input
+              :checked="scenario.retirement_lifestyle !== null"
+              type="checkbox"
+              @change="(e) => $emit('update-field', 'retirement_lifestyle', e.target.checked ? { mode: 'full', age: 65, partial_income: 40000 } : null)"
+            />
+          </div>
+          <div v-else class="static-value">
+            {{ scenario.retirement_lifestyle ? 'Enabled' : 'Disabled' }}
+          </div>
+        </div>
+
+        <div v-if="scenario.retirement_lifestyle" class="param-row">
+          <label>Retirement Type</label>
+          <div v-if="isEditable" class="slider-control mode-selector">
+            <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+              <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: normal; font-size: 13px;">
+                <input
+                  :checked="scenario.retirement_lifestyle?.mode === 'full'"
+                  type="radio"
+                  name="retirement-type"
+                  @change="() => $emit('update-retirement-lifestyle', { ...scenario.retirement_lifestyle, mode: 'full' })"
+                />
+                <span>Full Retirement</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: normal; font-size: 13px;">
+                <input
+                  :checked="scenario.retirement_lifestyle?.mode === 'partial'"
+                  type="radio"
+                  name="retirement-type"
+                  @change="() => $emit('update-retirement-lifestyle', { ...scenario.retirement_lifestyle, mode: 'partial' })"
+                />
+                <span>Partial Retirement</span>
+              </label>
+            </div>
+          </div>
+          <div v-else class="static-value">
+            {{ scenario.retirement_lifestyle?.mode === 'partial' ? 'Partial' : 'Full' }}
+          </div>
+        </div>
+
+        <div v-if="scenario.retirement_lifestyle" class="param-row">
+          <label>Retirement Age</label>
+          <div v-if="isEditable" class="slider-control">
+            <input
+              :value="scenario.retirement_lifestyle?.age || 65"
+              type="range"
+              min="40"
+              max="95"
+              step="1"
+              @input="(e) => $emit('update-retirement-lifestyle', { ...scenario.retirement_lifestyle, age: Number(e.target.value) })"
+            />
+            <span class="slider-value">{{ scenario.retirement_lifestyle?.age || 65 }}</span>
+          </div>
+          <div v-else class="static-value">
+            {{ scenario.retirement_lifestyle?.age || 65 }}
+          </div>
+        </div>
+
+        <div v-if="scenario.retirement_lifestyle?.mode === 'partial'" class="param-row">
+          <label>Partial Income</label>
+          <div v-if="isEditable" class="slider-control">
+            <input
+              :value="scenario.retirement_lifestyle?.partial_income || 40000"
+              type="range"
+              min="0"
+              max="100000"
+              step="1000"
+              @input="(e) => $emit('update-retirement-lifestyle', { ...scenario.retirement_lifestyle, partial_income: Number(e.target.value) })"
+            />
+            <span class="slider-value">₪{{ formatNumber(scenario.retirement_lifestyle?.partial_income || 40000) }}</span>
+          </div>
+          <div v-else class="static-value">
+            ₪{{ formatNumber(scenario.retirement_lifestyle?.partial_income || 40000) }}
           </div>
         </div>
       </section>
