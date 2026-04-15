@@ -1,0 +1,520 @@
+# Roadmap Manager Skill
+
+## Purpose
+
+Manage the lifecycle of the roadmap specifically for the **financial simulation & insight system**.
+
+This skill is aware of the domain, current progress, and architecture of the project, including:
+
+* Monte Carlo Simulation Engine (to be built)
+* Insight Engine (sensitivity + drivers)
+* Future Decision Layer (allocations, trade-offs)
+* Existing UI and financial input layer
+
+This skill is responsible for:
+
+* Creating and structuring roadmap.md
+* Breaking down work into features aligned with system architecture
+* Tracking feature status
+* Updating roadmap as progress is made
+* Guiding next steps based on current project state
+
+---
+
+## Core Concepts
+
+### Roadmap
+
+A structured plan divided into phases and features.
+
+### Feature
+
+A small, independently executable unit of work (1–3 days effort).
+
+Each feature has:
+
+* name
+* description
+* inputs / outputs
+* dependencies
+* acceptance criteria
+* status (planned / in-progress / done)
+
+---
+
+## File of Truth
+
+All state is stored in:
+
+👉 roadmap.md
+
+This file must always reflect the current state of the project.
+
+---
+
+## Responsibilities
+
+### 0. Maintain Project Context (CRITICAL)
+
+This skill MUST maintain awareness of:
+
+* What components already exist
+* What has been completed
+* What phase the system is currently in
+* How features relate to the overall architecture
+
+It should NEVER treat the roadmap as generic.
+All decisions must align with the financial simulation system design.
+
+---
+
+### 1. Create Roadmap
+
+When no roadmap exists:
+
+* Generate phases aligned with system evolution:
+
+  * Simulation Engine
+  * Insight Engine
+  * (Later) Decision Layer
+* Break into features that map to real components
+* Ensure features are small and independent
+* Ensure architectural correctness (no mixing responsibilities)
+* Assign default status: planned
+
+---
+
+### 2. Update Roadmap
+
+When work progresses:
+
+* Update feature status:
+
+  * planned → in-progress → done
+* Add notes if needed
+* Keep structure clean and consistent
+
+---
+
+### 3. Select Next Feature
+
+When asked “what’s next”:
+
+* Choose the next feature based on:
+
+  * dependencies
+  * architectural order (simulation → insight → decision)
+  * priority
+  * minimal blocking
+
+* Prefer features that:
+
+  * unlock future work
+  * create end-to-end value early
+
+---
+
+### 4. Sync With Feature Workflow
+
+This skill works together with:
+
+* Feature Creation Skill
+* Feature Completion Skill (feature-finish-cycle)
+
+Flow:
+
+1. Select feature
+2. Run Feature Creation
+3. Run Feature Completion
+4. Update roadmap.md
+
+---
+
+### 5. Progress Reporting
+
+Be able to summarize:
+
+* Completed features
+* Current phase
+* Remaining work
+* Risks or bottlenecks
+
+---
+
+## Roadmap Structure (roadmap.md)
+
+Use this structure:
+
+# Roadmap
+
+## Phase 1 — Simulation Engine
+
+### Feature: Simulation Output Schema
+
+* Status: planned
+* Description: Define and implement a unified output schema for all simulations
+* Inputs: raw simulation results
+* Outputs: structured object with summary, distribution, metadata
+* Dependencies: none
+* Acceptance Criteria:
+
+  * Includes success_probability, median, p10, p90
+  * Stable and consistent format
+
+---
+
+### Feature: Result Reporter
+
+* Status: planned
+* Description: Generate readable summaries and comparisons between scenarios
+* Inputs: simulation outputs
+* Outputs: summary + comparison (baseline vs scenario)
+* Dependencies: Simulation Output Schema
+* Acceptance Criteria:
+
+  * Produces clear baseline vs scenario comparison
+  * Highlights deltas
+
+---
+
+### Feature: Basic Monte Carlo Engine
+
+* Status: planned
+* Description: Implement core Monte Carlo simulation with returns and savings
+* Inputs: initial wealth, return distribution, savings
+* Outputs: raw simulation results (paths)
+* Dependencies: Simulation Output Schema
+* Acceptance Criteria:
+
+  * Runs N simulations
+  * Produces stable output paths
+
+---
+
+* Status: planned
+* Description: Implement core Monte Carlo simulation with returns and savings
+* Inputs: initial wealth, return distribution, savings
+* Outputs: wealth trajectories, success probability
+* Dependencies: none
+* Acceptance Criteria:
+
+  * Runs N simulations
+  * Produces stable output
+
+---
+
+### Feature: Cashflow Integration
+
+* Status: planned
+* Description: Add periodic savings into simulation
+* Inputs: monthly/annual savings
+* Outputs: updated wealth over time
+* Dependencies: Basic Monte Carlo Engine
+* Acceptance Criteria:
+
+  * Savings applied each timestep
+
+---
+
+### Feature: Event Injection (IPO - deterministic)
+
+* Status: planned
+* Description: Add support for a one-time event (IPO) at a fixed year and value
+* Inputs: ipo_enabled, ipo_year, ipo_value
+* Outputs: wealth jump in simulation
+* Dependencies: Basic Monte Carlo Engine
+* Acceptance Criteria:
+
+  * Event correctly increases wealth at defined timestep
+
+---
+
+### Feature: Event Engine (generic)
+
+* Status: planned
+* Description: Generalize event handling to support different event types (IPO, etc.)
+* Inputs: event configurations
+* Outputs: events applied during simulation
+* Dependencies: Event Injection (IPO - deterministic)
+* Acceptance Criteria:
+
+  * Supports at least IPO as a generic event
+  * Easily extensible to other events
+
+---
+
+* Status: planned
+* Description: Add support for a one-time event (IPO) at a fixed year and value
+* Inputs: ipo_enabled, ipo_year, ipo_value
+* Outputs: wealth jump in simulation
+* Dependencies: Basic Monte Carlo Engine
+* Acceptance Criteria:
+
+  * Event correctly increases wealth at defined timestep
+
+---
+
+### Feature: Probabilistic IPO Event
+
+* Status: planned
+* Description: Extend IPO event to occur probabilistically per simulation path
+* Inputs: ipo_probability
+* Outputs: distribution of outcomes with/without IPO
+* Dependencies: Event Engine (generic)
+* Acceptance Criteria:
+
+  * IPO occurs in correct proportion of simulations
+
+---
+
+### Feature: Debug Trace Output
+
+* Status: planned
+* Description: Provide detailed trace for sample simulation paths including events
+* Inputs: simulation paths
+* Outputs: debug trace with values and events
+* Dependencies: Basic Monte Carlo Engine
+* Acceptance Criteria:
+
+  * Includes at least one full path with event annotations
+
+---
+
+* Status: planned
+* Description: Extend IPO event to occur probabilistically per simulation path
+* Inputs: ipo_probability
+* Outputs: distribution of outcomes with/without IPO
+* Dependencies: Event Injection (IPO - deterministic)
+* Acceptance Criteria:
+
+  * IPO occurs in correct proportion of simulations
+
+---
+
+## Phase 2 — Insight Engine
+
+### Feature: Comparison Engine
+
+* Status: planned
+* Description: Compute differences between baseline and scenario outputs
+* Inputs: two simulation summaries
+* Outputs: delta metrics
+* Dependencies: Result Reporter
+* Acceptance Criteria:
+
+  * Correct delta for success probability and wealth
+
+---
+
+### Feature: <name>
+
+* Status: planned
+* Description: ...
+* Inputs: ...
+* Outputs: ...
+* Dependencies: ...
+* Acceptance Criteria:
+
+  * ...
+
+---
+
+## Phase 2 — Insight Engine
+
+### Feature: OAT Sensitivity Analysis
+
+* Status: planned
+* Description: Analyze impact of return, savings, and time using OAT
+* Inputs: baseline config + perturbations
+* Outputs: impact scores
+* Dependencies: Simulation Engine
+* Acceptance Criteria:
+
+  * Correct ranking of drivers
+
+---
+
+### Feature: Driver Ranking
+
+* Status: planned
+* Description: Rank parameters by impact on success probability
+* Inputs: sensitivity results
+* Outputs: ordered driver list
+* Dependencies: OAT Sensitivity Analysis
+* Acceptance Criteria:
+
+  * Produces consistent ranking
+
+---
+
+### Feature: IPO Impact Analysis
+
+* Status: planned
+* Description: Compare outcomes with and without IPO to measure dependency
+* Inputs: simulation results with/without event
+* Outputs: delta in success probability
+* Dependencies: Probabilistic IPO Event
+* Acceptance Criteria:
+
+  * Clearly quantifies IPO contribution
+
+---
+
+### Feature: Insight Formatting
+
+* Status: planned
+* Description: Convert analysis into human-readable insights
+* Inputs: driver ranking + IPO analysis
+* Outputs: text insights
+* Dependencies: Driver Ranking, IPO Impact Analysis
+* Acceptance Criteria:
+
+  * Produces clear explanation of key drivers
+
+---
+
+## Phase 3 — Future Extensions
+
+...
+
+---
+
+## Status Summary
+
+* Planned: X
+* In Progress: Y
+* Done: Z
+
+---
+
+## Rules
+
+* Keep features small (1–3 days)
+* Prefer vertical slices
+* Avoid large coupled features
+* Always update roadmap.md after progress
+* Do not lose existing information when updating
+* Always align features with system architecture layers
+* Never introduce premature complexity (e.g. multi-asset too early)
+
+---
+
+## Architectural Priority Rules (CRITICAL)
+
+When selecting the next feature, always prioritize by layer:
+
+1. Foundational infrastructure (schemas, core contracts)
+2. Core engines (simulation)
+3. Extensions (events, variations)
+4. Analysis (comparison, insight)
+5. Presentation (formatting)
+
+Never select a feature that depends on a missing foundation.
+
+Examples:
+
+* Do NOT implement Monte Carlo before Output Schema exists
+* Do NOT implement Insight before Comparison Engine exists
+
+---
+
+## Dependency Awareness (CRITICAL)
+
+Before selecting the next feature:
+
+* Explicitly analyze dependencies
+* Ensure all dependencies are either:
+
+  * done
+  * or in-progress
+
+If dependencies are missing:
+→ Select and prioritize the dependency instead
+
+---
+
+## Behavior Guidelines
+
+* Be concise and structured
+* Prefer actionable outputs
+* Never leave roadmap in inconsistent state
+* If roadmap is missing — create it
+* If roadmap exists — update it, don’t recreate
+* Always reason about the current system state before suggesting next steps
+* Act like a technical lead maintaining continuity over time
+
+---
+
+## Goal
+
+Enable consistent execution of the financial simulation & insight system by maintaining a clear, evolving roadmap that reflects real progress and guides development step by step.
+
+---
+
+## Integration With Roadmap Planning Prompt (CRITICAL)
+
+This skill is tightly coupled with the **MVP Roadmap Planning Prompt**.
+
+The expected workflow is:
+
+1. Use the planning prompt to generate a high-level roadmap
+2. Convert that roadmap into roadmap.md
+3. Use this skill to:
+
+   * Maintain and update the roadmap
+   * Break phases into executable features
+   * Drive day-to-day execution
+
+### Alignment Rules
+
+* The roadmap produced by the planning prompt defines the initial structure (phases + components)
+* This skill MUST preserve that structure unless explicitly asked to refactor
+* Features must map back to core components:
+
+  * Simulation Engine
+  * Sensitivity Layer
+  * Insight Engine
+  * (Later) Decision Layer
+
+### Feature Refinement
+
+If roadmap phases are too high-level, this skill should:
+
+* Break them into smaller features (1–3 days)
+* Ensure each feature fits Feature Creation / Completion workflow
+* Maintain architectural order (no skipping layers)
+
+### Continuous Adaptation
+
+As development progresses, this skill may:
+
+* Refine feature boundaries
+* Reorder features based on learnings
+* Add missing features
+
+But it must:
+
+* Keep roadmap coherent
+* Avoid unnecessary churn
+
+---
+
+## Extended Behavior
+
+When working after initial roadmap creation:
+
+* Always read current roadmap.md before acting
+* Infer current phase automatically
+* Suggest next best action (not just next feature)
+
+---
+
+## Final Principle
+
+This skill is not a passive tracker.
+
+It acts as an **active technical project manager** that ensures:
+
+* Correct build order
+* Incremental delivery
+* Alignment with system architecture

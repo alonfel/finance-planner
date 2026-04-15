@@ -4,6 +4,32 @@ import axios from 'axios'
 
 const API_BASE_URL = 'http://localhost:8000/api/v1'
 
+// Configure axios interceptor for authentication
+axios.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token')
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+}, (error) => {
+  return Promise.reject(error)
+})
+
+// Handle 401 responses (expired token)
+axios.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Token expired or invalid - clear storage
+      localStorage.removeItem('token')
+      localStorage.removeItem('username')
+      // Redirect to login (will be handled by router)
+      window.location.href = '/login'
+    }
+    return Promise.reject(error)
+  }
+)
+
 export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem('token') || '')
   const username = ref(localStorage.getItem('username') || '')
@@ -23,9 +49,6 @@ export const useAuthStore = defineStore('auth', () => {
       localStorage.setItem('token', token.value)
       localStorage.setItem('username', username.value)
 
-      // Set default auth header for future requests
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token.value}`
-
       return true
     } catch (error) {
       console.error('Login failed:', error)
@@ -38,12 +61,6 @@ export const useAuthStore = defineStore('auth', () => {
     username.value = ''
     localStorage.removeItem('token')
     localStorage.removeItem('username')
-    delete axios.defaults.headers.common['Authorization']
-  }
-
-  // Restore token on app load if it exists
-  if (token.value) {
-    axios.defaults.headers.common['Authorization'] = `Bearer ${token.value}`
   }
 
   return {

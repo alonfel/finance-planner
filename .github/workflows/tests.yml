@@ -34,4 +34,5 @@ jobs:
 
       - name: Test summary
         if: always()
-        run: echo "Tests completed with status: ${{ job.status }}"
+        run: |
+          echo "Tests completed with status: ${{ job.status }}"

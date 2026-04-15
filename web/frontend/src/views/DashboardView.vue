@@ -19,12 +19,20 @@
           <h3>{{ profile.display_name }}</h3>
           <p v-if="profile.description" class="description">{{ profile.description }}</p>
           <p class="created">Created: {{ profile.created_at }}</p>
-          <button
-            @click="goToScenarios(profile.id)"
-            class="btn-primary"
-          >
-            View Scenarios
-          </button>
+          <div class="button-group">
+            <button
+              @click="goToScenarios(profile.id)"
+              class="btn-primary"
+            >
+              View Scenarios
+            </button>
+            <button
+              @click="goToMonteCarlo(profile.id)"
+              class="btn-secondary"
+            >
+              📊 Monte Carlo
+            </button>
+          </div>
         </div>
       </div>
     </main>
@@ -59,6 +67,13 @@ onMounted(async () => {
 const goToScenarios = (profileId) => {
   router.push({
     name: 'Scenarios',
+    params: { profileId }
+  })
+}
+
+const goToMonteCarlo = (profileId) => {
+  router.push({
+    name: 'MonteCarlo',
     params: { profileId }
   })
 }
@@ -177,5 +192,26 @@ const handleLogout = () => {
 
 .btn-primary:hover {
   opacity: 0.9;
+}
+
+.button-group {
+  display: flex;
+  gap: 10px;
+}
+
+.btn-secondary {
+  flex: 1;
+  padding: 12px;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-secondary:hover {
+  background: #5568d3;
 }
 </style>
