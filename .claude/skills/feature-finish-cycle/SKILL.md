@@ -1,7 +1,7 @@
 ---
 name: feature-finish-cycle
-description: Use this skill when a feature is working but needs polish before merging. Triggers after Feature Creation, or when user says "finish this feature", "clean up and commit", "make this production-ready". Runs mandatory 7-step pipeline with NO SKIPPING.
-version: 1.0.0
+description: Use this skill when a feature is working but needs polish before merging. Triggers after Feature Creation, or when user says "finish this feature", "clean up and commit", "make this production-ready". Runs mandatory 8-step pipeline with NO SKIPPING.
+version: 1.1.0
 disable-model-invocation: true
 ---
 
@@ -9,9 +9,9 @@ disable-model-invocation: true
 
 ## Purpose
 
-Upgrade a partially-implemented feature to production quality and safely commit it.
+Upgrade a partially-implemented feature to production quality, commit it, and open a PR.
 
-This is the **second phase** of feature development. It runs a **mandatory 7-step pipeline** with
+This is the **second phase** of feature development. It runs a **mandatory 8-step pipeline** with
 **no skipping**. Each step must pass before moving to the next.
 
 ---
@@ -26,7 +26,7 @@ Invoke `/feature-finish-cycle` when:
 
 ---
 
-## Mandatory 7-Step Pipeline
+## Mandatory 8-Step Pipeline
 
 ⚠️ **NO SKIPPING.** Each step must pass before proceeding. This is non-negotiable.
 
@@ -376,7 +376,7 @@ EOF
 ```
 
 **Commit message structure:**
-- **Line 1:** `Feature:` or `Fix:` — concise title (under 70 chars)
+- **Line 1:** `feat:` or `fix:` — concise title (under 70 chars)
 - **Blank line**
 - **Bullet points:** What changed and why
 - **Blank line**
@@ -384,7 +384,46 @@ EOF
 - **Tests section:** What's tested?
 - **Co-author line**
 
-**Do NOT push** without explicit user approval.
+---
+
+### STEP 8: Create GitHub PR
+
+After the commit, push the branch and open a PR.
+
+**Push the branch:**
+
+```bash
+git push -u origin HEAD
+```
+
+**Create the PR with `gh`:**
+
+```bash
+gh pr create --title "feat: <feature title>" --body "$(cat <<'EOF'
+## Summary
+- <bullet 1>
+- <bullet 2>
+- <bullet 3>
+
+## Test plan
+- [ ] All unit tests pass (`python -m unittest discover -s tests`)
+- [ ] Feature verified in browser (Playwright test)
+- [ ] No regressions in existing scenarios
+
+🤖 Generated with [Claude Code](https://claude.ai/claude-code)
+EOF
+)"
+```
+
+**PR title rules:**
+- Match the commit title (same `feat:` / `fix:` prefix)
+- Under 70 characters
+
+**Base branch:** Always target `main` unless instructed otherwise.
+
+**After creating the PR:**
+- Output the PR URL so the user can review it
+- Feature is **shipped** 🎉
 
 ---
 
@@ -411,6 +450,7 @@ EOF
 | 5: Self-Review | ❌ | Fix issues, re-run step 5 |
 | 6: User Approval | ❌ | Get feedback, iterate back to step 2 |
 | 7: Commit | ❌ | Fix staging/message, retry step 7 |
+| 8: PR | ❌ | Fix push error or `gh` auth, retry step 8 |
 
 **Never skip back.** If step 6 fails, you loop back to step 2 (quality) with user feedback.
 
@@ -429,8 +469,9 @@ Ensure you have:
 
 ## Next Step
 
-After commit is merged:
+After PR is open:
 
+- Share the PR URL with the user
 - Feature is **shipped** 🎉
 - If API/UI is needed, that's a **separate Feature Creation** task
 - If bugs are found, that's a **separate bugfix** task

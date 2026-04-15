@@ -1,6 +1,8 @@
 # Claude Code Guidelines for Finance Planner
 
-**Updated:** April 14, 2026 — **MAJOR: Multi-Index Historical Returns** feature shipped (S&P 500, NASDAQ, Bonds, Russell 2000). Dynamic year sliders per index. Save/reload preserves exact index choice. All 60 unit tests passing. See recent updates section below.
+**Updated:** April 15, 2026 — **MAJOR: Monte Carlo Simulation Engine** shipped. Probabilistic retirement planning with p5/p50/p95 fan chart and OAT sensitivity analysis. 23 new tests (83 total). See Monte Carlo section below.
+
+**Previous:** April 14, 2026 — Multi-Index Historical Returns (S&P 500, NASDAQ, Bonds, Russell 2000). All 60 unit tests passing.
 
 ---
 
