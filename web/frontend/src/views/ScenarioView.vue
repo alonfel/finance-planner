@@ -368,16 +368,58 @@ const updatePension = (field, value) => {
   }
 }
 
-// Simulation: Run fresh simulation
+// Simulation: Run fresh simulation with debouncing
+let simulationTimeout = null
 const runSimulation = async () => {
-  try {
-    // TODO: Send editDraft to /simulate endpoint
-    // This is a placeholder - backend endpoint needed
-    // const res = await axios.post(`${API_BASE_URL}/simulate`, editDraft.value)
-    // simulationResult.value = res.data
-  } catch (err) {
-    console.error('Simulation error:', err)
-  }
+  // Clear any pending simulation
+  if (simulationTimeout) clearTimeout(simulationTimeout)
+
+  // Debounce: wait 300ms after last change before running simulation
+  simulationTimeout = setTimeout(async () => {
+    if (!isEditMode.value || !editDraft.value) return
+
+    try {
+      // Convert editDraft to SimulateRequest format
+      const requestPayload = {
+        monthly_income: editDraft.value.monthly_income || 0,
+        monthly_expenses: editDraft.value.monthly_expenses || 0,
+        return_rate: editDraft.value.return_rate || 0.07,
+        historical_start_year: editDraft.value.historical_start_year || null,
+        historical_index: editDraft.value.historical_index || null,
+        withdrawal_rate: editDraft.value.withdrawal_rate || 0.04,
+        starting_age: editDraft.value.starting_age || 40,
+        initial_portfolio: editDraft.value.initial_portfolio || 0,
+        years: editDraft.value.years || 30,
+        retirement_mode: editDraft.value.retirement_mode || 'liquid_only',
+        currency: editDraft.value.currency || 'ILS',
+        events: (editDraft.value.events || []).map(e => ({
+          year: e.year,
+          portfolio_injection: e.amount || e.portfolio_injection || 0,
+          description: e.description || ''
+        })),
+        mortgage: editDraft.value.mortgage ? {
+          principal: editDraft.value.mortgage.principal,
+          annual_rate: editDraft.value.mortgage.annual_rate,
+          duration_years: editDraft.value.mortgage.duration_years,
+          currency: editDraft.value.mortgage.currency || 'ILS'
+        } : null,
+        pension: editDraft.value.pension ? {
+          initial_value: editDraft.value.pension.initial_value,
+          monthly_contribution: editDraft.value.pension.monthly_contribution,
+          annual_growth_rate: editDraft.value.pension.annual_growth_rate,
+          accessible_at_age: editDraft.value.pension.accessible_at_age
+        } : null,
+        retirement_lifestyle: null
+      }
+
+      const res = await axios.post(`${API_BASE_URL}/simulate`, requestPayload, {
+        headers: { Authorization: `Bearer ${authStore.token}` }
+      })
+      simulationResult.value = res.data
+    } catch (err) {
+      console.error('Simulation error:', err)
+    }
+  }, 300)
 }
 
 // Save: Save As New Scenario

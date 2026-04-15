@@ -516,40 +516,53 @@ const calculateMortgagePayment = (mortgage) => {
 
 /* Parameter Rows */
 .param-row {
-  margin-bottom: 12px;
+  margin-bottom: 16px;
+  padding: 8px;
+  background-color: #fafafa;
+  border-radius: 6px;
 }
 
 .param-row label {
   display: block;
-  font-size: 12px;
-  font-weight: 600;
-  color: #555;
-  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
 }
 
 .slider-control {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  padding: 0 4px;
 }
 
 .slider-control input[type="range"] {
   flex: 1;
   cursor: pointer;
+  height: 6px;
 }
 
 .slider-value {
-  font-weight: 600;
+  font-weight: 700;
   color: #667eea;
-  min-width: 70px;
+  min-width: 90px;
   text-align: right;
-  font-size: 12px;
+  font-size: 14px;
+  background-color: #f5f5f5;
+  padding: 4px 8px;
+  border-radius: 4px;
 }
 
 .static-value {
-  font-weight: 600;
+  font-weight: 700;
   color: #333;
-  padding: 6px 0;
+  padding: 8px;
+  font-size: 14px;
+  background-color: #f5f5f5;
+  border-radius: 4px;
 }
 
 .static-value .secondary {
