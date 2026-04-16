@@ -24,6 +24,16 @@ class EventSchema(BaseModel):
     portfolio_injection: float
     description: str = ""
 
+class EventOutcomeSchema(BaseModel):
+    year: int
+    probability: float
+    portfolio_injection: float
+    description: str = ""
+
+class ProbabilisticEventSchema(BaseModel):
+    name: str
+    outcomes: List[EventOutcomeSchema]
+
 class MortgageSchema(BaseModel):
     principal: float
     annual_rate: float
@@ -59,6 +69,7 @@ class WhatIfScenarioSchema(BaseModel):
     mortgage: Optional[MortgageSchema] = None
     pension: Optional[PensionSchema] = None
     retirement_lifestyle: Optional[RetirementLifestyleSchema] = None
+    probabilistic_events: List[ProbabilisticEventSchema] = []
 
 class SimulateRequest(WhatIfScenarioSchema):
     """Request for one-off simulation - inherits all fields from WhatIfScenarioSchema"""
@@ -68,12 +79,21 @@ class SaveScenarioRequest(WhatIfScenarioSchema):
     """Request to save a What-If scenario - inherits all scenario fields plus name"""
     scenario_name: str = Field(..., min_length=1, max_length=100)
 
+class BranchResultSchema(BaseModel):
+    """One outcome branch from a probabilistic simulation"""
+    label: str
+    probability: float
+    retirement_year: Optional[int]
+    final_portfolio: float
+    year_data: List[YearDataSchema]
+
 class SimulateResponse(BaseModel):
     scenario_name: str
     retirement_year: Optional[int]
     final_portfolio: float
     total_savings: float
     year_data: List[YearDataSchema]
+    branches: List[BranchResultSchema] = []  # Populated only when probabilistic_events are present
 
 class SaveScenarioResponse(BaseModel):
     scenario_result_id: int
@@ -91,6 +111,7 @@ class ScenarioResultSchema(BaseModel):
     events: List[EventSchema] = []
     mortgage: Optional[MortgageSchema] = None
     definition: Optional['WhatIfScenarioSchema'] = None
+    probabilistic_events: List[ProbabilisticEventSchema] = []
 
     class Config:
         from_attributes = True

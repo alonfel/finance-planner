@@ -80,7 +80,7 @@
 
 ### Feature: Backend API + DB Persistence for Probabilistic Events
 
-* Status: planned
+* Status: done
 * Description: Store and retrieve probabilistic events from SQLite. New DB tables, Pydantic schemas, and updated save/load endpoints.
 * Layer: web/backend
 * Inputs: ProbabilisticEventSchema in SaveScenarioRequest / SimulateRequest
@@ -140,6 +140,6 @@ Placeholder for:
 
 ## Status Summary
 
-* Done: 10
+* Done: 11
 * In Progress: 0
-* Planned: 3
+* Planned: 2

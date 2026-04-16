@@ -22,10 +22,11 @@ from database import get_db
 from schemas import SaveScenarioRequest, SaveScenarioResponse
 from models import (
     Profile, SimulationRun, ScenarioResult, YearData,
-    ScenarioDefinition, ScenarioEvent, ScenarioMortgage, ScenarioPension
+    ScenarioDefinition, ScenarioEvent, ScenarioMortgage, ScenarioPension,
+    ScenarioProbabilisticEvent, ScenarioEventOutcome
 )
 from auth import get_current_user
-from domain.models import Scenario, Event, Mortgage, Pension
+from domain.models import Scenario, Event, Mortgage, Pension, ProbabilisticEvent, EventOutcome
 from domain.simulation import simulate
 from domain.breakdown import IncomeBreakdown, ExpenseBreakdown
 
@@ -80,6 +81,22 @@ def save_whatif_scenario(profile_id: int, body: SaveScenarioRequest,
             accessible_at_age=body.pension.accessible_at_age
         )
 
+    prob_events = [
+        ProbabilisticEvent(
+            name=pe.name,
+            outcomes=[
+                EventOutcome(
+                    year=o.year,
+                    probability=o.probability,
+                    portfolio_injection=o.portfolio_injection,
+                    description=o.description,
+                )
+                for o in pe.outcomes
+            ],
+        )
+        for pe in body.probabilistic_events
+    ]
+
     scenario_obj = Scenario(
         name=body.scenario_name,
         monthly_income=IncomeBreakdown(components={"income": body.monthly_income}),
@@ -96,6 +113,7 @@ def save_whatif_scenario(profile_id: int, body: SaveScenarioRequest,
         pension=pension,
         events=[Event(year=e.year, portfolio_injection=e.portfolio_injection,
                       description=e.description) for e in body.events],
+        probabilistic_events=prob_events,
         retirement_lifestyle_mode=body.retirement_lifestyle.mode if body.retirement_lifestyle else None,
         retirement_lifestyle_age=body.retirement_lifestyle.age if body.retirement_lifestyle else None,
         partial_retirement_income=body.retirement_lifestyle.partial_income if body.retirement_lifestyle else None
@@ -157,6 +175,23 @@ def save_whatif_scenario(profile_id: int, body: SaveScenarioRequest,
             annual_growth_rate=body.pension.annual_growth_rate,
             accessible_at_age=body.pension.accessible_at_age,
         ))
+
+    # Insert probabilistic events and their outcomes
+    for pe in body.probabilistic_events:
+        db_event = ScenarioProbabilisticEvent(
+            scenario_id=definition.id,
+            name=pe.name,
+        )
+        db.add(db_event)
+        db.flush()
+        for outcome in pe.outcomes:
+            db.add(ScenarioEventOutcome(
+                event_id=db_event.id,
+                year=outcome.year,
+                probability=outcome.probability,
+                portfolio_injection=outcome.portfolio_injection,
+                description=outcome.description,
+            ))
 
     db.flush()
 
