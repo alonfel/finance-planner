@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
-from domain.models import Scenario, Event, Mortgage, Pension
-from domain.simulation import simulate
+from domain.models import Scenario, Event, Mortgage, Pension, ProbabilisticEvent, EventOutcome
+from domain.simulation import simulate, simulate_branches
 from domain.breakdown import IncomeBreakdown, ExpenseBreakdown
-from schemas import SimulateRequest, SimulateResponse, YearDataSchema
+from schemas import SimulateRequest, SimulateResponse, YearDataSchema, BranchResultSchema
 from auth import get_current_user
 
 router = APIRouter(prefix="/api/v1", tags=["simulate"])
@@ -31,6 +31,22 @@ def run_simulation(body: SimulateRequest, username: str = Depends(get_current_us
             accessible_at_age=body.pension.accessible_at_age
         )
 
+    prob_events = [
+        ProbabilisticEvent(
+            name=pe.name,
+            outcomes=[
+                EventOutcome(
+                    year=o.year,
+                    probability=o.probability,
+                    portfolio_injection=o.portfolio_injection,
+                    description=o.description,
+                )
+                for o in pe.outcomes
+            ],
+        )
+        for pe in body.probabilistic_events
+    ]
+
     scenario = Scenario(
         name="What-If",
         monthly_income=IncomeBreakdown(components={"income": body.monthly_income}),
@@ -47,45 +63,52 @@ def run_simulation(body: SimulateRequest, username: str = Depends(get_current_us
         pension=pension,
         events=[Event(year=e.year, portfolio_injection=e.portfolio_injection, description=e.description)
                 for e in body.events],
+        probabilistic_events=prob_events,
         retirement_lifestyle_mode=body.retirement_lifestyle.mode if body.retirement_lifestyle else None,
         retirement_lifestyle_age=body.retirement_lifestyle.age if body.retirement_lifestyle else None,
         partial_retirement_income=body.retirement_lifestyle.partial_income if body.retirement_lifestyle else None
     )
 
     try:
-        result = simulate(scenario, years=body.years)
+        branches = simulate_branches(scenario, years=body.years)
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
 
-    # Convert domain YearData to schema format
-    year_data_schemas = []
-    for yd in result.year_data:
-        schema = YearDataSchema(
-            year=yd.year,
-            age=yd.age,
-            income=yd.income,
-            expenses=yd.expenses,
-            net_savings=yd.net_savings,
-            portfolio=yd.portfolio,
-            required_capital=yd.required_capital,
-            mortgage_active=yd.mortgage_active,
-            pension_value=yd.pension_value,
-            pension_accessible=yd.pension_accessible,
-            is_retired=yd.is_retired,
-            active_income=yd.active_income
-        )
-        year_data_schemas.append(schema)
+    # The first branch is always the base (or only) result — use it for top-level fields
+    _, _, primary_result = branches[0]
 
-    # Calculate total savings (sum of all annual net savings)
-    total_savings = sum(yd.net_savings for yd in result.year_data)
+    def _to_year_data_schemas(year_data):
+        return [
+            YearDataSchema(
+                year=yd.year, age=yd.age, income=yd.income, expenses=yd.expenses,
+                net_savings=yd.net_savings, portfolio=yd.portfolio,
+                required_capital=yd.required_capital, mortgage_active=yd.mortgage_active,
+                pension_value=yd.pension_value, pension_accessible=yd.pension_accessible,
+                is_retired=yd.is_retired, active_income=yd.active_income,
+            )
+            for yd in year_data
+        ]
 
-    # Get final portfolio value
-    final_portfolio = result.year_data[-1].portfolio if result.year_data else 0.0
+    total_savings = sum(yd.net_savings for yd in primary_result.year_data)
+    final_portfolio = primary_result.year_data[-1].portfolio if primary_result.year_data else 0.0
+
+    # Build branch list (empty when no probabilistic events — single branch is the base result)
+    branch_schemas: list[BranchResultSchema] = []
+    if prob_events:
+        for label, probability, branch_result in branches:
+            branch_schemas.append(BranchResultSchema(
+                label=label,
+                probability=probability,
+                retirement_year=branch_result.retirement_year,
+                final_portfolio=branch_result.year_data[-1].portfolio if branch_result.year_data else 0.0,
+                year_data=_to_year_data_schemas(branch_result.year_data),
+            ))
 
     return SimulateResponse(
         scenario_name="What-If",
-        retirement_year=result.retirement_year,
+        retirement_year=primary_result.retirement_year,
         final_portfolio=final_portfolio,
         total_savings=total_savings,
-        year_data=year_data_schemas
+        year_data=_to_year_data_schemas(primary_result.year_data),
+        branches=branch_schemas,
     )

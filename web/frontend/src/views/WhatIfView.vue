@@ -3,14 +3,20 @@
     <header class="whatif-header">
       <div class="header-left">
         <button @click="goBack" class="btn-back">← Back</button>
-        <h1>🔮 What-If Explorer</h1>
+        <h1 v-if="isViewMode && originalScenario">{{ originalScenario.scenario_name }}</h1>
+        <h1 v-else>🔮 What-If Explorer</h1>
+        <span v-if="isViewMode" class="mode-badge view-mode-badge">👁️ View Mode</span>
       </div>
-      <button @click="logout" class="btn-logout">Logout</button>
+      <div class="header-right">
+        <button v-if="isViewMode" @click="enterEditMode" class="btn-edit-mode">✏️ Edit</button>
+        <button @click="logout" class="btn-logout">Logout</button>
+      </div>
     </header>
 
     <div class="whatif-main">
-      <!-- Left Sidebar: Run & Scenario Selection -->
+      <!-- Left Sidebar: Parameters + (edit mode) Run/Scenario Selection -->
       <div class="whatif-sidebar">
+        <template v-if="!isViewMode">
         <div v-if="loading" class="loading-sidebar">Loading...</div>
         <div v-else-if="error" class="error-sidebar">{{ error }}</div>
         <div v-else class="sidebar-content">
@@ -56,13 +62,11 @@
             💾 Save as Scenario
           </button>
         </div>
-      </div>
+        </template>
 
-      <!-- Main Content Area -->
-      <div class="whatif-content">
-        <div v-if="originalScenario">
-          <!-- Top: Sliders & Events Section (Coupled Parameters) -->
-          <div class="sliders-section">
+        <!-- Scenario Parameters (grayed out in view mode) -->
+        <div v-if="loading && isViewMode" class="loading-sidebar">Loading scenario...</div>
+        <div v-else-if="originalScenario" class="sliders-section" :class="{ 'view-mode': isViewMode }">
             <h3 style="margin: 0 0 12px 0">Scenario Parameters</h3>
             <div class="sliders-grid">
               <div class="slider-group">
@@ -385,13 +389,99 @@
                 </div>
               </div>
             </div>
-          </div>
 
-          <!-- Middle: Chart (Visible without scrolling) -->
+            <!-- Probabilistic Events Section -->
+            <div style="margin-top: 4px; padding-top: 12px; border-top: 1px solid #e0e0e0;">
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px;">
+                <h4 style="margin: 0; font-size: 13px; font-weight: 600; color: #333;">Probabilistic Events</h4>
+                <button @click="addProbabilisticEvent" class="btn-add-prob-event">+ Add Event</button>
+              </div>
+
+              <div v-if="probabilisticEvents.length === 0" style="text-align: center; color: #999; font-size: 12px; padding: 10px 0;">
+                Model uncertain outcomes (e.g. IPO: 70% success / 30% no event).
+              </div>
+
+              <div v-if="hasProbabilityError" class="prob-error-banner">
+                ⚠ Fix probabilities to sum to 100% before simulating
+              </div>
+
+              <div v-for="(pe, peIdx) in probabilisticEvents" :key="peIdx" class="prob-event-card">
+                <div class="prob-event-header">
+                  <input
+                    v-model="pe.name"
+                    type="text"
+                    class="prob-event-name-input"
+                    placeholder="Event name"
+                    @input="onSliderChange"
+                  />
+                  <span
+                    class="prob-total-badge"
+                    :class="probEventTotalPct(pe) === 100 ? 'badge-ok' : 'badge-err'"
+                  >{{ probEventTotalPct(pe) }}%</span>
+                  <button @click="removeProbabilisticEvent(peIdx)" class="btn-remove-prob-event">✕</button>
+                </div>
+
+                <div class="prob-outcomes-list">
+                  <div v-for="(outcome, oIdx) in pe.outcomes" :key="oIdx" class="prob-outcome-row">
+                    <div class="outcome-field-group">
+                      <span class="outcome-field-label">Y</span>
+                      <input
+                        v-model.number="outcome.year"
+                        type="range" min="1" max="20" step="1"
+                        class="outcome-mini-slider"
+                        @input="onSliderChange"
+                      />
+                      <span class="outcome-field-val">{{ outcome.year }}</span>
+                    </div>
+                    <div class="outcome-field-group">
+                      <span class="outcome-field-label">%</span>
+                      <input
+                        v-model.number="outcome.probability"
+                        type="number" min="0" max="100" step="1"
+                        class="outcome-pct-input"
+                        @input="onSliderChange"
+                      />
+                    </div>
+                    <div class="outcome-field-group outcome-amount-group">
+                      <span class="outcome-field-label">₪</span>
+                      <input
+                        v-model.number="outcome.amount"
+                        type="range" min="-3000000" max="10000000" step="100000"
+                        class="outcome-mini-slider outcome-amount-slider"
+                        @input="onSliderChange"
+                      />
+                      <span class="outcome-field-val">{{ formatEventAmount(outcome.amount) }}</span>
+                    </div>
+                    <input
+                      v-model="outcome.description"
+                      type="text"
+                      class="outcome-desc-input"
+                      placeholder="Label"
+                      @input="onSliderChange"
+                    />
+                    <button
+                      v-if="pe.outcomes.length > 2"
+                      @click="removeOutcome(peIdx, oIdx)"
+                      class="btn-remove-outcome"
+                    >✕</button>
+                  </div>
+                </div>
+
+                <button @click="addOutcome(peIdx)" class="btn-add-outcome">+ Outcome</button>
+              </div>
+            </div>
+        </div>
+      </div>
+
+      <!-- Main Content Area: Chart + Metrics -->
+      <div class="whatif-content">
+        <div v-if="originalScenario">
+
+          <!-- Chart (Visible without scrolling) -->
           <div v-if="whatIfResult" class="chart-section">
             <ScenarioInsights :special-points="chartSpecialPoints" />
             <ComparisonChart
-              :scenarios="[originalScenario, whatIfResult]"
+              :scenarios="chartScenarios"
               :yearRange="{ min: 1, max: 20 }"
               :special-points="chartSpecialPoints"
               :base-year="BASE_YEAR"
@@ -401,7 +491,8 @@
           <!-- Bottom: Metrics (Scrollable) -->
           <div class="bottom-section">
             <div v-if="whatIfResult" class="metrics-cards">
-              <div class="metric-card">
+              <!-- Original scenario card — only shown in edit mode -->
+              <div v-if="!isViewMode" class="metric-card">
                 <h3>Original</h3>
                 <div class="metric-item">
                   <span class="label">Retirement:</span>
@@ -414,12 +505,38 @@
                 </div>
                 <div class="metric-item">
                   <span class="label">Final Portfolio:</span>
-                  <span class="value">₪{{ formatNumber(originalScenario.final_portfolio) }}M</span>
+                  <span class="value">₪{{ formatNumber((originalScenario.final_portfolio ?? 0) / 1000000) }}M</span>
                 </div>
               </div>
 
-              <div class="metric-card">
-                <h3>What-If</h3>
+              <!-- Branch cards when probabilistic events are present -->
+              <template v-if="(whatIfResult.branches ?? []).length > 0">
+                <div
+                  v-for="branch in whatIfResult.branches"
+                  :key="branch.label"
+                  class="metric-card branch-metric-card"
+                >
+                  <h3>{{ branch.label }}</h3>
+                  <div class="branch-probability-badge">{{ Math.round(branch.probability * 100) }}% chance</div>
+                  <div class="metric-item">
+                    <span class="label">Retirement:</span>
+                    <span class="value">
+                      <span v-if="branch.retirement_year">
+                        Y{{ branch.retirement_year }} / Age {{ calculateRetirementAge(branch.retirement_year, sliders.startingAge) }}
+                      </span>
+                      <span v-else>Never</span>
+                    </span>
+                  </div>
+                  <div class="metric-item">
+                    <span class="label">Final Portfolio:</span>
+                    <span class="value">₪{{ formatNumber(branch.final_portfolio / 1000000) }}M</span>
+                  </div>
+                </div>
+              </template>
+
+              <!-- Single card: "Scenario" in view mode, "What-If" in edit mode -->
+              <div v-else class="metric-card">
+                <h3>{{ isViewMode ? 'Scenario' : 'What-If' }}</h3>
                 <div class="metric-item">
                   <span class="label">Retirement:</span>
                   <span class="value">
@@ -431,7 +548,7 @@
                 </div>
                 <div class="metric-item">
                   <span class="label">Final Portfolio:</span>
-                  <span class="value">₪{{ formatNumber(whatIfResult.final_portfolio) }}M</span>
+                  <span class="value">₪{{ formatNumber((whatIfResult.final_portfolio ?? 0) / 1000000) }}M</span>
                 </div>
               </div>
             </div>
@@ -524,6 +641,10 @@ const mortgage = ref(null)
 const pension = ref(null)
 const showMortgage = ref(false)
 
+// Probabilistic events: [{ name, outcomes: [{year, probability, amount, description}] }]
+// probability is stored as % (0-100) in UI, converted to 0-1 for API
+const probabilisticEvents = ref([])
+
 // Retirement Lifestyle
 const retirementEnabled = ref(false)
 const retirementType = ref('full')          // 'full' | 'partial'
@@ -551,11 +672,50 @@ const showGeneratorModal = ref(false)
 let saveStatusTimeoutId = null
 
 const profileId = computed(() => route.params.profileId)
+const isViewMode = computed(() => route.query.mode === 'view')
+
+const enterEditMode = () => {
+  const newQuery = { ...route.query }
+  delete newQuery.mode
+  router.replace({ query: newQuery })
+}
+
 const originalStartingAge = computed(() => {
   if (!originalScenario.value || !originalScenario.value.year_data || originalScenario.value.year_data.length === 0) {
     return 41
   }
   return originalScenario.value.year_data[0].age - 1
+})
+
+// True if any probabilistic event has outcomes that don't sum to 100%
+const hasProbabilityError = computed(() =>
+  probabilisticEvents.value.some(pe => probEventTotalPct(pe) !== 100)
+)
+
+// Chart scenarios: original + branches (when prob events present) or original + whatIfResult
+const chartScenarios = computed(() => {
+  if (!originalScenario.value) return []
+  if (!whatIfResult.value) return [originalScenario.value]
+  const branches = whatIfResult.value.branches ?? []
+  const branchList = branches.map(b => ({
+    scenario_name: `${b.label} (${Math.round(b.probability * 100)}%)`,
+    retirement_year: b.retirement_year,
+    year_data: b.year_data,
+  }))
+  if (branches.length > 0) {
+    // View mode: only branches (no Original baseline to compare against)
+    if (isViewMode.value) return branchList
+    return [originalScenario.value, ...branchList]
+  }
+  // View mode: single scenario line (no Original vs What-If comparison)
+  if (isViewMode.value) {
+    return [{
+      scenario_name: originalScenario.value.scenario_name,
+      retirement_year: whatIfResult.value.retirement_year,
+      year_data: whatIfResult.value.year_data,
+    }]
+  }
+  return [originalScenario.value, whatIfResult.value]
 })
 
 // Computed special milestone points (retirement, pension unlock, etc.)
@@ -569,7 +729,8 @@ const originalSpecialPoints = computed(() =>
 const whatIfSpecialPoints = computed(() =>
   computeSpecialPoints(whatIfResult.value?.year_data ?? [], {
     baseYear: BASE_YEAR,
-    retirementYear: whatIfResult.value?.retirement_year ?? null
+    retirementYear: whatIfResult.value?.retirement_year ?? null,
+    probabilisticEvents: probabilisticEvents.value
   })
 )
 
@@ -704,6 +865,7 @@ const refreshOriginalScenario = async () => {
     // Update original scenario's year_data with fresh simulation
     originalScenario.value.year_data = response.data.year_data
     originalScenario.value.retirement_year = response.data.retirement_year
+    originalScenario.value.final_portfolio = response.data.final_portfolio
   } catch (err) {
     console.error('Failed to refresh original scenario:', err)
   }
@@ -719,7 +881,9 @@ const onIndexSelect = (opt) => {
 
 const onSliderChange = () => {
   clearTimeout(debounceTimer)
-  debounceTimer = setTimeout(runSimulation, 300)
+  debounceTimer = setTimeout(() => {
+    if (!hasProbabilityError.value) runSimulation()
+  }, 300)
 }
 
 const runSimulation = async () => {
@@ -763,6 +927,35 @@ const removeMortgage = () => {
   onSliderChange()
 }
 
+const probEventTotalPct = (pe) =>
+  Math.round(pe.outcomes.reduce((sum, o) => sum + (Number(o.probability) || 0), 0))
+
+const addProbabilisticEvent = () => {
+  probabilisticEvents.value.push({
+    name: 'IPO Exit',
+    outcomes: [
+      { year: 3, probability: 70, amount: 2000000, description: 'Success' },
+      { year: 3, probability: 30, amount: 0, description: 'No event' },
+    ]
+  })
+  onSliderChange()
+}
+
+const removeProbabilisticEvent = (idx) => {
+  probabilisticEvents.value.splice(idx, 1)
+  onSliderChange()
+}
+
+const addOutcome = (peIdx) => {
+  probabilisticEvents.value[peIdx].outcomes.push({ year: 3, probability: 0, amount: 0, description: '' })
+  onSliderChange()
+}
+
+const removeOutcome = (peIdx, oIdx) => {
+  probabilisticEvents.value[peIdx].outcomes.splice(oIdx, 1)
+  onSliderChange()
+}
+
 // Pure mapping function: builds API request from current state
 const toApiRequest = () => ({
   monthly_income: sliders.value.income,
@@ -790,7 +983,16 @@ const toApiRequest = () => ({
     mode: retirementType.value,
     age: retirementAge.value,
     partial_income: retirementType.value === 'partial' ? partialRetirementIncome.value : null
-  } : null
+  } : null,
+  probabilistic_events: probabilisticEvents.value.map(pe => ({
+    name: pe.name,
+    outcomes: pe.outcomes.map(o => ({
+      year: o.year,
+      probability: (Number(o.probability) || 0) / 100,
+      portfolio_injection: o.amount,
+      description: o.description,
+    }))
+  }))
 })
 
 // Pure mapping function: restores exact values from loaded definition
@@ -823,6 +1025,16 @@ const fromDefinition = (def) => {
 
   mortgage.value = def.mortgage ? { ...def.mortgage } : null
   pension.value = def.pension ? { ...def.pension } : null
+
+  probabilisticEvents.value = (def.probabilistic_events ?? []).map(pe => ({
+    name: pe.name,
+    outcomes: pe.outcomes.map(o => ({
+      year: o.year,
+      probability: Math.round(o.probability * 100),
+      amount: o.portfolio_injection,
+      description: o.description,
+    }))
+  }))
 
   // Restore retirement lifestyle settings
   if (def.retirement_lifestyle) {
@@ -984,12 +1196,14 @@ if (route.query.scenarioId) {
 
   // Load the scenario details and events
   const loadPreloadedScenario = async () => {
+    loading.value = true
     try {
       const response = await axios.get(`${API_BASE_URL}/scenarios/${selectedScenarioId.value}`)
       originalScenario.value = response.data
 
       // Use exact definition values if available
       if (response.data.definition) {
+        originalDefinition.value = { ...response.data.definition }
         fromDefinition(response.data.definition)
       } else {
         // Legacy fallback: load events from top-level
@@ -1008,6 +1222,8 @@ if (route.query.scenarioId) {
       await runSimulation()
     } catch (err) {
       console.error('Failed to load preloaded scenario:', err)
+    } finally {
+      loading.value = false
     }
   }
 
@@ -1038,6 +1254,78 @@ if (route.query.scenarioId) {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mode-badge {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 12px;
+}
+
+.view-mode-badge {
+  background: #e8f4fd;
+  color: #2980b9;
+  border: 1px solid #aed6f1;
+}
+
+.btn-edit-mode {
+  background: #667eea;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.btn-edit-mode:hover {
+  background: #5a6fd6;
+}
+
+.loading-content {
+  padding: 40px;
+  text-align: center;
+  color: #666;
+  font-size: 14px;
+  background: white;
+  border-radius: 8px;
+}
+
+/* View mode: gray out all inputs, hide action buttons */
+.sliders-section.view-mode input[type="range"],
+.sliders-section.view-mode input[type="number"],
+.sliders-section.view-mode input[type="text"],
+.sliders-section.view-mode input[type="checkbox"],
+.sliders-section.view-mode input[type="radio"] {
+  opacity: 0.55;
+  pointer-events: none;
+  cursor: default;
+}
+
+.sliders-section.view-mode .btn-index-option {
+  opacity: 0.55;
+  pointer-events: none;
+  cursor: default;
+}
+
+.sliders-section.view-mode .events-buttons,
+.sliders-section.view-mode .btn-remove-event,
+.sliders-section.view-mode .mortgage-buttons,
+.sliders-section.view-mode .btn-add-prob-event,
+.sliders-section.view-mode .btn-remove-prob-event,
+.sliders-section.view-mode .btn-add-outcome,
+.sliders-section.view-mode .btn-remove-outcome,
+.sliders-section.view-mode .prob-error-banner {
+  display: none !important;
 }
 
 .whatif-header h1 {
@@ -1071,13 +1359,14 @@ if (route.query.scenarioId) {
 }
 
 .whatif-sidebar {
-  width: 280px;
+  width: 380px;
   background: white;
   border-right: 1px solid #e0e0e0;
   box-shadow: 1px 0 3px rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
+  overflow-y: auto;
 }
 
 .sidebar-content {
@@ -1287,22 +1576,19 @@ if (route.query.scenarioId) {
   padding: 12px;
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  height: 350px !important;
-  max-height: 350px !important;
-  overflow: hidden !important;
   display: flex;
   flex-direction: column;
-  flex-shrink: 0 !important;
+  flex-shrink: 0;
 }
 
-.chart-section > * {
-  height: 100% !important;
-  max-height: 100% !important;
-  overflow: hidden !important;
+.chart-section .insights-section {
+  flex-shrink: 0;
 }
 
-.chart-section canvas {
-  max-height: 326px !important;
+.chart-section .chart-wrapper {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .bottom-section {
@@ -1801,5 +2087,209 @@ if (route.query.scenarioId) {
   font-size: 11px;
   color: #555;
   margin-top: 4px;
+}
+
+/* Probabilistic Events */
+.prob-error-banner {
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: #b91c1c;
+  margin-bottom: 8px;
+}
+
+.btn-add-prob-event {
+  background: #7c3aed;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+.btn-add-prob-event:hover { background: #6d28d9; }
+
+.prob-event-card {
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 10px;
+  margin-top: 8px;
+  background: #fafafa;
+}
+
+.prob-event-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.prob-event-name-input {
+  flex: 1;
+  padding: 5px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #333;
+}
+.prob-event-name-input:focus {
+  outline: none;
+  border-color: #7c3aed;
+}
+
+.prob-total-badge {
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.badge-ok { background: #d1fae5; color: #065f46; }
+.badge-err { background: #fee2e2; color: #991b1b; }
+
+.btn-remove-prob-event {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #999;
+  font-size: 14px;
+  padding: 2px 4px;
+  transition: color 0.2s;
+}
+.btn-remove-prob-event:hover { color: #e74c3c; }
+
+.prob-outcomes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.prob-outcome-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: white;
+  border: 1px solid #eee;
+  border-radius: 4px;
+  flex-wrap: wrap;
+}
+
+.outcome-field-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.outcome-field-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #777;
+  min-width: 14px;
+}
+
+.outcome-field-val {
+  font-size: 11px;
+  font-weight: 600;
+  color: #7c3aed;
+  min-width: 32px;
+  text-align: right;
+}
+
+.outcome-mini-slider {
+  width: 60px;
+  height: 4px;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background: linear-gradient(to right, #7c3aed 50%, #ddd 50%);
+  border-radius: 2px;
+  outline: none;
+}
+.outcome-mini-slider::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #7c3aed;
+  cursor: pointer;
+}
+.outcome-mini-slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #7c3aed;
+  cursor: pointer;
+  border: none;
+}
+.outcome-amount-slider { width: 80px; }
+
+.outcome-pct-input {
+  width: 48px;
+  padding: 3px 5px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #333;
+  text-align: right;
+}
+.outcome-pct-input:focus { outline: none; border-color: #7c3aed; }
+
+.outcome-desc-input {
+  flex: 1;
+  min-width: 80px;
+  padding: 4px 6px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  font-size: 11px;
+  color: #555;
+}
+.outcome-desc-input:focus { outline: none; border-color: #7c3aed; }
+
+.btn-remove-outcome {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #bbb;
+  font-size: 12px;
+  padding: 2px;
+}
+.btn-remove-outcome:hover { color: #e74c3c; }
+
+.btn-add-outcome {
+  background: none;
+  border: 1px dashed #c4b5fd;
+  color: #7c3aed;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+.btn-add-outcome:hover { background: #f5f3ff; }
+
+/* Branch metric cards */
+.branch-metric-card {
+  border-left: 3px solid #7c3aed !important;
+}
+.branch-probability-badge {
+  display: inline-block;
+  background: #ede9fe;
+  color: #5b21b6;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 10px;
+  margin-bottom: 6px;
 }
 </style>

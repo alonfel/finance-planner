@@ -3,10 +3,8 @@ import { useAuthStore } from '../stores/auth'
 import LoginView from '../views/LoginView.vue'
 import DashboardView from '../views/DashboardView.vue'
 import ScenariosView from '../views/ScenariosView.vue'
-import ScenarioDetailView from '../views/ScenarioDetailView.vue'
 import ComparisonView from '../views/ComparisonView.vue'
 import WhatIfView from '../views/WhatIfView.vue'
-import ScenarioView from '../views/ScenarioView.vue'
 import MonteCarloView from '../views/MonteCarloView.vue'
 
 const routes = [
@@ -29,12 +27,6 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
-    path: '/profiles/:profileId/scenarios/:resultId',
-    name: 'ScenarioDetail',
-    component: ScenarioDetailView,
-    meta: { requiresAuth: true }
-  },
-  {
     path: '/profiles/:profileId/compare',
     name: 'Comparison',
     component: ComparisonView,
@@ -44,12 +36,6 @@ const routes = [
     path: '/profiles/:profileId/whatif',
     name: 'WhatIf',
     component: WhatIfView,
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/profiles/:profileId/scenario/:resultId',
-    name: 'Scenario',
-    component: ScenarioView,
     meta: { requiresAuth: true }
   },
   {

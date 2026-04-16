@@ -62,6 +62,7 @@ class ScenarioDefinition(Base):
     events = relationship("ScenarioEvent", back_populates="scenario")
     mortgage = relationship("ScenarioMortgage", back_populates="scenario", uselist=False)
     pension = relationship("ScenarioPension", back_populates="scenario", uselist=False)
+    probabilistic_events = relationship("ScenarioProbabilisticEvent", back_populates="scenario")
     scenario_results = relationship("ScenarioResult", back_populates="definition")
 
 
@@ -178,6 +179,30 @@ class ScenarioNodePension(Base):
     accessible_at_age = Column(Integer, nullable=False, default=67)
 
     node = relationship("ScenarioNode", back_populates="pension")
+
+
+class ScenarioProbabilisticEvent(Base):
+    __tablename__ = "scenario_probabilistic_events"
+
+    id = Column(Integer, primary_key=True)
+    scenario_id = Column(Integer, ForeignKey("scenario_definitions.id"), nullable=False)
+    name = Column(String, nullable=False)
+
+    scenario = relationship("ScenarioDefinition", back_populates="probabilistic_events")
+    outcomes = relationship("ScenarioEventOutcome", back_populates="event")
+
+
+class ScenarioEventOutcome(Base):
+    __tablename__ = "scenario_event_outcomes"
+
+    id = Column(Integer, primary_key=True)
+    event_id = Column(Integer, ForeignKey("scenario_probabilistic_events.id"), nullable=False)
+    year = Column(Integer, nullable=False)
+    probability = Column(Float, nullable=False)
+    portfolio_injection = Column(Float, nullable=False)
+    description = Column(String, nullable=False, default="")
+
+    event = relationship("ScenarioProbabilisticEvent", back_populates="outcomes")
 
 
 class ScenarioResult(Base):

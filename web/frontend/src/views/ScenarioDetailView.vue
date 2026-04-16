@@ -106,10 +106,44 @@
           </div>
         </div>
 
+        <!-- Probabilistic Events Section -->
+        <div v-if="detailData && detailData.probabilistic_events && detailData.probabilistic_events.length > 0" class="prob-events-section">
+          <h3>Probabilistic Events</h3>
+          <div class="prob-events-list">
+            <div v-for="(pe, peIdx) in detailData.probabilistic_events" :key="peIdx" class="prob-event-card">
+              <div class="prob-event-name">{{ pe.name }}</div>
+              <div class="prob-outcomes">
+                <div v-for="(outcome, oIdx) in pe.outcomes" :key="oIdx" class="prob-outcome-row">
+                  <span class="outcome-year">Year {{ outcome.year }}</span>
+                  <span class="outcome-prob">{{ Math.round(outcome.probability * 100) }}%</span>
+                  <span class="outcome-amount" :class="outcome.portfolio_injection >= 0 ? 'positive' : 'negative'">
+                    {{ outcome.portfolio_injection >= 0 ? '+' : '' }}₪{{ formatNumber(outcome.portfolio_injection) }}
+                  </span>
+                  <span class="outcome-desc">{{ outcome.description }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="chart-section">
           <h3>Portfolio Growth</h3>
           <ScenarioInsights :special-points="specialPoints" />
-          <PortfolioChart :year-data="yearData" :retirement-year="summary.retirement_year" :special-points="specialPoints" :base-year="BASE_YEAR" />
+          <!-- Multi-branch chart when probabilistic events are present -->
+          <ComparisonChart
+            v-if="branchScenarios.length > 0"
+            :scenarios="branchScenarios"
+            :year-range="{ start: 1, end: yearData.length }"
+            :special-points="specialPoints"
+            :base-year="BASE_YEAR"
+          />
+          <PortfolioChart
+            v-else
+            :year-data="yearData"
+            :retirement-year="summary.retirement_year"
+            :special-points="specialPoints"
+            :base-year="BASE_YEAR"
+          />
         </div>
 
         <div class="table-section">
@@ -127,6 +161,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import axios from 'axios'
 import PortfolioChart from '../components/PortfolioChart.vue'
+import ComparisonChart from '../components/ComparisonChart.vue'
 import YearDataTable from '../components/YearDataTable.vue'
 import ScenarioInsights from '../components/ScenarioInsights.vue'
 import { computeSpecialPoints, BASE_YEAR } from '../utils/specialPoints'
@@ -140,6 +175,7 @@ const profileId = route.params.profileId
 const summary = ref(null)
 const yearData = ref([])
 const detailData = ref(null)
+const branchSimulation = ref(null)
 const loading = ref(true)
 
 const API_BASE_URL = 'http://localhost:8000/api/v1'
@@ -196,13 +232,24 @@ const scenarioParams = computed(() => {
   }
 })
 
-// Computed special milestone points (retirement, pension unlock, etc.)
+// Computed special milestone points (retirement, pension unlock, probabilistic events, etc.)
 const specialPoints = computed(() =>
   computeSpecialPoints(yearData.value, {
     baseYear: BASE_YEAR,
-    retirementYear: summary.value?.retirement_year ?? null
+    retirementYear: summary.value?.retirement_year ?? null,
+    probabilisticEvents: detailData.value?.probabilistic_events ?? []
   })
 )
+
+// One scenario object per outcome branch — populated when probabilistic events are present
+const branchScenarios = computed(() => {
+  const branches = branchSimulation.value?.branches ?? []
+  return branches.map(b => ({
+    scenario_name: `${b.label} (${Math.round(b.probability * 100)}%)`,
+    retirement_year: b.retirement_year,
+    year_data: b.year_data,
+  }))
+})
 
 onMounted(async () => {
   try {
@@ -213,6 +260,16 @@ onMounted(async () => {
     summary.value = summaryRes.data
     yearData.value = detailRes.data.year_data
     detailData.value = detailRes.data
+
+    // If the scenario has probabilistic events, re-simulate to get one line per branch
+    const probEvents = detailRes.data.probabilistic_events ?? []
+    if (probEvents.length > 0 && detailRes.data.definition) {
+      const simRes = await axios.post(`${API_BASE_URL}/simulate`, {
+        ...detailRes.data.definition,
+        years: detailRes.data.year_data.length,
+      })
+      branchSimulation.value = simRes.data
+    }
   } catch (error) {
     console.error('Failed to load scenario details:', error)
   } finally {
@@ -518,5 +575,85 @@ const goToWhatIf = () => {
 
 .event-amount.negative {
   color: #e74c3c;
+}
+
+.prob-events-section {
+  background: white;
+  padding: 30px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 30px;
+}
+
+.prob-events-section h3 {
+  margin: 0 0 20px 0;
+  color: #333;
+  font-size: 16px;
+}
+
+.prob-events-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.prob-event-card {
+  border: 1px solid #e9d5ff;
+  border-left: 4px solid #7c3aed;
+  border-radius: 6px;
+  padding: 16px;
+  background: #faf5ff;
+}
+
+.prob-event-name {
+  font-weight: 600;
+  color: #5b21b6;
+  font-size: 15px;
+  margin-bottom: 12px;
+}
+
+.prob-outcomes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.prob-outcome-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 10px;
+  background: white;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.outcome-year {
+  font-weight: 600;
+  color: #333;
+  min-width: 60px;
+}
+
+.outcome-prob {
+  font-weight: 600;
+  color: #7c3aed;
+  min-width: 40px;
+}
+
+.outcome-amount {
+  font-weight: 600;
+  min-width: 120px;
+}
+
+.outcome-amount.positive {
+  color: #27ae60;
+}
+
+.outcome-amount.negative {
+  color: #e74c3c;
+}
+
+.outcome-desc {
+  color: #666;
 }
 </style>

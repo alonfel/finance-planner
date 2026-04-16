@@ -1,6 +1,6 @@
-# Finance Planner Web App — MVP
+# Finance Planner Web App
 
-A web application for viewing and analyzing financial simulations. Built with FastAPI + Vue 3 + SQLite.
+FastAPI backend + Vue 3 frontend for real-time financial scenario exploration, Monte Carlo simulation, and probabilistic retirement planning.
 
 ## Setup
 
@@ -8,128 +8,152 @@ A web application for viewing and analyzing financial simulations. Built with Fa
 
 ```bash
 cd web/backend
-
-# Install dependencies (first time)
 pip install -r requirements.txt
-
-# Seed database (first time)
-python seed.py
-
-# Start server
-python main.py
+python seed.py          # first time — seeds DB from Alon profile cache
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Backend runs on: **http://localhost:8000**
-API docs: **http://localhost:8000/docs** (Swagger UI)
+- API: `http://localhost:8000`
+- Swagger UI: `http://localhost:8000/docs`
 
 ### Frontend
 
 ```bash
 cd web/frontend
-
-# Install dependencies (first time)
 npm install
-
-# Start dev server
 npm run dev
 ```
 
-Frontend runs on: **http://localhost:5173**
+- App: `http://localhost:5173`
 
-## Usage
+**Login:** `alon` / `alon123`
 
-1. Open **http://localhost:5173** in your browser
-2. Login with:
-   - Username: `alon`
-   - Password: `alon123`
-3. Browse profiles and simulation runs
-4. View scenarios with portfolio growth charts and year-by-year tables
+---
+
+## Features
+
+- **What-If Explorer** — Real-time sliders for income, expenses, growth rate, starting age, initial portfolio. Add/toggle one-time events and probabilistic events. Save any configuration as a named scenario.
+- **Probabilistic Events** — Model uncertain outcomes (IPO, acquisition, bonus) with multiple weighted branches. Chart overlays one line per branch; metrics show probability badges.
+- **Monte Carlo** — 500-trial fan chart (p5/p50/p95), retirement probability, survival probability, OAT sensitivity ranking.
+- **Historical Backtesting** — S&P 500, NASDAQ, Bonds, Russell 2000 from any start year (1928–2024).
+- **Scenario Browser** — Browse, compare, and delete saved scenarios.
+- **Scenario Detail** — Portfolio chart, year-by-year table, exact definition values (growth rate, withdrawal rate, return mode).
+- **Comparison View** — Side-by-side scenario comparison with combined chart.
+- **Scenario Generator** — Questionnaire-driven guided scenario creation.
+
+---
 
 ## Architecture
 
-### Backend (FastAPI)
-- `main.py` — App entry point
-- `database.py` — SQLite setup
-- `models.py` — SQLAlchemy ORM models
-- `schemas.py` — Pydantic response schemas
-- `auth.py` — JWT authentication
-- `seed.py` — Database seeding from Alon profile cache
-- `routers/` — API endpoints (auth, profiles, scenarios)
+### Backend (`web/backend/`)
 
-### Frontend (Vue 3)
-- `src/views/` — Pages (Login, Dashboard, Scenarios, ScenarioDetail)
-- `src/components/` — Reusable components (PortfolioChart, YearDataTable)
-- `src/stores/` — Pinia state management (auth store)
-- `src/router/` — Vue Router configuration
+| File | Purpose |
+|------|---------|
+| `main.py` | FastAPI app, router registration |
+| `database.py` | SQLAlchemy + SQLite setup, session management |
+| `models.py` | ORM models (Profile, SimulationRun, ScenarioResult, YearData, ScenarioDefinition, events, mortgages, pensions, probabilistic events) |
+| `schemas.py` | Pydantic schemas; `WhatIfScenarioSchema` is the canonical scenario state contract |
+| `auth.py` | JWT authentication |
+| `seed.py` | Seeds DB from Alon profile simulation cache |
+| `migration.py` | Idempotent schema migrations |
+| `routers/auth.py` | `POST /api/v1/auth/login` |
+| `routers/profiles.py` | Profile listing, simulation runs |
+| `routers/scenarios.py` | Scenario retrieval and deletion |
+| `routers/simulate.py` | Stateless What-If simulation; returns `branches[]` for probabilistic events |
+| `routers/whatif_saves.py` | Save What-If state to SQLite with full event/outcome round-trip |
+| `routers/monte_carlo.py` | `POST /api/v1/monte-carlo` |
+| `routers/generator.py` | Questionnaire API (`/api/questionnaire/*`, `/api/generate-scenario`) |
+| `services/scenario_generator.py` | Config-driven questionnaire → Scenario conversion |
 
-### Database (SQLite)
-- `users` — Authentication
-- `profiles` — User profiles (maps to data/profiles/{name}/)
-- `simulation_runs` — Cached simulation runs
-- `scenario_results` — Scenario data per run
-- `year_data` — Year-by-year simulation output
+### Frontend (`web/frontend/src/`)
 
-## API Endpoints
+| Path | Purpose |
+|------|---------|
+| `views/LoginView.vue` | Login page |
+| `views/DashboardView.vue` | Profile overview |
+| `views/ScenariosView.vue` | Scenario browser |
+| `views/ScenarioView.vue` | Single scenario detail |
+| `views/ScenarioDetailView.vue` | Detailed scenario with definition values |
+| `views/WhatIfView.vue` | What-If Explorer — main interactive view |
+| `views/MonteCarloView.vue` | Monte Carlo fan chart + sensitivity |
+| `views/ComparisonView.vue` | Side-by-side scenario comparison |
+| `components/FanChart.vue` | p5/p50/p95 fan chart |
+| `components/ComparisonChart.vue` | Multi-series portfolio chart |
+| `components/PortfolioChart.vue` | Single-scenario portfolio chart |
+| `components/YearDataTable.vue` | Year-by-year data table |
+| `components/ScenarioGeneratorModal.vue` | Guided scenario creation modal |
+| `components/SaveAsModal.vue` | Save What-If as named scenario |
+| `stores/auth.js` | Pinia auth store (JWT) |
 
-All endpoints (except login) require Bearer JWT token.
+### Frontend architecture notes
+
+- **`WhatIfScenarioSchema`** (backend) is the canonical source of truth for scenario state
+- **`toApiRequest()`** in WhatIfView — serializes all state for saves/simulates
+- **`fromDefinition(def)`** in WhatIfView — restores all state from a saved definition
+- Adding a new field requires: update schema + update two mappers
+
+---
+
+## API Reference
+
+All endpoints except login require `Authorization: Bearer <JWT>`.
 
 ```
 POST   /api/v1/auth/login
-GET    /api/v1/profiles
-GET    /api/v1/profiles/:profileId/runs
-GET    /api/v1/runs/:runId/scenarios
-GET    /api/v1/scenarios/:resultId
-GET    /api/v1/scenarios/:resultId/summary
+
+GET    /api/v1/profiles/{profile_id}/runs
+GET    /api/v1/runs/{run_id}/scenarios
+GET    /api/v1/scenarios/{result_id}
+GET    /api/v1/scenarios/{result_id}/summary
+DELETE /api/v1/scenarios/{result_id}
+
+POST   /api/v1/simulate
+POST   /api/v1/monte-carlo
+POST   /api/v1/profiles/{profile_id}/saved-scenarios
+
+POST   /api/questionnaire/config
+POST   /api/questionnaire/completeness
+POST   /api/questionnaire/visible-questions
+POST   /api/generate-scenario
 ```
 
-## Features (MVP)
+`POST /api/v1/simulate` returns `branches: []` when no probabilistic events are present (backward compatible), or one `BranchResultSchema` per outcome cross-product when they are.
 
-✅ Simple JWT login  
-✅ View profiles and simulation runs  
-✅ View scenarios with retirement year and final portfolio  
-✅ Portfolio growth chart (line chart with multiple series)  
-✅ Year-by-year data table with currency formatting  
-✅ Desktop-only layout  
+---
 
-## Future Enhancements
+## Database Schema
 
-- Input forms to create/edit scenarios
-- Israeli defaults and profile templates
-- AI-based insights generation
-- User registration and multi-user support
-- Mobile layout optimization
-- Scenario comparison views
-- Export/sharing functionality
+```
+users                           — auth
+profiles                        — user profiles
+simulation_runs                 — run metadata
+scenario_results                — per-scenario results
+year_data                       — year-by-year output
+scenario_definitions            — What-If saved state
+scenario_events                 — one-time events → scenario_definitions
+scenario_mortgages              — mortgage → scenario_definitions
+scenario_pensions               — pension → scenario_definitions
+scenario_probabilistic_events   — probabilistic event definitions
+scenario_event_outcomes         — outcome branches per probabilistic event
+```
+
+---
 
 ## Troubleshooting
 
-### Backend not responding
+**Backend not responding:**
 ```bash
-# Check if port 8000 is in use
 lsof -i :8000
-
-# Verify database exists
 ls -la data/finance_planner.db
 ```
 
-### Frontend build issues
+**Frontend build issues:**
 ```bash
-# Clear node_modules and reinstall
-rm -rf web/frontend/node_modules
-npm install
+rm -rf web/frontend/node_modules && npm install
 ```
 
-### Database needs reset
+**Database reset:**
 ```bash
-# Remove old database and re-seed
 rm data/finance_planner.db
 python web/backend/seed.py
 ```
-
-## Development Notes
-
-- Backend uses sync SQLAlchemy (no async for MVP)
-- Frontend uses Vue 3 Composition API
-- Chart.js for portfolio visualizations
-- Simple PBKDF2 hashing for passwords (upgrade in production)
-- CORS enabled for localhost development

@@ -10,9 +10,15 @@ from schemas import (
     EventSchema,
     MortgageSchema,
     PensionSchema,
-    RetirementLifestyleSchema
+    RetirementLifestyleSchema,
+    ProbabilisticEventSchema,
+    EventOutcomeSchema,
 )
-from models import ScenarioResult, YearData, Profile, SimulationRun, ScenarioDefinition, ScenarioEvent, ScenarioMortgage, ScenarioPension
+from models import (
+    ScenarioResult, YearData, Profile, SimulationRun,
+    ScenarioDefinition, ScenarioEvent, ScenarioMortgage, ScenarioPension,
+    ScenarioProbabilisticEvent, ScenarioEventOutcome,
+)
 from auth import get_current_user
 
 router = APIRouter(prefix="/api/v1", tags=["scenarios"])
@@ -90,6 +96,28 @@ def _build_definition(db: Session, scenario_id: int):
                 partial_income=definition.partial_retirement_income
             )
 
+        # Get probabilistic events
+        prob_events = []
+        pe_rows = db.query(ScenarioProbabilisticEvent).filter(
+            ScenarioProbabilisticEvent.scenario_id == scenario_id
+        ).all()
+        for pe_row in pe_rows:
+            outcome_rows = db.query(ScenarioEventOutcome).filter(
+                ScenarioEventOutcome.event_id == pe_row.id
+            ).all()
+            prob_events.append(ProbabilisticEventSchema(
+                name=pe_row.name,
+                outcomes=[
+                    EventOutcomeSchema(
+                        year=o.year,
+                        probability=o.probability,
+                        portfolio_injection=o.portfolio_injection,
+                        description=o.description,
+                    )
+                    for o in outcome_rows
+                ],
+            ))
+
         # Build the full scenario definition schema
         definition_schema = WhatIfScenarioSchema(
             monthly_income=monthly_income,
@@ -106,7 +134,8 @@ def _build_definition(db: Session, scenario_id: int):
             events=events,
             mortgage=mortgage_data,
             pension=pension_data,
-            retirement_lifestyle=retirement_lifestyle_data
+            retirement_lifestyle=retirement_lifestyle_data,
+            probabilistic_events=prob_events,
         )
 
         return definition_schema
@@ -178,7 +207,8 @@ def get_scenario_detail(
         "year_data": year_data,
         "events": events,
         "mortgage": mortgage,
-        "definition": definition
+        "definition": definition,
+        "probabilistic_events": definition.probabilistic_events if definition else [],
     }
 
 @router.get("/scenarios/{result_id}/summary", response_model=ScenarioSummarySchema)

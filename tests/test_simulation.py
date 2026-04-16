@@ -4,7 +4,7 @@ from pathlib import Path
 
 # Add parent directory to path for imports
 
-from domain.models import Mortgage, Scenario, Event, ScenarioNode
+from domain.models import Mortgage, Scenario, Event, ScenarioNode, EventOutcome, ProbabilisticEvent
 from domain.simulation import simulate
 from domain.breakdown import IncomeBreakdown, ExpenseBreakdown
 
@@ -1233,6 +1233,326 @@ class TestRetirementLifestyle(unittest.TestCase):
         # At age 67 (year 28), pension should unlock
         year_67 = result.year_data[27]  # Year 28, age 67
         self.assertTrue(year_67.pension_accessible)
+
+
+class TestSimulateBranches(unittest.TestCase):
+    """Tests for simulate_branches() — deterministic multi-branch simulation."""
+
+    def _make_scenario(self) -> Scenario:
+        return Scenario(
+            name="Baseline",
+            monthly_income=IncomeBreakdown({"income": 50_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 25_000}),
+            initial_portfolio=1_000_000,
+            age=40,
+        )
+
+    def _make_ipo_event(self) -> "ProbabilisticEvent":
+        from domain.models import EventOutcome, ProbabilisticEvent
+        return ProbabilisticEvent(
+            name="IPO",
+            outcomes=[
+                EventOutcome(year=1, probability=0.20, portfolio_injection=0.0, description="No IPO"),
+                EventOutcome(year=2, probability=0.60, portfolio_injection=1_500_000.0, description="IPO ₪1.5M"),
+                EventOutcome(year=3, probability=0.20, portfolio_injection=3_000_000.0, description="IPO ₪3M"),
+            ],
+        )
+
+    def test_no_probabilistic_events_returns_one_branch(self):
+        """REGRESSION: simulate_branches with no probabilistic_events returns one result."""
+        from domain.simulation import simulate_branches
+        scenario = self._make_scenario()
+        branches = simulate_branches(scenario, years=20)
+        self.assertEqual(len(branches), 1)
+
+    def test_no_probabilistic_events_matches_simulate(self):
+        """REGRESSION: single branch result is identical to simulate()."""
+        from domain.simulation import simulate, simulate_branches
+        scenario = self._make_scenario()
+        plain = simulate(scenario, years=20)
+        label, prob, branch_result = simulate_branches(scenario, years=20)[0]
+        self.assertEqual(prob, 1.0)
+        self.assertEqual(branch_result.retirement_year, plain.retirement_year)
+        for yd_plain, yd_branch in zip(plain.year_data, branch_result.year_data):
+            self.assertAlmostEqual(yd_plain.portfolio, yd_branch.portfolio, places=2)
+
+    def test_three_branch_ipo_returns_three_results(self):
+        """HAPPY PATH: 3-outcome IPO event produces 3 branches."""
+        from domain.simulation import simulate_branches
+        scenario = self._make_scenario()
+        scenario = scenario.__class__(
+            **{**scenario.__dict__, "probabilistic_events": [self._make_ipo_event()]}
+        )
+        branches = simulate_branches(scenario, years=20)
+        self.assertEqual(len(branches), 3)
+
+    def test_branch_probabilities_match_outcomes(self):
+        """Branch probabilities match the outcome probabilities."""
+        from domain.simulation import simulate_branches
+        from domain.models import EventOutcome, ProbabilisticEvent
+        scenario = Scenario(
+            name="Test",
+            monthly_income=IncomeBreakdown({"income": 50_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 25_000}),
+            initial_portfolio=1_000_000,
+            age=40,
+            probabilistic_events=[self._make_ipo_event()],
+        )
+        branches = simulate_branches(scenario, years=20)
+        probs = [p for _, p, _ in branches]
+        self.assertAlmostEqual(probs[0], 0.20, places=5)
+        self.assertAlmostEqual(probs[1], 0.60, places=5)
+        self.assertAlmostEqual(probs[2], 0.20, places=5)
+
+    def test_zero_probability_outcome_omitted(self):
+        """Outcome with probability=0 is skipped."""
+        from domain.simulation import simulate_branches
+        from domain.models import EventOutcome, ProbabilisticEvent
+        scenario = Scenario(
+            name="Test",
+            monthly_income=IncomeBreakdown({"income": 50_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 25_000}),
+            initial_portfolio=1_000_000,
+            age=40,
+            probabilistic_events=[ProbabilisticEvent(
+                name="Partial IPO",
+                outcomes=[
+                    EventOutcome(year=1, probability=0.0, portfolio_injection=500_000.0, description="Cancelled"),
+                    EventOutcome(year=2, probability=1.0, portfolio_injection=1_000_000.0, description="Happened"),
+                ],
+            )],
+        )
+        branches = simulate_branches(scenario, years=20)
+        self.assertEqual(len(branches), 1)
+        self.assertEqual(branches[0][0], "Happened")
+
+    def test_windfall_branch_retires_earlier(self):
+        """Branch with large windfall retires earlier than no-windfall branch."""
+        from domain.simulation import simulate_branches
+        from domain.models import EventOutcome, ProbabilisticEvent
+        scenario = Scenario(
+            name="Test",
+            monthly_income=IncomeBreakdown({"income": 50_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 30_000}),
+            initial_portfolio=500_000,
+            age=40,
+            probabilistic_events=[ProbabilisticEvent(
+                name="Windfall",
+                outcomes=[
+                    EventOutcome(year=1, probability=0.5, portfolio_injection=0.0, description="No windfall"),
+                    EventOutcome(year=1, probability=0.5, portfolio_injection=5_000_000.0, description="Big windfall"),
+                ],
+            )],
+        )
+        branches = simulate_branches(scenario, years=30)
+        big_windfall = next(r for label, _, r in branches if "Big windfall" in label)
+        no_windfall_r = next(r for label, _, r in branches if "No windfall" in label)
+        self.assertLess(big_windfall.retirement_year, no_windfall_r.retirement_year)
+
+    def test_two_events_produce_cross_product_branches(self):
+        """Two independent probabilistic events with 2 outcomes each produce 4 branches (cross-product)."""
+        from domain.simulation import simulate_branches
+        from domain.models import EventOutcome, ProbabilisticEvent
+        scenario = Scenario(
+            name="Test",
+            monthly_income=IncomeBreakdown({"income": 50_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 25_000}),
+            initial_portfolio=1_000_000,
+            age=40,
+            probabilistic_events=[
+                ProbabilisticEvent(
+                    name="Job",
+                    outcomes=[
+                        EventOutcome(year=1, probability=0.5, portfolio_injection=0.0, description="Same job"),
+                        EventOutcome(year=1, probability=0.5, portfolio_injection=200_000.0, description="New job bonus"),
+                    ],
+                ),
+                ProbabilisticEvent(
+                    name="Investment",
+                    outcomes=[
+                        EventOutcome(year=2, probability=0.4, portfolio_injection=0.0, description="No return"),
+                        EventOutcome(year=2, probability=0.6, portfolio_injection=500_000.0, description="Investment pays"),
+                    ],
+                ),
+            ],
+        )
+        branches = simulate_branches(scenario, years=20)
+        self.assertEqual(len(branches), 4)
+        # Combined probabilities must sum to 1.0
+        total_prob = sum(p for _, p, _ in branches)
+        self.assertAlmostEqual(total_prob, 1.0, places=5)
+
+
+class TestMonteCarloProbabilisticSampling(unittest.TestCase):
+    """Tests for Monte Carlo outcome sampling with probabilistic events."""
+
+    def _make_scenario_with_ipo(self) -> Scenario:
+        from domain.models import EventOutcome, ProbabilisticEvent
+        # Tight savings margin (5k/month net) so IPO windfall meaningfully improves retirement odds
+        return Scenario(
+            name="IPO Scenario",
+            monthly_income=IncomeBreakdown({"income": 30_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 25_000}),
+            initial_portfolio=200_000,
+            age=40,
+            probabilistic_events=[ProbabilisticEvent(
+                name="IPO",
+                outcomes=[
+                    EventOutcome(year=2, probability=0.20, portfolio_injection=0.0, description="No IPO"),
+                    EventOutcome(year=2, probability=0.80, portfolio_injection=2_000_000.0, description="IPO"),
+                ],
+            )],
+        )
+
+    def test_mc_regression_no_probabilistic_events(self):
+        """REGRESSION: MC with no probabilistic_events behaves same as before."""
+        from domain.monte_carlo import run_monte_carlo
+        scenario = Scenario(
+            name="Plain",
+            monthly_income=IncomeBreakdown({"income": 50_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 25_000}),
+            initial_portfolio=1_000_000,
+            age=40,
+        )
+        result = run_monte_carlo(scenario, n_trials=100, years=20)
+        self.assertEqual(len(result.percentile_p50), 20)
+        self.assertGreaterEqual(result.retirement_probability, 0.0)
+        self.assertLessEqual(result.retirement_probability, 1.0)
+
+    def test_mc_with_ipo_higher_probability_than_no_ipo(self):
+        """80% windfall scenario should have higher retirement probability than no-windfall baseline."""
+        from domain.monte_carlo import run_monte_carlo
+        with_ipo = self._make_scenario_with_ipo()
+        # Same parameters as with_ipo but no probabilistic events — tests that 80% IPO chance lifts retirement odds
+        without_ipo = Scenario(
+            name="No IPO",
+            monthly_income=IncomeBreakdown({"income": 30_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 25_000}),
+            initial_portfolio=200_000,
+            age=40,
+        )
+        result_with = run_monte_carlo(with_ipo, n_trials=300, years=30)
+        result_without = run_monte_carlo(without_ipo, n_trials=300, years=30)
+        self.assertGreater(result_with.retirement_probability, result_without.retirement_probability)
+
+    def test_mc_outcome_sampling_proportional(self):
+        """Sampled outcomes across 500 trials should be ~proportional to probabilities (±10%)."""
+        import random as rnd
+        from domain.monte_carlo import _sample_probabilistic_events
+        from domain.models import EventOutcome, ProbabilisticEvent
+
+        rnd.seed(42)
+        scenario = self._make_scenario_with_ipo()
+        n_trials = 500
+        windfall_count = 0
+
+        for _ in range(n_trials):
+            sampled = _sample_probabilistic_events(scenario)
+            if any(e.portfolio_injection > 0 for e in sampled.events):
+                windfall_count += 1
+
+        observed_rate = windfall_count / n_trials
+        self.assertAlmostEqual(observed_rate, 0.80, delta=0.10)
+
+
+class TestProbabilisticEventModel(unittest.TestCase):
+    """Tests for EventOutcome and ProbabilisticEvent domain models."""
+
+    def _make_ipo_event(self) -> ProbabilisticEvent:
+        """Return a 3-outcome IPO event: 20% no-IPO, 60% ₪1.5M year 2, 20% ₪3M year 3."""
+        return ProbabilisticEvent(
+            name="IPO",
+            outcomes=[
+                EventOutcome(year=1, probability=0.20, portfolio_injection=0.0, description="No IPO"),
+                EventOutcome(year=2, probability=0.60, portfolio_injection=1_500_000.0, description="IPO ₪1.5M"),
+                EventOutcome(year=3, probability=0.20, portfolio_injection=3_000_000.0, description="IPO ₪3M"),
+            ],
+        )
+
+    # --- EventOutcome ---
+
+    def test_event_outcome_fields(self):
+        """EventOutcome stores year, probability, portfolio_injection, description."""
+        outcome = EventOutcome(year=2, probability=0.6, portfolio_injection=1_500_000.0, description="IPO ₪1.5M")
+        self.assertEqual(outcome.year, 2)
+        self.assertAlmostEqual(outcome.probability, 0.6)
+        self.assertAlmostEqual(outcome.portfolio_injection, 1_500_000.0)
+        self.assertEqual(outcome.description, "IPO ₪1.5M")
+
+    def test_event_outcome_default_description(self):
+        """EventOutcome description defaults to empty string."""
+        outcome = EventOutcome(year=1, probability=0.5, portfolio_injection=0.0)
+        self.assertEqual(outcome.description, "")
+
+    # --- ProbabilisticEvent validation ---
+
+    def test_valid_three_outcome_event(self):
+        """ProbabilisticEvent with 3 outcomes summing to 1.0 constructs without error."""
+        event = self._make_ipo_event()
+        self.assertEqual(event.name, "IPO")
+        self.assertEqual(len(event.outcomes), 3)
+
+    def test_bad_probabilities_raise_value_error(self):
+        """ProbabilisticEvent raises ValueError when probabilities do not sum to 1.0."""
+        with self.assertRaises(ValueError):
+            ProbabilisticEvent(
+                name="Bad",
+                outcomes=[
+                    EventOutcome(year=1, probability=0.50, portfolio_injection=0.0),
+                    EventOutcome(year=2, probability=0.40, portfolio_injection=0.0),
+                    # Total = 0.90, not 1.0
+                ],
+            )
+
+    def test_single_outcome_probability_one(self):
+        """ProbabilisticEvent with a single outcome at probability=1.0 is valid."""
+        event = ProbabilisticEvent(
+            name="Certain",
+            outcomes=[EventOutcome(year=1, probability=1.0, portfolio_injection=500_000.0)],
+        )
+        self.assertEqual(len(event.outcomes), 1)
+
+    def test_zero_outcomes_no_validation(self):
+        """ProbabilisticEvent with no outcomes skips probability validation."""
+        event = ProbabilisticEvent(name="Empty")
+        self.assertEqual(len(event.outcomes), 0)
+
+    def test_tolerance_within_0001(self):
+        """Probabilities summing within 0.001 of 1.0 are accepted (float tolerance)."""
+        event = ProbabilisticEvent(
+            name="Within tolerance",
+            outcomes=[
+                EventOutcome(year=1, probability=0.3334, portfolio_injection=0.0),
+                EventOutcome(year=2, probability=0.3333, portfolio_injection=0.0),
+                EventOutcome(year=3, probability=0.3333, portfolio_injection=0.0),
+                # Total = 1.0000 — within tolerance
+            ],
+        )
+        self.assertEqual(len(event.outcomes), 3)
+
+    # --- Scenario integration ---
+
+    def test_scenario_has_probabilistic_events_field(self):
+        """Scenario.probabilistic_events defaults to empty list."""
+        scenario = Scenario(
+            name="No prob events",
+            monthly_income=IncomeBreakdown({"income": 50_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 30_000}),
+        )
+        self.assertEqual(scenario.probabilistic_events, [])
+
+    def test_scenario_accepts_probabilistic_events(self):
+        """Scenario stores probabilistic_events and they are accessible."""
+        event = self._make_ipo_event()
+        scenario = Scenario(
+            name="With IPO",
+            monthly_income=IncomeBreakdown({"income": 50_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 30_000}),
+            probabilistic_events=[event],
+        )
+        self.assertEqual(len(scenario.probabilistic_events), 1)
+        self.assertEqual(scenario.probabilistic_events[0].name, "IPO")
+        self.assertEqual(len(scenario.probabilistic_events[0].outcomes), 3)
 
 
 if __name__ == "__main__":

@@ -1,212 +1,246 @@
 # Claude Code Guidelines for Finance Planner
 
-**Updated:** April 15, 2026 — **MAJOR: Monte Carlo Simulation Engine** shipped. Probabilistic retirement planning with p5/p50/p95 fan chart and OAT sensitivity analysis. 23 new tests (83 total). See Monte Carlo section below.
-
-**Previous:** April 14, 2026 — Multi-Index Historical Returns (S&P 500, NASDAQ, Bonds, Russell 2000). All 60 unit tests passing.
+**Updated:** April 16, 2026 — **MAJOR: Probabilistic Events** — model uncertain outcomes (IPO, acquisition, bonus) with multiple weighted branches. simulate_branches() + Monte Carlo sampling + full UI. 109 tests passing.
 
 ---
 
-## Recent Updates (April 14, 2026)
+## Probabilistic Events (April 16, 2026)
 
-### Model-Centric Architecture Refactoring (COMPLETED)
+Model uncertain outcomes — e.g., an IPO exit that may or may not happen, or a bonus with variable size.
 
-**Problem Solved:**
-When saving and reloading What-If scenarios, critical data was missing or incorrect:
-- Events and mortgages silently absent for seeded scenarios (scenario_id was NULL)
-- Growth rate hardcoded to 7% on reload instead of reading saved value
-- Initial portfolio back-calculated from year_data, losing precision
-- Disabled events were saved anyway (inconsistent behavior)
-- Pension fields completely absent from What-If flow
-- withdrawal_rate, retirement_mode, currency hardcoded instead of persisted
+**Access:** What-If Explorer → "Probabilistic Events" section (below One-Time Events)
 
-**Architecture Fix:**
-Introduced `WhatIfScenarioSchema` as canonical source of truth for scenario state. Backend returns this exact schema when loading saved scenarios. Frontend has two pure mapping functions:
-- `toApiRequest()` — All saves/simulates send this format
-- `fromDefinition(def)` — All loads restore exact values
+**What it does:**
+- Each event has N mutually exclusive outcomes; probabilities must sum to 100%
+- Deterministic mode (`simulate_branches`): one simulation per outcome branch, returned as `[(label, probability, SimulationResult)]`
+- Monte Carlo mode: each trial independently samples one outcome per event using probability weights, capturing the full distribution
+- Chart overlays one colored line per branch; metrics show one card per branch with probability badge
+- Save/load round-trips preserve events and outcomes exactly
 
-Adding a new field now requires: add to schema + update two mappers (automatic for UI/API roundtrip).
-
-**Files Modified:**
-
-| File | Changes |
-|------|---------|
-| `web/backend/schemas.py` | Created `WhatIfScenarioSchema`; updated `SimulateRequest`, `SaveScenarioRequest`, `ScenarioResultSchema` |
-| `web/backend/routers/simulate.py` | Pass pension, withdrawal_rate, retirement_mode, currency to Scenario constructor |
-| `web/backend/routers/whatif_saves.py` | Save pension to scenario_pensions table; use body fields instead of hardcoded defaults |
-| `web/backend/routers/scenarios.py` | New `_build_definition()` function loads exact definition from DB; endpoint returns `definition` field |
-| `web/backend/seed.py` | Call `link_scenario_results(db)` to backfill NULL scenario_id on seeded rows |
-| `web/frontend/src/views/WhatIfView.vue` | Added `toApiRequest()` + `fromDefinition()` pure functions; mortgage now collapsible; events always visible |
-| `web/frontend/src/views/ScenarioDetailView.vue` | Display exact definition values (returnRate, withdrawalRate) instead of approximations; fixed goToWhatIf navigation |
-
-**Bugs Fixed:**
-1. ✅ Seeded scenario events/mortgage NULL — backfilled via link_scenario_results()
-2. ✅ Growth rate hardcoded to 7% — now reads from definition.return_rate
-3. ✅ Initial portfolio approximated — now stored and returned exactly
-4. ✅ Disabled events saved anyway — filter in toApiRequest()
-5. ✅ Mortgage not restored on query-param path — fromDefinition() now handles all fields
-6. ✅ Pension absent end-to-end — added to all layers (model → schema → UI)
-7. ✅ withdrawal_rate/retirement_mode/currency hardcoded — now persisted in all scenarios
-
-**Verification:**
-- `SELECT count(*) FROM scenario_results WHERE scenario_id IS NULL` → 0 (all seeded scenarios linked)
-- Save scenario with 6% growth → reload → Growth Rate shows 6% (not hardcoded 7%)
-- Save scenario with pension → reload → pension fields populated
-- Disabled events excluded from saves (consistent with simulate behavior)
-- All 17 backend tests passing
-- ScenarioDetailView shows exact growth rate and withdrawal rate
-
----
-
-### Auto-Generated Scenario Names (COMPLETED)
-
-**Feature:** Save dialog now pre-fills name with intelligent default.
-
-**Format:** `{BaseScenarioName} - Modified {HH:MM AM/PM}`
-
-**Examples:**
-- "Baseline - Modified 04:32 PM"
-- "IPO Year 2 - Modified 02:15 AM"
-
-**How It Works:**
-1. User clicks "💾 Save as Scenario" button
-2. Dialog opens with pre-generated name (based on origin scenario + current time)
-3. User can edit the name or accept the default
-4. Time-based identifier makes multiple same-day saves distinguishable
-
-**Files Modified:**
-- `web/frontend/src/views/WhatIfView.vue` — Added `generateDefaultScenarioName()` and `openSaveModal()` functions
-
-**Benefits:**
-✅ Identifies origin scenario  
-✅ Timestamp distinguishes multiple saves on same day  
-✅ User-editable (default is suggestion, not forced)  
-✅ No manual typing required (better UX)  
-✅ Clear, concise naming convention  
-
----
-
-### UI Improvements
-
-**Events Visibility:**
-- Mortgage section now colapsible (hidden by default)
-- Events list remains visible without scrolling
-- Increased sliders-section height from 45vh to 55vh
-- Parameter controls more accessible
-
-**Definition Display (ScenarioDetailView):**
-- Now shows Growth Rate and Withdrawal Rate (previously missing)
-- Uses exact values from definition when available
-- Falls back to year_data approximation for legacy scenarios
-- Retirement mode and currency now available for display
-
----
-
-### Multi-Index Historical Returns (COMPLETED)
-
-**Feature:** Simulate portfolio growth using actual annual returns from 4 major indices (1928–2024), enabling comprehensive backtesting and stress-testing scenarios.
-
-**Indices Supported:**
-- **S&P 500** (1928–2024) — Large-cap US equities
-- **NASDAQ Composite** (1972–2024) — Tech-heavy broad index
-- **US 10-Year Treasury Bonds** (1928–2024) — Fixed income alternative
-- **Russell 2000** (1979–2024) — Small-cap US equities
-
-**Use Cases:**
-- "What if I had started investing during the dot-com crash?" → Use NASDAQ, year 2000
-- "How would bonds have performed in the 1980s?" → Use Bonds, year 1980
-- "Would small-cap outperformance help me retire sooner?" → Use Russell 2000
-
-**How to Use:**
-
-**Method 1: From scenarios.json or scenario_nodes.json**
-```json
-{
-  "name": "Backtesting: NASDAQ 1999",
-  "monthly_income": 45000,
-  "monthly_expenses": 25000,
-  "historical_start_year": 1999,
-  "historical_index": "nasdaq"
-}
-```
-
-**Method 2: From Python**
+**Python usage:**
 ```python
-from domain.models import Scenario
-from domain.breakdown import IncomeBreakdown, ExpenseBreakdown
-from domain.simulation import simulate
+from domain.models import ProbabilisticEvent, EventOutcome, Scenario
+from domain.simulation import simulate_branches
 
 scenario = Scenario(
-    name="Small-Cap Bull Market",
-    monthly_income=IncomeBreakdown({"income": 45000}),
-    monthly_expenses=ExpenseBreakdown({"expenses": 25000}),
-    historical_start_year=1990,
-    historical_index='russell2000'  # Use Russell 2000 returns from 1990 onward
+    name="IPO Scenario",
+    monthly_income=IncomeBreakdown({"salary": 50_000}),
+    monthly_expenses=ExpenseBreakdown({"expenses": 25_000}),
+    initial_portfolio=1_000_000,
+    age=40,
+    probabilistic_events=[
+        ProbabilisticEvent(
+            name="IPO Exit",
+            outcomes=[
+                EventOutcome(year=3, probability=0.70, portfolio_injection=2_000_000, description="Success"),
+                EventOutcome(year=3, probability=0.30, portfolio_injection=0.0, description="No event"),
+            ]
+        )
+    ]
 )
-result = simulate(scenario, years=30)
-print(f"Retirement year: {result.retirement_year}")
+
+branches = simulate_branches(scenario, years=30)
+for label, prob, result in branches:
+    print(f"{label} ({prob:.0%}): retire year {result.retirement_year}")
 ```
 
-**Method 3: Web UI (WhatIf Explorer)**
-- **Segmented control:** 5 pill buttons (Fixed % | S&P 500 | NASDAQ | Bonds | Russell 2000)
-- **Dynamic year slider:** Min year adjusts per index
-  - S&P 500, Bonds: 1928+
-  - NASDAQ: 1972+
-  - Russell 2000: 1979+
-- **Chart updates in real-time** with actual historical returns
-- **Save with index choice** — reload restores exact index + year combination
+**Multi-event cross-product:**
+Two events with 2 outcomes each produce 4 branches (all probability combinations). Branch probabilities sum to 1.0.
 
-**Behavior Example:**
+**Validation:**
+- `ProbabilisticEvent.__post_init__` raises `ValueError` if non-empty outcomes don't sum to 1.0 (±0.001 tolerance)
+- UI blocks simulation and shows red badge until each event sums to 100%
 
-| Index | Start Year | 30-Yr Retirement | Final Portfolio | Notes |
-|-------|------|---|---|---|
-| Fixed 7% | — | Year 11 | ₪8.2M | Steady constant growth |
-| S&P 500 | 1990 | Year 10 | ₪9.1M | Bull market 90s |
-| NASDAQ | 1999 | Year 14 | ₪5.8M | Dot-com crash impact |
-| Bonds | 1990 | Year 25 | ₪3.2M | Lower volatility, returns |
-| Russell 2000 | 1990 | Year 9 | ₪10.1M | Small-cap outperformance |
+**Files:**
+- `domain/models.py` — `EventOutcome`, `ProbabilisticEvent` dataclasses; `Scenario.probabilistic_events` field
+- `domain/simulation.py` — `simulate_branches()`, `_expand_branches()` (recursive cross-product)
+- `domain/monte_carlo.py` — `_sample_probabilistic_events()` (per-trial outcome sampling)
+- `web/backend/models.py` — `ScenarioProbabilisticEvent`, `ScenarioEventOutcome` ORM tables
+- `web/backend/schemas.py` — `ProbabilisticEventSchema`, `EventOutcomeSchema`, `BranchResultSchema`
+- `web/frontend/src/views/WhatIfView.vue` — Event Builder UI, `toApiRequest()`/`fromDefinition()` round-trip
 
-**Data Coverage:** Annual total returns (including dividends/distributions) for all 4 indices, 1928–2024 (97 years with index-specific gaps).
-
-**Wrap-Around Behavior:** If simulation exceeds available data for an index (e.g., 30-year sim starting 2010), years wrap deterministically from that index's start year. Useful for stress-testing longer periods.
-
-**Backward Compatibility:**
-- `historical_index=None` → defaults to "sp500" (S&P 500)
-- Existing scenarios with only `historical_start_year` restore as S&P 500 via fallback
-- `historical_start_year=None` → uses fixed `return_rate` (7% default)
-- Can freely mix all return modes
-
-**Files Modified:**
-
-| File | Changes |
-|------|---------|
-| `domain/historical_returns.py` | Added NASDAQ, Bonds, Russell 2000 dicts; introduced INDICES registry + INDEX_START_YEARS metadata; refactored get_historical_rate_sequence(start_year, num_years, index) |
-| `domain/models.py` | Added `historical_index: Optional[str]` field to Scenario and ScenarioNode; added to inheritance override list |
-| `domain/simulation.py` | Pass `index=scenario.historical_index or "sp500"` to get_historical_rate_sequence() |
-| `web/backend/schemas.py` | Added `historical_index` field to WhatIfScenarioSchema |
-| `web/backend/models.py` | Added `historical_index = Column(String, nullable=True)` to ScenarioDefinition |
-| `web/backend/migration.py` | Idempotent migration: `ALTER TABLE scenario_definitions ADD COLUMN historical_index TEXT` |
-| `web/backend/routers/simulate.py` | Pass `historical_index=body.historical_index` to Scenario constructor |
-| `web/backend/routers/whatif_saves.py` | Pass to Scenario() + save to ScenarioDefinition |
-| `web/backend/routers/scenarios.py` | Return `historical_index` from _build_definition() |
-| `web/frontend/src/views/WhatIfView.vue` | Replaced binary toggle with 5-pill segmented control; dynamic year slider min per index; updated toApiRequest() + fromDefinition() |
-| `tests/test_simulation.py` | Added 7 new unit tests: backward compat, multi-index divergence, year range validation, bonds coverage, Russell 2000 range, scenario simulation differences |
-
-**Tests Passing:**
-- ✅ 60 total unit tests (7 new multi-index tests)
-- ✅ Backward compatibility (no index arg defaults to sp500)
-- ✅ NASDAQ vs S&P 500 divergence validated
-- ✅ Year range validation per index (NASDAQ min=1972, Russell min=1979)
-- ✅ Multi-index simulation produces different results
-- ✅ Save/reload preserves exact index choice
-- ✅ Old saved scenarios fall back to sp500
+**Tests:** `tests/test_simulation.py` — 19 tests across `TestProbabilisticEventModel`, `TestSimulateBranches`, `TestMonteCarloProbabilisticSampling`
 
 ---
 
-## Monte Carlo Simulation (April 15, 2026)
+## Quick Start
+
+### Running the Simulation
+```bash
+python main.py
+```
+
+### Running Scenario Analysis (Configuration-Driven)
+```bash
+# Step 1: Simulate all scenarios (once)
+python analysis/run_simulations.py
+
+# Step 2: Run analysis (use cached results)
+python analysis/run_analysis.py
+```
+
+### Switching Profiles
+```bash
+# Default profile (Daniel)
+python analysis/run_simulations.py
+
+# Alon's profile (2 core scenarios: Baseline + IPO Exit)
+FINANCE_PROFILE=alon python analysis/run_simulations.py
+FINANCE_PROFILE=alon python analysis/run_analysis.py
+```
+
+Each profile has its own `data/profiles/{name}/` directory.
+
+**Note on Alon profile:** Simplified to 2 core scenarios (Baseline, IPO Year 2). Pension scenarios can be restored from git: `git checkout data/profiles/alon/scenario_nodes.json`.
+
+### Running Tests
+```bash
+python -m unittest discover -s tests -p "test_*.py" -v
+```
+
+All **108 tests** should pass (85 simulation + 23 Monte Carlo).
+
+### Running the Web Server
+
+**Backend (FastAPI):**
+```bash
+cd web/backend
+pip install -r requirements.txt
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
+
+Server: `http://localhost:8000` — API docs: `http://localhost:8000/docs`
+
+**Frontend (Vue 3):**
+```bash
+cd web/frontend
+npm install
+npm run dev
+```
+
+Frontend: `http://localhost:5173`
+
+See [web/FEATURES.md](web/FEATURES.md) for the complete user guide.
+
+---
+
+## Architecture Overview
+
+**4-Layer Responsibility-Based Structure:**
+
+```
+finance_planner/
+├── domain/              # Pure business logic
+├── infrastructure/      # Config loading & caching
+├── presentation/        # Output formatting
+├── analysis/            # Scenario analysis subsystem
+├── web/                 # FastAPI backend + Vue 3 frontend
+└── tests/               # 108 unit tests (all passing)
+```
+
+**Key principle:** Each layer depends only on layers below. No circular dependencies.
+
+---
+
+## Component Documentation
+
+| Layer | Purpose | Documentation |
+|-------|---------|---|
+| **domain/** | Financial models, simulation engine, insights | [domain/DOMAIN.md](domain/DOMAIN.md) |
+| **infrastructure/** | Configuration loading, parsing, caching | [infrastructure/CONFIG.md](infrastructure/CONFIG.md) |
+| **presentation/** | Output formatting, currency display | [presentation/PRESENTATION.md](presentation/PRESENTATION.md) |
+| **analysis/** | Decoupled analysis system, scenario comparisons | [analysis/ANALYSIS.md](analysis/ANALYSIS.md) |
+| **web/backend/** | FastAPI REST API, authentication, data persistence | [web/backend/README.md](web/backend/README.md), [API.md](web/backend/API.md), [ARCHITECTURE.md](web/backend/ARCHITECTURE.md) |
+| **web/** | User-facing feature guides and workflows | [web/FEATURES.md](web/FEATURES.md) |
+
+---
+
+## File Structure
+
+### Core Modules
+- **domain/breakdown.py** — IncomeBreakdown, ExpenseBreakdown (named components with .total property)
+- **domain/models.py** — Event, ProbabilisticEvent, Mortgage, Pension, Scenario, ScenarioNode dataclasses
+- **domain/simulation.py** — Core simulate() + simulate_branches() engines, YearData, SimulationResult
+- **domain/monte_carlo.py** — Monte Carlo engine (`run_monte_carlo`, `MonteCarloResult`)
+- **domain/sensitivity.py** — OAT sensitivity analysis (`run_oat_sensitivity`, `SensitivityResult`)
+- **domain/historical_returns.py** — Annual return data for S&P 500, NASDAQ, Bonds, Russell 2000 (1928–2024)
+- **domain/insights.py** — Comparison logic + structured insight objects
+- **infrastructure/parsers.py** — Consolidated dict→model parsing
+- **infrastructure/loaders.py** — load_scenarios, load_settings, load_scenario_nodes (supports FINANCE_PROFILE env var)
+- **infrastructure/data_layer.py** — Profile management + environment variable support
+- **infrastructure/cache.py** — Serialization/deserialization for decoupled analysis
+- **presentation/constants.py** — Currency symbols, formatting helpers
+- **presentation/formatters.py** — print_scenario_header, print_year_summary
+- **analysis/run_simulations.py** — Batch simulation runner (profile-aware)
+- **analysis/run_analysis.py** — Configuration-driven analysis dispatcher (profile-aware)
+- **main.py** — Entry point orchestrator
+
+### Configuration Files
+- **scenarios.json** — Scenario data (supports flat numbers and breakdown objects for income/expenses)
+- **settings.json** — Simulation settings + output display options
+- **scenario_analysis/scenario_nodes.json** — Scenario inheritance tree (deep-merge overrides)
+- **scenario_analysis/analysis.json** — Analysis configurations
+
+### Tests
+- **tests/test_simulation.py** — 85 unit tests (simulation, historical returns, probabilistic events, insights)
+- **tests/test_monte_carlo.py** — 23 unit tests (Monte Carlo engine, sensitivity analysis)
+
+### Web Backend
+- **web/backend/main.py** — FastAPI app initialization, router registration
+- **web/backend/database.py** — SQLAlchemy ORM setup, session management
+- **web/backend/auth.py** — JWT authentication, login endpoint
+- **web/backend/models.py** — SQLAlchemy ORM models (Profile, SimulationRun, ScenarioResult, YearData, ScenarioDefinition, ProbabilisticEvent, EventOutcome)
+- **web/backend/schemas.py** — Pydantic schemas; `WhatIfScenarioSchema` is the canonical source of truth for scenario state
+- **web/backend/routers/auth.py** — Authentication endpoints
+- **web/backend/routers/profiles.py** — Profile CRUD endpoints
+- **web/backend/routers/scenarios.py** — Scenario retrieval; `_build_definition()` loads exact definition from DB
+- **web/backend/routers/simulate.py** — What-If simulation; returns `branches[]` when probabilistic events present
+- **web/backend/routers/whatif_saves.py** — Save What-If scenarios to SQLite with full event/outcome persistence
+- **web/backend/routers/monte_carlo.py** — `POST /api/v1/monte-carlo`
+- **web/backend/routers/generator.py** — Guided scenario generator questionnaire API (`POST /api/questionnaire/*`, `POST /api/generate-scenario`)
+- **web/backend/services/scenario_generator.py** — Config-driven questionnaire → Scenario conversion service
+
+### Web Frontend
+- **web/frontend/src/views/WhatIfView.vue** — What-If Explorer (sliders, events, save modal); `toApiRequest()` + `fromDefinition()` are the canonical frontend mappers
+- **web/frontend/src/views/MonteCarloView.vue** — Monte Carlo UI
+- **web/frontend/src/views/ScenarioDetailView.vue** — Scenario detail with exact definition values
+- **web/frontend/src/components/FanChart.vue** — p5/p50/p95 fan chart component
+
+### Report Generation
+- **reports/** — All generated reports
+- **analysis/generate_report.py** — Report generator utility
+
+---
+
+## Features
+
+### Probabilistic Events (April 16, 2026)
+
+Extends the simulation engine to handle events with uncertain outcomes.
+
+**Domain model:**
+```python
+@dataclass
+class ProbabilisticEvent:
+    name: str
+    outcomes: list[EventOutcome]  # Each has: label, probability, amount, year, recurring
+
+simulate_branches(scenario)  # Returns one SimulationResult per outcome branch (cross-product for multiple events)
+```
+
+**Monte Carlo integration:** Each trial draws one outcome per probabilistic event via weighted sampling, so the fan chart reflects the full probability-weighted return distribution.
+
+**API:** `/simulate` returns `branches[]` when probabilistic events are present (empty list otherwise — fully backward compatible).
+
+**Persistence:** `scenario_probabilistic_events` + `scenario_event_outcomes` tables; saved/restored via `whatif_saves.py` and `scenarios.py`.
+
+---
+
+### Monte Carlo Simulation (April 15, 2026)
 
 Probabilistic financial planning via 500-trial lognormal return sampling.
 
-**Access:** Dashboard → Profile → 📊 Monte Carlo
+**Access:** Dashboard → Profile → Monte Carlo
 
 **What it does:**
 - Generates N independent return sequences from a lognormal distribution (σ=15% default)
@@ -228,504 +262,119 @@ for driver in sensitivity.drivers[:3]:
     print(f"{driver.name} {driver.direction}: {driver.delta:+.1%}")
 ```
 
-**Files:**
-- `domain/monte_carlo.py` — Core engine (`run_monte_carlo`, `MonteCarloResult`)
-- `domain/sensitivity.py` — OAT analysis (`run_oat_sensitivity`, `SensitivityResult`)
-- `web/backend/routers/monte_carlo.py` — `POST /api/v1/monte-carlo`
-- `web/frontend/src/views/MonteCarloView.vue` — UI
-- `web/frontend/src/components/FanChart.vue` — p5/p50/p95 fan chart
+---
 
-**Tests:** `tests/test_monte_carlo.py` — 23 tests (structure, probabilities, sensitivity, regression)
+### Multi-Index Historical Returns (April 14, 2026)
+
+Simulate portfolio growth using actual annual returns from 4 major indices (1928–2024).
+
+**Indices:**
+- **S&P 500** (1928–2024) — `"sp500"` — default
+- **NASDAQ Composite** (1972–2024) — `"nasdaq"`
+- **US 10-Year Treasury Bonds** (1928–2024) — `"bonds"`
+- **Russell 2000** (1979–2024) — `"russell2000"`
+
+**JSON config:**
+```json
+{
+  "historical_start_year": 1999,
+  "historical_index": "nasdaq"
+}
+```
+
+**Web UI:** 5-pill segmented control (Fixed % | S&P 500 | NASDAQ | Bonds | Russell 2000) with dynamic year slider min per index.
+
+**Wrap-around:** If simulation exceeds available data, years wrap from the index's start year.
+
+**Backward compatibility:** `historical_index=None` defaults to `"sp500"`; `historical_start_year=None` uses fixed `return_rate`.
 
 ---
 
-## Quick Start
+### What-If Explorer
 
-### Running the Simulation
-```bash
-python main.py
-```
+Real-time scenario exploration with sliders. Key architecture:
 
-Outputs:
-- Year-by-year tables for both scenarios
-- Validation checks
-- Scenario comparisons and insights
+- **`WhatIfScenarioSchema`** — Canonical source of truth for scenario state (backend)
+- **`toApiRequest()`** — All saves/simulates send this format (frontend)
+- **`fromDefinition(def)`** — All loads restore exact values (frontend)
 
-### Running Scenario Analysis (Configuration-Driven)
-```bash
-# Step 1: Simulate all scenarios (once)
-python analysis/run_simulations.py
+Adding a new field: add to schema + update two mappers.
 
-# Step 2: Run analysis (use cached results)
-python analysis/run_analysis.py
-
-# Edit scenario_analysis/analysis.json to add/modify analyses
-# Step 3: Re-run Step 2 (no re-simulation!)
-python analysis/run_analysis.py
-```
-
-### Switching Profiles
-```bash
-# Run default profile (Daniel)
-python analysis/run_simulations.py
-
-# Run Alon's profile (2 core scenarios: Baseline + IPO Exit)
-FINANCE_PROFILE=alon python analysis/run_simulations.py
-FINANCE_PROFILE=alon python analysis/run_analysis.py
-```
-
-Each profile has its own `data/profiles/{name}/` directory with separate simulations and results.
-
-**Note on Alon profile:** Previously had 7 scenarios including pension variations. Simplified to 2 core scenarios (Baseline, IPO Year 2) to streamline analysis. Pension scenarios can be restored from git: `git checkout data/profiles/alon/scenario_nodes.json`.
-
-### Running Tests
-```bash
-python -m unittest discover -s tests -p "test_*.py" -v
-```
-
-All 60 tests should pass (including 7 multi-index historical returns tests).
-
-### Running the Web Server
-
-The web application consists of a FastAPI backend and Vue 3 frontend.
-
-**Backend (FastAPI):**
-```bash
-cd web/backend
-pip install -r requirements.txt
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
-```
-
-Server runs at `http://localhost:8000`
-API docs (Swagger UI): `http://localhost:8000/docs`
-
-**Frontend (Vue 3):**
-```bash
-cd web/frontend
-npm install
-npm run dev
-```
-
-Frontend runs at `http://localhost:5173`
-
-Access the app at: `http://localhost:5173`
-
-**Features:**
-- What-If Explorer: Real-time scenario exploration with sliders
-- Save as Scenario: Persist What-If configurations as named scenarios
-- Scenarios View: Browse and compare saved scenarios
-- Authentication: Login-required access to profiles
-
-See [web/FEATURES.md](web/FEATURES.md) for complete user guide.
+**Save as Scenario:** Persists to SQLite with full fidelity (events, mortgage, pension, probabilistic events, return mode).
 
 ---
 
-## Recent Updates (April 13, 2026)
+### Guided Scenario Generator
 
-### What-If Explorer UI Restructuring
+Questionnaire-based scenario creation. **Endpoints:**
+- `POST /api/questionnaire/config` — Get questionnaire configuration
+- `POST /api/questionnaire/completeness` — Calculate data completeness score
+- `POST /api/generate-scenario` — Generate scenario from answers
 
-**Changes:**
-1. **Sidebar Layout** — Left sidebar (280px fixed) contains:
-   - Simulation Run selector
-   - Base Scenario selector
-   - "Save as Scenario" button
-   
-2. **Parameter Controls** — Main content split into:
-   - Parameters section (top, scrollable):
-     - 2-column grid of sliders: Monthly Income, Monthly Expenses, Growth Rate, Starting Age, Initial Portfolio
-     - One-Time Events subsection coupled with parameters
-     - Add/Remove event buttons integrated
-   - Chart section (fixed 350px height):
-     - Portfolio growth comparison chart
-     - Log scale toggle (enabled by default with 0 showing on Y-axis)
-   - Metrics section (scrollable):
-     - Retirement year and final portfolio comparisons
-     - Original vs What-If scenario metrics
-
-3. **Events Feature** — Now coupled with scenario parameters:
-   - Events display in-line with sliders
-   - Can add/remove/toggle events without leaving parameters section
-   - Events saved together with scenario when using "Save as Scenario"
-
-**Files Modified:**
-- `web/frontend/src/views/WhatIfView.vue` — Complete layout restructuring with sidebar and consolidated sections
-- `web/frontend/src/components/ComparisonChart.vue` — Reduced chart height to 280px for proper overflow handling
-
-### Save As Scenario Feature (Fully Implemented)
-
-**Workflow:**
-1. User adjusts sliders and events in What-If Explorer
-2. Clicks "Save as Scenario" button
-3. Modal prompts for scenario name
-4. Backend validates uniqueness, runs simulation in-process
-5. Scenario persisted to SQLite database:
-   - `scenario_definitions` table (with `saved_from='whatif'` marker and timestamp)
-   - `scenario_events` table (linked via `scenario_id` FK)
-   - `scenario_mortgages` table (if mortgage present)
-   - "What-If Saves" `SimulationRun` for grouping
-   - `ScenarioResult` and `YearData` tables
-6. Scenario immediately available in Scenarios view
-
-**Files Implemented:**
-- `web/backend/routers/whatif_saves.py` — Save endpoint with database persistence
-- `web/backend/schemas.py` — SaveScenarioRequest/Response models
-- `web/frontend/src/views/WhatIfView.vue` — Save button and modal UI
-- `web/backend/requirements.txt` — Removed `filelock` dependency (database replaces file locking)
-
-**Architecture:**
-- Database-first persistence in SQLite (scenario_definitions table)
-- Transactional integrity (ACID guarantees, automatic rollback on error)
-- Foreign key relationships (scenario_id links definitions to results)
-- 201 Created status on success, 409 Conflict if name exists
-- Scenario simulation runs on backend (ensures consistency)
-- JSON files kept as read-only backups for portability
-
----
-
-## Recent Bug Fixes (April 13, 2026)
-
-### Mortgage Rate Conversion Bug Fixed (CRITICAL)
-
-**Problem:** Graph displayed mathematically nonsensical values when mortgage scenarios were loaded. The issue was a 100x mismatch in mortgage rate calculations.
-
-**Root cause:** Frontend was sending mortgage `annual_rate` as a percentage (e.g., 4.5 for 4.5%) but the backend expected a decimal (e.g., 0.045). This caused the backend to calculate mortgage payments at 100x the correct rate.
-
-**Example impact:**
-- User sets mortgage rate slider to 4.5%
-- Frontend displays ₪8,000-10,000/month (correct in UI)
-- Backend receives: `annual_rate: 4.5` (percentage instead of decimal)
-- Backend calculates: `r = 4.5 / 12 = 0.375` (37.5% per month!)
-- Monthly payment: ₪4,500,000+ (100x too large)
-- Result: Expenses crash portfolio to zero immediately
-
-**Solution implemented:** Convert mortgage `annual_rate` to decimal before sending to backend, matching how `return_rate` is already handled.
-
-**Files modified:**
-- `web/frontend/src/views/WhatIfView.vue` — Added `/100` conversion in three places:
-  - Line 507: `refreshOriginalScenario()` 
-  - Line 541: `runSimulation()`
-  - Line 639: `saveScenario()`
-
-**Verification:** Monthly payment for ₪1.5M mortgage at 4.5% over 20 years now correctly calculates to ₪9,490/month instead of ₪4.5M/month.
-
----
-
-### Pension Bridge Implementation Fixed
-
-**Problem:** ScenarioNode inheritance tree was not properly transferring `pension` and `retirement_mode` fields to resolved Scenario objects. This caused:
-1. Pension scenarios to show `pension_value: 0.0` (pension not accumulating)
-2. Pension-bridged retirement mode not being applied (all scenarios defaulting to "liquid_only")
-3. Pension bridge retirement years identical to non-bridged versions
-
-**Root cause:** Two missing components:
-- `ScenarioNode` class lacked `pension` and `retirement_mode` fields
-- `parse_scenario_node()` parser was not reading these fields from JSON
-- `ScenarioNode.resolve()` was not transferring these fields during inheritance chain resolution
-
-**Solution implemented:**
-1. Added `pension: Optional[Pension]` and `retirement_mode: Optional[str]` fields to ScenarioNode dataclass
-2. Updated `parse_scenario_node()` to parse and pass these fields from JSON
-3. Updated `ScenarioNode.resolve()` to transfer both fields during override application
-4. Re-ran all simulations; pension-bridged scenarios now show correct retirement years
-
-**Files modified:**
-- `domain/models.py` — Added fields to ScenarioNode, updated resolve() logic
-- `infrastructure/parsers.py` — Added pension/retirement_mode parsing in parse_scenario_node()
-
-**Verification:** Pension bridge scenarios now correctly delay retirement by 1-3 years vs liquid-only, reflecting stricter two-phase lifetime sustainability validation.
-
----
-
-## Architecture Overview
-
-**4-Layer Responsibility-Based Structure:**
-
-```
-finance_planner/
-├── domain/              # Pure business logic
-├── infrastructure/      # Config loading & caching
-├── presentation/        # Output formatting
-├── analysis/            # Scenario analysis subsystem
-└── tests/              # 42 unit tests (all passing)
-```
-
-**Key principle:** Each layer depends only on layers below. No circular dependencies.
-
----
-
-## Component Documentation
-
-| Layer | Purpose | Documentation |
-|-------|---------|---|
-| **domain/** | Financial models, simulation engine, insights | [domain/DOMAIN.md](domain/DOMAIN.md) |
-| **infrastructure/** | Configuration loading, parsing, caching | [infrastructure/CONFIG.md](infrastructure/CONFIG.md) |
-| **presentation/** | Output formatting, currency display | [presentation/PRESENTATION.md](presentation/PRESENTATION.md) |
-| **analysis/** | Decoupled analysis system, scenario comparisons | [analysis/ANALYSIS.md](analysis/ANALYSIS.md) |
-| **web/backend/** | FastAPI REST API, authentication, data persistence | [web/backend/README.md](web/backend/README.md), [API.md](web/backend/API.md), [ARCHITECTURE.md](web/backend/ARCHITECTURE.md) |
-| **web/features/** | User-facing feature guides and workflows | [web/FEATURES.md](web/FEATURES.md) |
-
----
-
-## File Structure
-
-### Core Modules
-- **domain/breakdown.py** — IncomeBreakdown, ExpenseBreakdown (named components with .total property)
-- **domain/models.py** — Event, Mortgage, Pension, Scenario, ScenarioNode dataclasses
-- **domain/simulation.py** — Core simulate() engine + YearData (with pension tracking), SimulationResult
-- **domain/insights.py** — Comparison logic + structured insight objects
-- **infrastructure/parsers.py** — Consolidated dict→model parsing (includes parse_income/expense_breakdown, parse_pension)
-- **infrastructure/loaders.py** — load_scenarios, load_settings, load_scenario_nodes (supports FINANCE_PROFILE env var)
-- **infrastructure/data_layer.py** — Profile management + environment variable support
-- **infrastructure/cache.py** — Serialization/deserialization for decoupled analysis
-- **presentation/constants.py** — Currency symbols, formatting helpers
-- **presentation/formatters.py** — print_scenario_header (with component display), print_year_summary
-- **analysis/run_simulations.py** — Batch simulation runner (profile-aware)
-- **analysis/run_analysis.py** — Configuration-driven analysis dispatcher (profile-aware)
-- **main.py** — Entry point orchestrator
-
-### Configuration Files
-- **scenarios.json** — Scenario data (supports both flat numbers and breakdown objects for income/expenses)
-- **settings.json** — Simulation settings + output display options
-- **scenario_analysis/scenario_nodes.json** — Scenario inheritance tree (income/expenses can be overridden with deep merge)
-- **scenario_analysis/analysis.json** — Analysis configurations
-- **scenario_analysis/simulation_cache.json** — Generated by run_simulations.py
-
-### Tests
-- **tests/test_simulation.py** — 42 unit tests (all pure, no mocks)
-
-### Web Backend
-- **web/backend/main.py** — FastAPI app initialization, router registration
-- **web/backend/database.py** — SQLAlchemy ORM setup, session management
-- **web/backend/auth.py** — JWT authentication, login endpoint
-- **web/backend/models.py** — SQLAlchemy ORM models (Profile, SimulationRun, ScenarioResult, YearData)
-- **web/backend/schemas.py** — Pydantic request/response validation models
-- **web/backend/routers/auth.py** — Authentication endpoints
-- **web/backend/routers/profiles.py** — Profile CRUD endpoints
-- **web/backend/routers/scenarios.py** — Scenario retrieval endpoints
-- **web/backend/routers/simulate.py** — One-off What-If simulation (stateless)
-- **web/backend/routers/whatif_saves.py** — Save What-If scenarios to disk + SQLite
-- **web/backend/requirements.txt** — Python dependencies (FastAPI, SQLAlchemy, filelock, etc.)
-
-### Report Generation
-- **reports/** — Organized folder for all generated reports
-- **analysis/generate_report.py** — Utility for generating reports to reports/ folder
-- Reports include: Portfolio growth analysis, financial summaries, scenario comparisons
-
----
-
-## Reports & Analysis Output
-
-All generated reports are organized in the **`reports/`** folder.
-
-### Generating Reports
-
-**Portfolio Growth & Acceleration Analysis:**
-```bash
-PYTHONPATH=/Users/alon/Documents/finance_planner python analysis/generate_report.py growth_analysis
-```
-
-Reports automatically save to: `/Users/alon/Documents/finance_planner/reports/`
-
-### Available Reports
-
-- **portfolio_growth_analysis.md** — Year-by-year portfolio growth, acceleration rates, milestone analysis
-- **ALON_FINANCIAL_REPORT_2026_UPDATED.md** — Comprehensive Alon financial analysis (20+ pages)
-- **RECENT_CHANGES_SUMMARY.md** — Quick reference for recent bug fixes and changes
-- See `reports/README.md` for complete report inventory
-
-### Report Contents
-
-Each report includes:
-- Scenario overview and parameters
-- Year-by-year growth analysis
-- Acceleration metrics and inflection points
-- Cross-scenario comparisons
-- Milestone analysis (reaching specific wealth targets)
-- Strategic insights
-
----
-
-## Creating a New Profile
-
-**See [PROFILE_SETUP.md](PROFILE_SETUP.md) for complete guide to creating new profiles from scratch.**
-
-Quick reference:
-1. Create directory: `data/profiles/{name}/`
-2. Add config files: `settings.json`, `scenarios.json`, `scenario_nodes.json`, `analyses/config.json`
-3. Run: `python analysis/run_simulations.py` → `python analysis/run_analysis.py`
-
-The guide includes:
-- Complete file format reference with examples
-- Step-by-step walkthrough for "John's Consulting Profile"
-- Data requirements checklist
-- Common patterns (mortgages, events, inheritance, **pension**)
-- Troubleshooting
+Config-driven: all rules and question templates in JSON, no hardcoding.
 
 ---
 
 ## Pension Modeling
 
-Scenarios can include **optional pension wealth** that accumulates separately from the investment portfolio. Pension enables two retirement modes: `liquid_only` (standard) and `pension_bridged` (stricter validation).
+Pension accumulates separately from the liquid portfolio and enables two retirement modes.
 
-### Pension Fields (in scenarios.json or scenario_nodes.json)
+### Pension Fields
 ```json
 "pension": {
-  "initial_value": 2000000,           # Accumulated pension value today (₪)
-  "monthly_contribution": 9000,       # Monthly addition to pension fund (₪)
-  "annual_growth_rate": 0.06,         # Pension fund return rate (6% typical)
-  "accessible_at_age": 67             # Age when pension unlocks (Israeli standard: 67)
+  "initial_value": 2000000,
+  "monthly_contribution": 9000,
+  "annual_growth_rate": 0.06,
+  "accessible_at_age": 67
 }
 ```
 
 ### Retirement Modes
 
-**Mode 1: `liquid_only` (default)**
-- Retirement check: Portfolio must sustain from retirement age until age 100
-- Pension exists but is ignored for retirement validation
-- Typical use: When liquid portfolio is sufficient alone
+**`liquid_only` (default):** Portfolio must sustain from retirement age until age 100. Pension ignored for retirement validation.
 
-**Mode 2: `pension_bridged`**
-- Two-phase retirement check:
-  1. **Phase 1** (retirement → pension_accessible_at_age): Portfolio must sustain alone
-  2. **Phase 2** (pension_accessible_at_age → 100): Portfolio + Pension combined must sustain
-- More conservative; ensures lifetime security even if portfolio underperforms
-- Typical use: When wanting pension-backed safety net for age 67+ period
+**`pension_bridged`:** Two-phase check:
+1. Phase 1 (retirement → pension access age): Portfolio must sustain alone
+2. Phase 2 (pension access age → 100): Portfolio + Pension combined must sustain
 
-### Pension Behavior in Simulations
+Typically delays retirement by 1-3 years vs liquid-only, but provides lifetime security confidence.
 
-- **Accumulates independently** from liquid portfolio: each year grows by `(pension + contributions) * (1 + growth_rate)`
-- **Locked until access age**: before `accessible_at_age`, pension does NOT count toward retirement (shown as `pension_accessible: false`)
-- **Unlocks at access age**: from that year onward, pension counts toward retirement in bridged mode
-- **Realistic modeling**: captures Israeli mandatory pension (Keren Pensia) that's illiquid until retirement age
-
-### Example: Baseline Scenario
-
-| Year | Age | Liquid Portfolio | Pension Value | Mode | Retire? |
-|------|-----|------------------|----------------|------|---------|
-| 1 | 42 | ₪1.7M | ₪2.1M | liquid_only | ❌ |
-| 11 | 52 | ₪6.3M | ₪4.8M | liquid_only | ✅ Year 11 |
-| 11 | 52 | ₪6.3M | ₪4.8M | pension_bridged | ❌ (stricter) |
-| 12 | 53 | ₪6.9M | ₪4.9M | pension_bridged | ✅ Year 12 |
-| 20 | 61 | ₪13.2M | ₪10.6M | both modes | ✅ |
-
-**Key insight:** Pension-bridged mode delays retirement by 1-3 years vs liquid-only, but provides confidence that combined portfolio+pension sustains through age 100.
-
-### YearData Includes
+### YearData Fields
 - `pension_value: float` — Accumulated pension at year-end
-- `pension_accessible: bool` — Whether pension unlocked and counts toward retirement
+- `pension_accessible: bool` — Whether pension unlocked
 
 ---
 
 ## Income & Expense Breakdowns
 
-Scenarios now support **named components** for income and expenses, enabling detailed breakdown analysis and flexible scenario variations.
-
-### Breakdown Fields (in scenarios.json)
-
-**Option 1: Simple flat numbers (backward compatible)**
+### Flat numbers (backward compatible)
 ```json
 "monthly_income": 45000,
 "monthly_expenses": 22000
 ```
 
-**Option 2: Named components (new)**
+### Named components
 ```json
-"monthly_income": {
-  "salary": 36000,
-  "freelance": 5000,
-  "rental": 4000
-},
-"monthly_expenses": {
-  "rent": 8000,
-  "food": 3500,
-  "utilities": 1500,
-  "childcare": 4000,
-  "other": 5000
-}
+"monthly_income": { "salary": 36000, "freelance": 5000, "rental": 4000 },
+"monthly_expenses": { "rent": 8000, "food": 3500, "other": 5000 }
 ```
 
-### Breakdown Behavior in Simulations
-
-- **Component names are arbitrary** — Use labels that match your financial reality ("salary", "gig", "dividend", etc.)
-- **Totals calculated automatically** — `.total` property sums all components
-- **Display includes breakdown** — When multiple components exist, scenario header shows each line item
-- **Single-component renders like flat float** — Backward compatible output for plain numbers
-
-### Scenario Output with Breakdown
-
-```
-  Income:   ₪     45,000/month
-    salary                 ₪     36,000/month
-    freelance              ₪      5,000/month
-    rental                 ₪      4,000/month
-  Expenses: ₪     22,000/month
-    rent                   ₪      8,000/month
-    food                   ₪      3,500/month
-    utilities              ₪      1,500/month
-    childcare              ₪      4,000/month
-    other                  ₪      5,000/month
-  Net:      ₪     23,000/month
-```
-
-### ScenarioNode Overrides with Deep Merge
-
-Child nodes can override individual components without redefining the entire breakdown.
-
+### ScenarioNode deep-merge overrides
+Child nodes can override individual components without redefining the full breakdown:
 ```json
-{
-  "name": "Higher Freelance Income",
-  "parent": "Baseline",
-  "monthly_income": {
-    "freelance": 15000
-  }
-}
+{ "name": "Higher Freelance", "parent": "Baseline", "monthly_income": { "freelance": 15000 } }
 ```
-
-**Result:** Child inherits `salary` from parent, but `freelance` is overridden to 15000. Total income becomes salary + 15000.
-
-### Example: Income Variation Analysis
-
-```python
-from domain.models import Scenario
-from domain.breakdown import IncomeBreakdown, ExpenseBreakdown
-from domain.simulation import simulate
-
-# Base scenario with components
-base = Scenario(
-    name="Baseline",
-    monthly_income=IncomeBreakdown({"salary": 30000, "freelance": 5000}),
-    monthly_expenses=ExpenseBreakdown({"rent": 8000, "other": 3000}),
-)
-
-# Simulate at different freelance income levels
-for freelance_amount in [3000, 5000, 10000, 15000]:
-    scenario = Scenario(
-        name=f"Freelance: ₪{freelance_amount:,}",
-        monthly_income=IncomeBreakdown({"salary": 30000, "freelance": freelance_amount}),
-        monthly_expenses=base.monthly_expenses,
-    )
-    result = simulate(scenario, years=30)
-    print(f"{scenario.name}: Retire at year {result.retirement_year}")
-```
-
-### Backward Compatibility
-
-- ✅ Old JSON with flat `"monthly_income": 45000` continues to work
-- ✅ Plain floats are automatically wrapped as `{"income": 45000}` internally
-- ✅ Simulation math unchanged — uses `.total` which sums components
-- ✅ Tests cover both flat and breakdown formats
 
 ---
 
 ## Common Tasks
 
-### Simulate a Scenario (with Breakdowns)
+### Simulate a Scenario
 ```python
 from domain.models import Scenario
 from domain.breakdown import IncomeBreakdown, ExpenseBreakdown
 from domain.simulation import simulate
 
-# Using component breakdowns
 scenario = Scenario(
     name="Test",
     monthly_income=IncomeBreakdown({"salary": 35000, "bonus": 15000}),
@@ -733,23 +382,6 @@ scenario = Scenario(
 )
 result = simulate(scenario, years=20)
 print(f"Retires at year {result.retirement_year}")
-print(f"Income components: {scenario.monthly_income.components}")
-print(f"Total income: ₪{scenario.monthly_income.total:,}")
-```
-
-### Simulate a Scenario (Simple / Backward Compatible)
-```python
-from domain.models import Scenario
-from domain.breakdown import IncomeBreakdown, ExpenseBreakdown
-from domain.simulation import simulate
-
-# Plain numbers (auto-wrapped internally)
-scenario = Scenario(
-    name="Simple",
-    monthly_income=IncomeBreakdown({"income": 50000}),  # Or just use flat number
-    monthly_expenses=ExpenseBreakdown({"expenses": 30000})
-)
-result = simulate(scenario, years=20)
 ```
 
 ### Simulate with Pension
@@ -757,64 +389,60 @@ result = simulate(scenario, years=20)
 from domain.models import Scenario, Pension
 from domain.simulation import simulate
 
-pension = Pension(
-    initial_value=2_000_000,
-    monthly_contribution=9_000,
-    annual_growth_rate=0.06,
-    accessible_at_age=67
-)
-
-scenario = Scenario(
-    name="With Pension",
-    monthly_income=50_000,
-    monthly_expenses=30_000,
-    pension=pension,
-    age=41
-)
-
+pension = Pension(initial_value=2_000_000, monthly_contribution=9_000,
+                  annual_growth_rate=0.06, accessible_at_age=67)
+scenario = Scenario(name="With Pension", monthly_income=50_000,
+                    monthly_expenses=30_000, pension=pension, age=41)
 result = simulate(scenario, years=30)
-for yd in result.year_data:
-    if yd.year in [1, 20, 27]:  # Year 27 is age 67 (pension unlocks)
-        print(f"Year {yd.year}: Portfolio={yd.portfolio:,.0f}, Pension={yd.pension_value:,.0f}, Accessible={yd.pension_accessible}")
+```
+
+### Run Monte Carlo
+```python
+from domain.monte_carlo import run_monte_carlo
+result = run_monte_carlo(scenario, n_trials=500, years=40)
+print(f"Retirement probability: {result.retirement_probability:.1%}")
+```
+
+### Simulate Branches (Probabilistic Events)
+```python
+from domain.simulation import simulate_branches
+branches = simulate_branches(scenario)  # One SimulationResult per outcome cross-product
 ```
 
 ### Compare Two Scenarios
 ```python
 from domain.insights import build_insights, format_insights
-
 insights = build_insights(result_a, result_b)
 print(format_insights(insights))
 ```
 
 ### Load Scenarios
 ```python
-from infrastructure.loaders import load_scenarios
+from infrastructure.loaders import load_scenarios, load_scenario_nodes
 
 scenarios = load_scenarios()
-baseline = scenarios["Baseline"]
-```
-
-### Load Scenario Tree
-```python
-from infrastructure.loaders import load_scenario_nodes
-
 nodes = load_scenario_nodes()
 resolved = nodes["Alon - Buy Apartment + Exit"].resolve(nodes)
-result = simulate(resolved, years=20)
 ```
 
 ### Add a New Scenario
-1. Edit **scenarios.json** — Add new scenario block
+1. Edit **scenarios.json** — Add scenario block
 2. Run `python main.py` — Auto-loads
 
 ### Add a New Analysis
 1. Edit **scenario_analysis/analysis.json** — Add analysis block
-2. Run `python analysis/run_analysis.py` — No code changes!
+2. Run `python analysis/run_analysis.py` — No code changes
 
-### Change Simulation Settings
-1. Edit **settings.json**
-2. Run `python analysis/run_simulations.py` — Re-simulate
-3. Run `python analysis/run_analysis.py` — View results
+---
+
+## Creating a New Profile
+
+See [PROFILE_SETUP.md](PROFILE_SETUP.md) for the complete guide.
+
+Quick reference:
+1. Create `data/profiles/{name}/`
+2. Add `settings.json`, `scenarios.json`, `scenario_nodes.json`, `analyses/config.json`
+3. Run simulations + analysis
 
 ---
 
@@ -822,31 +450,8 @@ result = simulate(resolved, years=20)
 
 **Philosophy:** Data/config in JSON. Logic immutable. Users don't edit Python.
 
-### Edit These Files
-- ✅ scenarios.json (income/expenses can be flat numbers OR component objects; optional pension field)
-- ✅ scenario_nodes.json (income/expense overrides support deep merge of components)
-- ✅ analysis.json
-- ✅ settings.json
-
-### Don't Edit (Unless Extending)
-- ❌ models.py, simulation.py, main.py (unless adding features)
-
----
-
-## Backward Compatibility
-
-Old imports still work:
-```python
-# Old way (still works)
-from models import Scenario
-from simulation import simulate
-from comparison import build_insights
-
-# New way (recommended)
-from domain.models import Scenario
-from domain.simulation import simulate
-from domain.insights import build_insights
-```
+- ✅ Edit: `scenarios.json`, `scenario_nodes.json`, `analysis.json`, `settings.json`
+- ❌ Don't edit (unless extending): `models.py`, `simulation.py`, `main.py`
 
 ---
 
@@ -854,11 +459,11 @@ from domain.insights import build_insights
 
 1. **Pure functions** — No side effects, idempotent
 2. **Immutable models** — Dataclasses, no mutations
-3. **No external deps** — Only Python stdlib
-4. **Decoupled** — Simulate once, analyze many times (100x faster)
+3. **No external deps** — Only Python stdlib (domain layer)
+4. **Decoupled** — Simulate once, analyze many times
 5. **Configuration-driven** — JSON controls behavior
 6. **Type-safe** — All models typed
-7. **Well-tested** — 42 unit tests, all passing
+7. **Well-tested** — 108 unit tests, all passing
 
 ---
 
@@ -870,9 +475,6 @@ cd /Users/alon/Documents/finance_planner
 python main.py
 ```
 
-### JSON syntax error
-Check for trailing commas, missing quotes in JSON files.
-
 ### Tests fail
 ```bash
 python -m unittest discover -s tests -p "test_*.py" -v
@@ -880,13 +482,7 @@ python -m unittest discover -s tests -p "test_*.py" -v
 
 ### Stale cache
 ```bash
-# Default profile
-rm data/profiles/default/analyses/cache/simulation_cache.json
-
-# Or any profile
 FINANCE_PROFILE=alon rm data/profiles/alon/analyses/cache/simulation_cache.json
-
-# Then re-simulate
 FINANCE_PROFILE=alon python analysis/run_simulations.py
 FINANCE_PROFILE=alon python analysis/run_analysis.py
 ```
@@ -896,11 +492,14 @@ FINANCE_PROFILE=alon python analysis/run_analysis.py
 ## Summary
 
 ✅ Modular (4 layers)  
-✅ Testable (42 tests, all passing)  
+✅ 108 tests, all passing  
 ✅ Extensible (JSON-driven)  
 ✅ Documented (component guides)  
 ✅ Fast (decoupled simulation/analysis)  
-✅ **New:** Income/Expense breakdowns with named components and deep-merge overrides  
-✅ **Backward compatible:** Old flat-number JSON still works  
+✅ Monte Carlo + OAT sensitivity  
+✅ Multi-index historical returns (S&P 500, NASDAQ, Bonds, Russell 2000)  
+✅ Probabilistic events (simulate_branches + Monte Carlo sampling)  
+✅ Income/Expense breakdowns with named components and deep-merge overrides  
+✅ Backward compatible  
 
-For detailed info, see component guides (links above).
+For detailed info, see component guides linked above.

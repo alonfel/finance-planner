@@ -1,6 +1,7 @@
-from dataclasses import dataclass
+import random
+from dataclasses import dataclass, replace
 from typing import Optional
-from domain.models import Scenario
+from domain.models import Scenario, Event
 
 
 @dataclass
@@ -187,3 +188,82 @@ def simulate(scenario: Scenario, years: int = 40, rate_sequence_override: Option
         year_data=year_data_list,
         retirement_year=retirement_year,
     )
+
+
+def simulate_branches(
+    scenario: Scenario,
+    years: int = 40,
+) -> list[tuple[str, float, SimulationResult]]:
+    """Simulate each probabilistic event outcome branch independently.
+
+    For each ProbabilisticEvent in scenario.probabilistic_events, iterates over
+    outcomes and runs a separate simulation with that outcome injected as a
+    deterministic Event. Outcomes with probability=0 are skipped.
+
+    If scenario.probabilistic_events is empty, returns a single-element list
+    with the plain simulate() result (regression-safe).
+
+    Args:
+        scenario: Scenario to simulate; probabilistic_events drives branching
+        years: Number of years per simulation (default 40)
+
+    Returns:
+        List of (label, probability, SimulationResult) tuples — one per outcome
+        branch. For the no-probabilistic-events case, label=scenario.name and
+        probability=1.0.
+    """
+    if not scenario.probabilistic_events:
+        result = simulate(scenario, years=years)
+        return [(scenario.name, 1.0, result)]
+
+    branches: list[tuple[str, float, SimulationResult]] = []
+
+    # For simplicity, expand all outcome combinations across all probabilistic events.
+    # Current scope (roadmap Feature 2): one probabilistic event per scenario in What-If.
+    # Multiple events produce a cross-product of branches; each branch injects all
+    # sampled outcomes as deterministic Events.
+    _expand_branches(scenario, scenario.probabilistic_events, [], 1.0, years, branches)
+
+    return branches
+
+
+def _expand_branches(
+    scenario: Scenario,
+    remaining_events: list,
+    accumulated_events: list[Event],
+    accumulated_probability: float,
+    years: int,
+    out: list,
+) -> None:
+    """Recursively expand probabilistic event outcome combinations into branches."""
+    if not remaining_events:
+        # All events resolved — run the simulation with accumulated injections
+        branch_scenario = replace(
+            scenario,
+            events=list(scenario.events) + accumulated_events,
+            probabilistic_events=[],
+        )
+        result = simulate(branch_scenario, years=years)
+        label = " + ".join(e.description or f"Year {e.year}" for e in accumulated_events) if accumulated_events else scenario.name
+        out.append((label, accumulated_probability, result))
+        return
+
+    current_event = remaining_events[0]
+    rest = remaining_events[1:]
+
+    for outcome in current_event.outcomes:
+        if outcome.probability == 0:
+            continue  # Skip zero-probability branches
+        branch_event = Event(
+            year=outcome.year,
+            portfolio_injection=outcome.portfolio_injection,
+            description=outcome.description,
+        )
+        _expand_branches(
+            scenario,
+            rest,
+            accumulated_events + [branch_event],
+            accumulated_probability * outcome.probability,
+            years,
+            out,
+        )
