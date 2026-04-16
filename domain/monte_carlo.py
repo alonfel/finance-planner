@@ -65,6 +65,43 @@ def _generate_lognormal_returns(
     return returns_matrix
 
 
+def _sample_probabilistic_events(scenario: Scenario) -> Scenario:
+    """Return a copy of scenario with one outcome sampled per probabilistic event.
+
+    For each ProbabilisticEvent, draws one outcome using probability weights and
+    injects it as a deterministic Event. The returned scenario has
+    probabilistic_events=[] so simulate() treats it as a normal scenario.
+
+    Args:
+        scenario: Scenario with zero or more probabilistic_events
+
+    Returns:
+        New Scenario with sampled outcomes added to events and probabilistic_events cleared
+    """
+    import random
+    from dataclasses import replace
+    from domain.models import Event
+
+    if not scenario.probabilistic_events:
+        return scenario
+
+    sampled_events = list(scenario.events)
+    for prob_event in scenario.probabilistic_events:
+        if not prob_event.outcomes:
+            continue
+        outcomes = prob_event.outcomes
+        weights = [o.probability for o in outcomes]
+        chosen = random.choices(outcomes, weights=weights, k=1)[0]
+        if chosen.portfolio_injection != 0.0:
+            sampled_events.append(Event(
+                year=chosen.year,
+                portfolio_injection=chosen.portfolio_injection,
+                description=chosen.description,
+            ))
+
+    return replace(scenario, events=sampled_events, probabilistic_events=[])
+
+
 def _run_trials(
     scenario: Scenario,
     returns_matrix: np.ndarray,
@@ -73,8 +110,11 @@ def _run_trials(
     """
     Run simulate() once per trial, each with a distinct return sequence.
 
+    If scenario has probabilistic_events, each trial independently samples one
+    outcome per event using probability weights before simulating.
+
     Args:
-        scenario: Base scenario (will be cloned per trial)
+        scenario: Base scenario
         returns_matrix: ndarray shape (n_trials, years) with return sequences
         years: Number of years (should match returns_matrix.shape[1])
 
@@ -89,8 +129,8 @@ def _run_trials(
     for trial_idx in range(n_trials):
         trial_returns = returns_matrix[trial_idx].tolist()
 
-        # Clone scenario and run simulation with this trial's return sequence
-        trial_scenario = replace(scenario)
+        # Sample one outcome per probabilistic event for this trial
+        trial_scenario = _sample_probabilistic_events(scenario)
         result = simulate(trial_scenario, years=years, rate_sequence_override=trial_returns)
         results.append(result)
 

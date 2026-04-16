@@ -14,6 +14,41 @@ class Event:
 
 
 @dataclass
+class EventOutcome:
+    """One possible outcome of a probabilistic event."""
+    year: int  # Simulation year this outcome occurs (1-indexed)
+    probability: float  # Weight in [0, 1]; all outcomes in a ProbabilisticEvent must sum to 1.0
+    portfolio_injection: float  # Positive = windfall, negative = expense
+    description: str = ""
+
+
+@dataclass
+class ProbabilisticEvent:
+    """An event with multiple mutually exclusive outcomes, each with a probability weight.
+
+    Deterministic simulation: each outcome branch is simulated independently.
+    Monte Carlo simulation: one outcome is sampled per trial using probability weights.
+
+    Args:
+        name: Human-readable label (e.g., "IPO")
+        outcomes: Mutually exclusive outcomes; probabilities must sum to 1.0 (within 0.001 tolerance)
+
+    Raises:
+        ValueError: If outcomes are non-empty and probabilities do not sum to 1.0
+    """
+    name: str
+    outcomes: list[EventOutcome] = field(default_factory=list)
+
+    def __post_init__(self):
+        if self.outcomes:
+            total = sum(o.probability for o in self.outcomes)
+            if abs(total - 1.0) > 0.001:
+                raise ValueError(
+                    f"ProbabilisticEvent '{self.name}': probabilities must sum to 1.0, got {total:.3f}"
+                )
+
+
+@dataclass
 class Mortgage:
     """Represents a fixed-rate mortgage with standard amortization."""
     principal: float
@@ -60,6 +95,7 @@ class Scenario:
     currency: str = "ILS"  # Currency code (e.g., "ILS", "USD", "EUR")
     age: int = 30  # Current age (used to calculate retirement age)
     events: list[Event] = field(default_factory=list)  # One-time events
+    probabilistic_events: list[ProbabilisticEvent] = field(default_factory=list)  # Events with multiple weighted outcomes
     retirement_mode: str = "liquid_only"  # "liquid_only" | "pension_bridged" (bridge with pension until accessible)
 
     # Retirement Lifestyle (new)
