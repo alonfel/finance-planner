@@ -95,7 +95,7 @@
 
 ### Feature: Frontend — Probabilistic Event Builder
 
-* Status: planned
+* Status: done
 * Description: UI in What-If Explorer to add/edit probabilistic events. Shows one card per event with all outcome branches. Live probability validation (must sum to 100%).
 * Layer: web/frontend/src/views/WhatIfView.vue
 * Inputs: user-defined event name + N outcome branches (year, %, amount)
@@ -112,7 +112,7 @@
 
 ### Feature: Frontend — Multi-Branch Results Display
 
-* Status: planned
+* Status: done
 * Description: When probabilistic events are present, the comparison chart overlays one simulation line per outcome branch (instead of a single What-If line). Each branch is labeled with outcome name + probability.
 * Layer: web/frontend/src/components/ComparisonChart.vue, WhatIfView.vue
 * Inputs: array of (label, year_data[]) from the simulate API
@@ -140,6 +140,6 @@ Placeholder for:
 
 ## Status Summary
 
-* Done: 11
+* Done: 13
 * In Progress: 0
-* Planned: 2
+* Planned: 0
