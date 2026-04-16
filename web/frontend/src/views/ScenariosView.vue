@@ -153,9 +153,9 @@ const formatCurrency = (value) => {
 
 const goToDetail = (scenarioId) => {
   router.push({
-    name: 'Scenario',
-    params: { resultId: scenarioId, profileId },
-    query: { mode: 'view' }
+    name: 'WhatIf',
+    params: { profileId },
+    query: { scenarioId, mode: 'view' }
   })
 }
 

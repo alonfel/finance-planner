@@ -3,14 +3,20 @@
     <header class="whatif-header">
       <div class="header-left">
         <button @click="goBack" class="btn-back">← Back</button>
-        <h1>🔮 What-If Explorer</h1>
+        <h1 v-if="isViewMode && originalScenario">{{ originalScenario.scenario_name }}</h1>
+        <h1 v-else>🔮 What-If Explorer</h1>
+        <span v-if="isViewMode" class="mode-badge view-mode-badge">👁️ View Mode</span>
       </div>
-      <button @click="logout" class="btn-logout">Logout</button>
+      <div class="header-right">
+        <button v-if="isViewMode" @click="enterEditMode" class="btn-edit-mode">✏️ Edit</button>
+        <button @click="logout" class="btn-logout">Logout</button>
+      </div>
     </header>
 
     <div class="whatif-main">
-      <!-- Left Sidebar: Run & Scenario Selection -->
+      <!-- Left Sidebar: Parameters + (edit mode) Run/Scenario Selection -->
       <div class="whatif-sidebar">
+        <template v-if="!isViewMode">
         <div v-if="loading" class="loading-sidebar">Loading...</div>
         <div v-else-if="error" class="error-sidebar">{{ error }}</div>
         <div v-else class="sidebar-content">
@@ -56,13 +62,11 @@
             💾 Save as Scenario
           </button>
         </div>
-      </div>
+        </template>
 
-      <!-- Main Content Area -->
-      <div class="whatif-content">
-        <div v-if="originalScenario">
-          <!-- Top: Sliders & Events Section (Coupled Parameters) -->
-          <div class="sliders-section">
+        <!-- Scenario Parameters (grayed out in view mode) -->
+        <div v-if="loading && isViewMode" class="loading-sidebar">Loading scenario...</div>
+        <div v-else-if="originalScenario" class="sliders-section" :class="{ 'view-mode': isViewMode }">
             <h3 style="margin: 0 0 12px 0">Scenario Parameters</h3>
             <div class="sliders-grid">
               <div class="slider-group">
@@ -466,9 +470,14 @@
                 <button @click="addOutcome(peIdx)" class="btn-add-outcome">+ Outcome</button>
               </div>
             </div>
-          </div>
+        </div>
+      </div>
 
-          <!-- Middle: Chart (Visible without scrolling) -->
+      <!-- Main Content Area: Chart + Metrics -->
+      <div class="whatif-content">
+        <div v-if="originalScenario">
+
+          <!-- Chart (Visible without scrolling) -->
           <div v-if="whatIfResult" class="chart-section">
             <ScenarioInsights :special-points="chartSpecialPoints" />
             <ComparisonChart
@@ -482,8 +491,8 @@
           <!-- Bottom: Metrics (Scrollable) -->
           <div class="bottom-section">
             <div v-if="whatIfResult" class="metrics-cards">
-              <!-- Original scenario card — always shown -->
-              <div class="metric-card">
+              <!-- Original scenario card — only shown in edit mode -->
+              <div v-if="!isViewMode" class="metric-card">
                 <h3>Original</h3>
                 <div class="metric-item">
                   <span class="label">Retirement:</span>
@@ -525,9 +534,9 @@
                 </div>
               </template>
 
-              <!-- Single What-If card when no probabilistic events -->
+              <!-- Single card: "Scenario" in view mode, "What-If" in edit mode -->
               <div v-else class="metric-card">
-                <h3>What-If</h3>
+                <h3>{{ isViewMode ? 'Scenario' : 'What-If' }}</h3>
                 <div class="metric-item">
                   <span class="label">Retirement:</span>
                   <span class="value">
@@ -663,6 +672,14 @@ const showGeneratorModal = ref(false)
 let saveStatusTimeoutId = null
 
 const profileId = computed(() => route.params.profileId)
+const isViewMode = computed(() => route.query.mode === 'view')
+
+const enterEditMode = () => {
+  const newQuery = { ...route.query }
+  delete newQuery.mode
+  router.replace({ query: newQuery })
+}
+
 const originalStartingAge = computed(() => {
   if (!originalScenario.value || !originalScenario.value.year_data || originalScenario.value.year_data.length === 0) {
     return 41
@@ -680,15 +697,23 @@ const chartScenarios = computed(() => {
   if (!originalScenario.value) return []
   if (!whatIfResult.value) return [originalScenario.value]
   const branches = whatIfResult.value.branches ?? []
+  const branchList = branches.map(b => ({
+    scenario_name: `${b.label} (${Math.round(b.probability * 100)}%)`,
+    retirement_year: b.retirement_year,
+    year_data: b.year_data,
+  }))
   if (branches.length > 0) {
-    return [
-      originalScenario.value,
-      ...branches.map(b => ({
-        scenario_name: `${b.label} (${Math.round(b.probability * 100)}%)`,
-        retirement_year: b.retirement_year,
-        year_data: b.year_data,
-      }))
-    ]
+    // View mode: only branches (no Original baseline to compare against)
+    if (isViewMode.value) return branchList
+    return [originalScenario.value, ...branchList]
+  }
+  // View mode: single scenario line (no Original vs What-If comparison)
+  if (isViewMode.value) {
+    return [{
+      scenario_name: originalScenario.value.scenario_name,
+      retirement_year: whatIfResult.value.retirement_year,
+      year_data: whatIfResult.value.year_data,
+    }]
   }
   return [originalScenario.value, whatIfResult.value]
 })
@@ -704,7 +729,8 @@ const originalSpecialPoints = computed(() =>
 const whatIfSpecialPoints = computed(() =>
   computeSpecialPoints(whatIfResult.value?.year_data ?? [], {
     baseYear: BASE_YEAR,
-    retirementYear: whatIfResult.value?.retirement_year ?? null
+    retirementYear: whatIfResult.value?.retirement_year ?? null,
+    probabilisticEvents: probabilisticEvents.value
   })
 )
 
@@ -1170,12 +1196,14 @@ if (route.query.scenarioId) {
 
   // Load the scenario details and events
   const loadPreloadedScenario = async () => {
+    loading.value = true
     try {
       const response = await axios.get(`${API_BASE_URL}/scenarios/${selectedScenarioId.value}`)
       originalScenario.value = response.data
 
       // Use exact definition values if available
       if (response.data.definition) {
+        originalDefinition.value = { ...response.data.definition }
         fromDefinition(response.data.definition)
       } else {
         // Legacy fallback: load events from top-level
@@ -1194,6 +1222,8 @@ if (route.query.scenarioId) {
       await runSimulation()
     } catch (err) {
       console.error('Failed to load preloaded scenario:', err)
+    } finally {
+      loading.value = false
     }
   }
 
@@ -1224,6 +1254,78 @@ if (route.query.scenarioId) {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mode-badge {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 12px;
+}
+
+.view-mode-badge {
+  background: #e8f4fd;
+  color: #2980b9;
+  border: 1px solid #aed6f1;
+}
+
+.btn-edit-mode {
+  background: #667eea;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.btn-edit-mode:hover {
+  background: #5a6fd6;
+}
+
+.loading-content {
+  padding: 40px;
+  text-align: center;
+  color: #666;
+  font-size: 14px;
+  background: white;
+  border-radius: 8px;
+}
+
+/* View mode: gray out all inputs, hide action buttons */
+.sliders-section.view-mode input[type="range"],
+.sliders-section.view-mode input[type="number"],
+.sliders-section.view-mode input[type="text"],
+.sliders-section.view-mode input[type="checkbox"],
+.sliders-section.view-mode input[type="radio"] {
+  opacity: 0.55;
+  pointer-events: none;
+  cursor: default;
+}
+
+.sliders-section.view-mode .btn-index-option {
+  opacity: 0.55;
+  pointer-events: none;
+  cursor: default;
+}
+
+.sliders-section.view-mode .events-buttons,
+.sliders-section.view-mode .btn-remove-event,
+.sliders-section.view-mode .mortgage-buttons,
+.sliders-section.view-mode .btn-add-prob-event,
+.sliders-section.view-mode .btn-remove-prob-event,
+.sliders-section.view-mode .btn-add-outcome,
+.sliders-section.view-mode .btn-remove-outcome,
+.sliders-section.view-mode .prob-error-banner {
+  display: none !important;
 }
 
 .whatif-header h1 {
@@ -1257,13 +1359,14 @@ if (route.query.scenarioId) {
 }
 
 .whatif-sidebar {
-  width: 280px;
+  width: 380px;
   background: white;
   border-right: 1px solid #e0e0e0;
   box-shadow: 1px 0 3px rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
+  overflow-y: auto;
 }
 
 .sidebar-content {
@@ -1473,22 +1576,19 @@ if (route.query.scenarioId) {
   padding: 12px;
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  height: 350px !important;
-  max-height: 350px !important;
-  overflow: hidden !important;
   display: flex;
   flex-direction: column;
-  flex-shrink: 0 !important;
+  flex-shrink: 0;
 }
 
-.chart-section > * {
-  height: 100% !important;
-  max-height: 100% !important;
-  overflow: hidden !important;
+.chart-section .insights-section {
+  flex-shrink: 0;
 }
 
-.chart-section canvas {
-  max-height: 326px !important;
+.chart-section .chart-wrapper {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .bottom-section {

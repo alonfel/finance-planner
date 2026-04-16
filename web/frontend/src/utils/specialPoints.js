@@ -29,10 +29,11 @@ export const BASE_YEAR = new Date().getFullYear() - 1
  * @param {Object} [options={}]        - Configuration options
  * @param {number} [options.baseYear]  - Base calendar year (default: BASE_YEAR). Year 1 = baseYear + 1
  * @param {number} [options.retirementYear=null] - Pre-computed retirement year (1-indexed) from backend
+ * @param {Array}  [options.probabilisticEvents=[]] - Probabilistic events from scenario definition
  * @returns {SpecialPoint[]} Array of special points, sorted by yearIndex
  */
 export function computeSpecialPoints(yearData, options = {}) {
-  const { baseYear = BASE_YEAR, retirementYear = null } = options
+  const { baseYear = BASE_YEAR, retirementYear = null, probabilisticEvents = [] } = options
 
   if (!yearData || yearData.length === 0) return []
 
@@ -83,7 +84,32 @@ export function computeSpecialPoints(yearData, options = {}) {
     })
   }
 
-  // Future milestones (mortgage_end, major_event, etc.) would be added here following the same pattern.
+  // --- Milestone 3: Probabilistic Events ---
+  // Add a vertical marker for each unique (event, year) pair across all outcomes.
+  const seenEventYears = new Set()
+  for (const pe of probabilisticEvents) {
+    const uniqueYears = [...new Set((pe.outcomes || []).map(o => o.year))]
+    for (const eventYear of uniqueYears) {
+      const key = `${pe.name}__${eventYear}`
+      if (seenEventYears.has(key)) continue
+      seenEventYears.add(key)
+      const yearIdx = eventYear - 1 // simulation year is 1-indexed
+      if (yearIdx >= 0 && yearIdx < yearData.length) {
+        const d = yearData[yearIdx]
+        points.push({
+          id: `prob_event_${pe.name.replace(/\W+/g, '_')}_${eventYear}`,
+          yearIndex: yearIdx,
+          year: d.year,
+          age: d.age,
+          calendarYear: baseYear + d.year,
+          label: pe.name,
+          emoji: '🎲',
+          color: '#7c3aed',
+          insightText: `${pe.name} at Year ${d.year} (Age ${d.age}, ${baseYear + d.year})`
+        })
+      }
+    }
+  }
 
   // Sort by yearIndex so annotations appear left-to-right
   return points.sort((a, b) => a.yearIndex - b.yearIndex)
