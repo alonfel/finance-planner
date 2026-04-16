@@ -1,12 +1,13 @@
 """Monte Carlo simulation engine for probabilistic financial planning."""
 
 import math
-from dataclasses import dataclass
+import random
+from dataclasses import dataclass, replace
 from typing import Optional
 
 import numpy as np
 
-from domain.models import Scenario
+from domain.models import Event, Scenario
 from domain.simulation import simulate
 
 
@@ -78,10 +79,6 @@ def _sample_probabilistic_events(scenario: Scenario) -> Scenario:
     Returns:
         New Scenario with sampled outcomes added to events and probabilistic_events cleared
     """
-    import random
-    from dataclasses import replace
-    from domain.models import Event
-
     if not scenario.probabilistic_events:
         return scenario
 
@@ -121,8 +118,6 @@ def _run_trials(
     Returns:
         List of SimulationResult objects, one per trial
     """
-    from dataclasses import replace
-
     results = []
     n_trials = returns_matrix.shape[0]
 

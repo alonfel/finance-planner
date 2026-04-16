@@ -1349,6 +1349,39 @@ class TestSimulateBranches(unittest.TestCase):
         no_windfall_r = next(r for label, _, r in branches if "No windfall" in label)
         self.assertLess(big_windfall.retirement_year, no_windfall_r.retirement_year)
 
+    def test_two_events_produce_cross_product_branches(self):
+        """Two independent probabilistic events with 2 outcomes each produce 4 branches (cross-product)."""
+        from domain.simulation import simulate_branches
+        from domain.models import EventOutcome, ProbabilisticEvent
+        scenario = Scenario(
+            name="Test",
+            monthly_income=IncomeBreakdown({"income": 50_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 25_000}),
+            initial_portfolio=1_000_000,
+            age=40,
+            probabilistic_events=[
+                ProbabilisticEvent(
+                    name="Job",
+                    outcomes=[
+                        EventOutcome(year=1, probability=0.5, portfolio_injection=0.0, description="Same job"),
+                        EventOutcome(year=1, probability=0.5, portfolio_injection=200_000.0, description="New job bonus"),
+                    ],
+                ),
+                ProbabilisticEvent(
+                    name="Investment",
+                    outcomes=[
+                        EventOutcome(year=2, probability=0.4, portfolio_injection=0.0, description="No return"),
+                        EventOutcome(year=2, probability=0.6, portfolio_injection=500_000.0, description="Investment pays"),
+                    ],
+                ),
+            ],
+        )
+        branches = simulate_branches(scenario, years=20)
+        self.assertEqual(len(branches), 4)
+        # Combined probabilities must sum to 1.0
+        total_prob = sum(p for _, p, _ in branches)
+        self.assertAlmostEqual(total_prob, 1.0, places=5)
+
 
 class TestMonteCarloProbabilisticSampling(unittest.TestCase):
     """Tests for Monte Carlo outcome sampling with probabilistic events."""

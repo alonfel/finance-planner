@@ -496,7 +496,7 @@
                 </div>
                 <div class="metric-item">
                   <span class="label">Final Portfolio:</span>
-                  <span class="value">₪{{ formatNumber(originalScenario.final_portfolio) }}M</span>
+                  <span class="value">₪{{ formatNumber((originalScenario.final_portfolio ?? 0) / 1000000) }}M</span>
                 </div>
               </div>
 
@@ -539,7 +539,7 @@
                 </div>
                 <div class="metric-item">
                   <span class="label">Final Portfolio:</span>
-                  <span class="value">₪{{ formatNumber(whatIfResult.final_portfolio) }}M</span>
+                  <span class="value">₪{{ formatNumber((whatIfResult.final_portfolio ?? 0) / 1000000) }}M</span>
                 </div>
               </div>
             </div>
@@ -839,6 +839,7 @@ const refreshOriginalScenario = async () => {
     // Update original scenario's year_data with fresh simulation
     originalScenario.value.year_data = response.data.year_data
     originalScenario.value.retirement_year = response.data.retirement_year
+    originalScenario.value.final_portfolio = response.data.final_portfolio
   } catch (err) {
     console.error('Failed to refresh original scenario:', err)
   }
