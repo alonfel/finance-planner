@@ -84,7 +84,52 @@
 
 ---
 
-## Phase 3 — Insight & Analysis Layer
+## Phase 3 — UI Fixes & Polish
+
+### Feature: Delete Scenario Bug Fix
+
+* Status: planned
+* Description: Can't delete seeded scenarios (e.g. "Alon - IPO Year 2") from the Scenarios screen. Root cause: backend delete endpoint restricts to "What-If Saves" run label only, rejecting seeded scenarios with 403. Secondary issue: list_scenarios returns scenario_id (definition ID) as the card ID instead of result.id, causing ID mismatch for both navigation and delete on What-If saved scenarios.
+* Layer: web/backend/routers/scenarios.py, web/frontend/src/views/ScenariosView.vue
+* Acceptance Criteria:
+  * Any scenario can be soft-deleted regardless of run label
+  * list_scenarios always returns result.id as the card ID
+  * Delete flow completes without error for seeded and What-If saved scenarios
+
+### Feature: Sidebar Full-Height Layout
+
+* Status: planned
+* Description: The scenario parameters sidebar only fills ~55% of vertical space; user must scroll to reach bottom controls. Root cause: .sliders-section has max-height: 55vh hard-coded. The sidebar container already scrolls — removing the cap lets the sidebar fill top-to-bottom naturally.
+* Layer: web/frontend/src/views/WhatIfView.vue (CSS)
+* Acceptance Criteria:
+  * Sidebar parameters use full available vertical space
+  * Sidebar scrolls smoothly when content overflows
+  * No layout regression on different screen sizes
+
+### Feature: Branch Color & Event Label Differentiation
+
+* Status: planned
+* Description: When probabilistic events produce branches, all cards look identical with no visual tie between branch and event name. Branch label (e.g. "Success") doesn't show which event it belongs to. Fix: show the event name prominently in each branch card and match the card's left-border color to its chart line color so users can visually trace branch → chart line.
+* Layer: web/frontend/src/views/WhatIfView.vue
+* Acceptance Criteria:
+  * Each branch metric card has a colored left border matching its chart line
+  * Event name is shown as a distinct header inside the card (parsed from label)
+  * Single-event and multi-event cross-product cases both display correctly
+
+### Feature: Scenarios Screen Cleanup
+
+* Status: planned
+* Description: The Scenarios screen has redundant/broken action buttons cluttering the header: "🔮 What-If Explorer" (redundant — users navigate via card clicks) and "✨ Guided Scenario Generator" (non-functional). Remove both; keep "📊 Compare Scenarios" which is the only unique action.
+* Layer: web/frontend/src/views/ScenariosView.vue
+* Acceptance Criteria:
+  * "What-If Explorer" button removed from Scenarios screen
+  * "Guided Scenario Generator" button removed from Scenarios screen
+  * "Compare Scenarios" button retained
+  * No dead imports or unused refs left in the component
+
+---
+
+## Phase 4 — Insight & Analysis Layer
 
 ### Feature: Tax Modeling
 
@@ -137,4 +182,4 @@
 
 * Done: 14
 * In Progress: 0
-* Planned: 3
+* Planned: 7

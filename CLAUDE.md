@@ -98,7 +98,7 @@ Each profile has its own `data/profiles/{name}/` directory.
 python -m unittest discover -s tests -p "test_*.py" -v
 ```
 
-All **108 tests** should pass (85 simulation + 23 Monte Carlo).
+All **109 tests** should pass (86 simulation + 23 Monte Carlo).
 
 ### Running the Web Server
 
@@ -492,7 +492,7 @@ FINANCE_PROFILE=alon python analysis/run_analysis.py
 ## Summary
 
 ✅ Modular (4 layers)  
-✅ 108 tests, all passing  
+✅ 109 tests, all passing  
 ✅ Extensible (JSON-driven)  
 ✅ Documented (component guides)  
 ✅ Fast (decoupled simulation/analysis)  
