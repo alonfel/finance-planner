@@ -44,102 +44,97 @@
 
 ---
 
-## Phase 2 — Probabilistic Events
+## Phase 2 — Probabilistic Events (Completed)
 
 ### Feature: ProbabilisticEvent Domain Model
 
 * Status: done
 * Description: New domain types for events with multiple weighted outcomes. Each outcome has a year, probability, and portfolio injection. Probabilities across outcomes must sum to 1.0.
 * Layer: domain/models.py
-* Inputs: list of (year, probability, amount, description) tuples
-* Outputs: ProbabilisticEvent + EventOutcome dataclasses; Scenario.probabilistic_events field
-* Dependencies: none (foundation)
-* Acceptance Criteria:
-  * EventOutcome dataclass: year, probability (float 0–1), portfolio_injection, description
-  * ProbabilisticEvent dataclass: name, outcomes (list[EventOutcome])
-  * Validation raises ValueError if probabilities don't sum to 1.0 (within 0.001 tolerance)
-  * Scenario gains probabilistic_events: list[ProbabilisticEvent] = field(default_factory=list)
-  * Unit tests: valid event, bad probabilities, zero outcomes, single outcome
 
 ### Feature: Simulation Engine — Probabilistic Event Support
 
 * Status: done
-* Description: Extend simulate() and run_monte_carlo() to handle probabilistic events. Deterministic mode runs one simulation per outcome branch (returned as parallel result sets). Monte Carlo mode samples one outcome per event per trial using probability weights.
+* Description: simulate_branches() for deterministic multi-branch runs; Monte Carlo samples one outcome per event per trial using probability weights.
 * Layer: domain/simulation.py, domain/monte_carlo.py
-* Inputs: Scenario with probabilistic_events
-* Outputs:
-  * simulate(): returns list of (outcome_label, SimulationResult) — one per outcome branch
-  * run_monte_carlo(): each trial draws one outcome per event; fan chart captures full distribution
-* Dependencies: ProbabilisticEvent Domain Model
-* Acceptance Criteria:
-  * simulate() with 3-branch IPO event returns 3 SimulationResults (one per outcome)
-  * Branch with probability=0 is omitted
-  * Monte Carlo trial sampling: outcome drawn proportional to probabilities
-  * Regression: simulate() with probabilistic_events=[] behaves identically to before
-  * Unit tests: 3-branch event produces 3 results; MC distributes outcomes ~proportionally (200 trials)
 
 ### Feature: Backend API + DB Persistence for Probabilistic Events
 
 * Status: done
-* Description: Store and retrieve probabilistic events from SQLite. New DB tables, Pydantic schemas, and updated save/load endpoints.
+* Description: Store and retrieve probabilistic events from SQLite. New DB tables, Pydantic schemas, updated save/load endpoints.
 * Layer: web/backend
-* Inputs: ProbabilisticEventSchema in SaveScenarioRequest / SimulateRequest
-* Outputs: scenario_probabilistic_events + scenario_event_outcomes tables; round-trip save/load
-* Dependencies: ProbabilisticEvent Domain Model
-* Acceptance Criteria:
-  * New tables: scenario_probabilistic_events (id, scenario_id, name), scenario_event_outcomes (id, event_id, year, probability, portfolio_injection, description)
-  * whatif_saves.py: saves all probabilistic events and outcomes on scenario save
-  * scenarios.py: returns probabilistic events when loading a saved scenario definition
-  * simulate.py: accepts and passes probabilistic events to domain layer
-  * Migration is idempotent (safe to re-run)
 
 ### Feature: Frontend — Probabilistic Event Builder
 
 * Status: done
-* Description: UI in What-If Explorer to add/edit probabilistic events. Shows one card per event with all outcome branches. Live probability validation (must sum to 100%).
+* Description: UI in What-If Explorer to add/edit probabilistic events. Live probability validation (must sum to 100%).
 * Layer: web/frontend/src/views/WhatIfView.vue
-* Inputs: user-defined event name + N outcome branches (year, %, amount)
-* Outputs: probabilistic_events array passed to simulate/save API
-* Dependencies: Backend API + DB Persistence for Probabilistic Events
-* Acceptance Criteria:
-  * Collapsible "Probabilistic Events" section below deterministic events
-  * "Add Event" creates a named event with at least 2 outcome rows
-  * Each outcome row: year input, probability % input, amount input, description input
-  * Live validation: red warning if total probability ≠ 100%; Run button disabled
-  * "Add Outcome" / "Remove Outcome" buttons per event
-  * "Remove Event" removes entire event
-  * State included in toApiRequest() and fromDefinition() for save/load round-trip
 
 ### Feature: Frontend — Multi-Branch Results Display
 
 * Status: done
-* Description: When probabilistic events are present, the comparison chart overlays one simulation line per outcome branch (instead of a single What-If line). Each branch is labeled with outcome name + probability.
-* Layer: web/frontend/src/components/ComparisonChart.vue, WhatIfView.vue
-* Inputs: array of (label, year_data[]) from the simulate API
-* Outputs: chart with N colored lines (one per branch) + legend showing probability
-* Dependencies: Frontend Probabilistic Event Builder
-* Acceptance Criteria:
-  * Each outcome branch rendered as a distinct colored line on the chart
-  * Legend entry format: "IPO ₪1.5M (60%)" with matching color
-  * Baseline (original scenario) always shown as reference line
-  * Tooltip on hover shows all branch values at that year
-  * Retirement year marker shown per branch (if applicable)
-  * Graceful fallback: if no probabilistic events, chart shows single What-If line (existing behavior)
+* Description: Chart overlays one colored line per outcome branch; legend shows outcome name + probability. Graceful fallback to single line when no probabilistic events.
+* Layer: web/frontend
+
+### Feature: Unified View/Edit Mode (WhatIfView)
+
+* Status: done
+* Description: Consolidated ScenarioDetailView + WhatIfView into a single view with two modes. View mode: grayed-out read-only sidebar, "👁️ View Mode" badge, "✏️ Edit" button. Edit mode: full What-If Explorer. All parameters (sliders, events, prob events, mortgage) in sidebar; chart + metrics in main panel.
+* Layer: web/frontend/src/views/WhatIfView.vue
 
 ---
 
-## Phase 3 — Future Extensions
+## Phase 3 — Insight & Analysis Layer
 
-Placeholder for:
-- Allocation recommendations (equity/bond split optimization)
-- Trade-off analysis (e.g., "retire 2 years earlier vs ₪500k less spending")
-- Scenario comparison view (side-by-side multiple saved scenarios)
-- Tax modeling (progressive brackets applied annually)
+### Feature: Tax Modeling
+
+* Status: planned
+* Description: Progressive income tax brackets applied annually during simulation. Taxes reduce net portfolio growth year-by-year. Optional per scenario (backward compatible).
+* Layer: domain/models.py, domain/simulation.py, web/backend/schemas.py, WhatIfView.vue
+* Inputs: list of (annual_income_threshold, rate) bracket pairs
+* Outputs: annual taxes deducted from portfolio; YearData.annual_taxes field
+* Dependencies: none (extends simulation engine)
+* Acceptance Criteria:
+  * TaxBracket dataclass: annual_income_threshold, rate
+  * Scenario.tax_brackets: list[TaxBracket] = [] (optional, backward compatible)
+  * simulate() applies tax annually: income above threshold taxed at bracket rate
+  * YearData gains annual_taxes field (float)
+  * API: tax_brackets field in WhatIfScenarioSchema + SimulateRequest
+  * UI: collapsible "Tax Brackets" section in sidebar with add/remove bracket rows
+  * Tests: single bracket, multi-bracket progressive, zero income, no regression
+
+### Feature: Trade-Off Analysis
+
+* Status: planned
+* Description: Given a target (e.g., retire 2 years earlier), compute the required change in each input (e.g., "need +₪3,000/mo income OR -₪2,000/mo expenses"). Surfaces the cheapest path to a goal.
+* Layer: domain/sensitivity.py (extend), web/backend, MonteCarloView.vue or new TradeOffView
+* Inputs: target outcome (retire by year N, portfolio threshold), baseline scenario
+* Outputs: ranked list of inputs with required delta to hit the target
+* Dependencies: Tax Modeling (optional — better with taxes in place)
+* Acceptance Criteria:
+  * Given target retirement year, compute required income increase and required expense decrease
+  * Rank by "effort" (absolute delta)
+  * Surface top 3 trade-offs in UI as cards: "Retire 2 years earlier by saving ₪2,500 more/month"
+  * Tests: trade-off correctly computed for income and expense knobs
+
+### Feature: Allocation Recommendations
+
+* Status: planned
+* Description: Suggest an equity/bond split based on time horizon and risk tolerance. Map the recommendation to an expected return rate and show the impact on retirement year.
+* Layer: domain/ (new allocations.py), web/backend, WhatIfView.vue
+* Inputs: years_to_retirement, risk_tolerance (conservative/moderate/aggressive)
+* Outputs: recommended allocation (e.g., 80/20), mapped return rate, delta vs current
+* Dependencies: Trade-Off Analysis (optional — can stand alone)
+* Acceptance Criteria:
+  * AllocationProfile dataclass: equity_pct, bond_pct, expected_return, volatility
+  * Three profiles: conservative, moderate, aggressive
+  * UI: segmented control in sidebar maps to return rate; shows "Recommended: Moderate (80/20)"
+  * Tests: correct expected_return computed per profile; integration with simulate()
 
 ---
 
 ## Status Summary
 
-* Done: 13
+* Done: 14
 * In Progress: 0
-* Planned: 0
+* Planned: 3
