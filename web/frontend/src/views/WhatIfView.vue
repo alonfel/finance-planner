@@ -691,11 +691,11 @@ const hasProbabilityError = computed(() =>
 
 // Branch card colors — must match ComparisonChart palette (index 0 = original baseline in edit mode)
 const CHART_COLORS = [
-  { border: '#667eea', bg: 'rgba(102,126,234,0.08)' },
-  { border: '#27ae60', bg: 'rgba(39,174,96,0.08)' },
-  { border: '#e74c3c', bg: 'rgba(231,76,60,0.08)' },
-  { border: '#f39c12', bg: 'rgba(243,156,18,0.08)' },
-  { border: '#9b59b6', bg: 'rgba(155,89,182,0.08)' },
+  { border: '#667eea', bg: 'rgba(102, 126, 234, 0.05)' },
+  { border: '#27ae60', bg: 'rgba(39, 174, 96, 0.05)' },
+  { border: '#e74c3c', bg: 'rgba(231, 76, 60, 0.05)' },
+  { border: '#f39c12', bg: 'rgba(243, 156, 18, 0.05)' },
+  { border: '#9b59b6', bg: 'rgba(155, 89, 182, 0.05)' },
 ]
 // In edit mode: original occupies index 0, branches start at 1. In view mode: branches start at 0.
 const branchColor = (idx) => CHART_COLORS[(isViewMode.value ? idx : idx + 1) % CHART_COLORS.length].border

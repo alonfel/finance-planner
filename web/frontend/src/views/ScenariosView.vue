@@ -284,7 +284,7 @@ const deleteScenario = async () => {
   max-width: 300px;
 }
 
-.btn-compare-link, .btn-whatif-link {
+.btn-compare-link {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   border: none;
@@ -296,11 +296,7 @@ const deleteScenario = async () => {
   white-space: nowrap;
 }
 
-.btn-whatif-link {
-  background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
-}
-
-.btn-compare-link:hover, .btn-whatif-link:hover {
+.btn-compare-link:hover {
   opacity: 0.9;
 }
 
