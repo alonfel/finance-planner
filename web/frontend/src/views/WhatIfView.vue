@@ -2399,26 +2399,26 @@ if (route.query.scenarioId) {
 }
 
 .modal-box {
-  background: var(--white);
+  background: #ffffff;
   border-radius: 8px;
   padding: 32px;
   width: 440px;
   max-width: 90vw;
-  box-shadow: var(--shadow-deep);
-  border: 1px solid var(--border);
+  box-shadow: rgba(3,3,39,0.25) 0px 14px 21px -14px, rgba(0,0,0,0.1) 0px 8px 17px -8px;
+  border: 1px solid #e5edf5;
 }
 
 .modal-box h2 {
   margin: 0 0 6px 0;
   font-size: 22px;
   font-weight: 300;
-  color: var(--navy);
+  color: #061b31;
   letter-spacing: -0.22px;
   font-feature-settings: "ss01";
 }
 
 .modal-subtitle {
-  color: var(--body);
+  color: #64748d;
   font-size: 14px;
   font-weight: 300;
   margin-bottom: 20px;
@@ -2430,7 +2430,7 @@ if (route.query.scenarioId) {
   display: block;
   font-size: 13px;
   font-weight: 400;
-  color: var(--label);
+  color: #273951;
   margin-bottom: 6px;
   font-feature-settings: "ss01";
 }
@@ -2439,20 +2439,20 @@ if (route.query.scenarioId) {
   width: 100%;
   box-sizing: border-box;
   padding: 9px 12px;
-  border: 1px solid var(--border);
+  border: 1px solid #e5edf5;
   border-radius: 4px;
   font-size: 14px;
   font-weight: 300;
-  color: var(--navy);
+  color: #061b31;
   margin-bottom: 12px;
-  background: var(--white);
+  background: #ffffff;
   font-feature-settings: "ss01";
   transition: border-color 0.15s;
 }
 
 .modal-text-input:focus {
   outline: none;
-  border-color: var(--sp);
+  border-color: #533afd;
   box-shadow: 0 0 0 2px rgba(83,58,253,0.12);
 }
 
@@ -2493,13 +2493,13 @@ if (route.query.scenarioId) {
 
 .btn-cancel {
   background: transparent;
-  border: 1px solid var(--border);
+  border: 1px solid #e5edf5;
   padding: 8px 18px;
   border-radius: 4px;
   cursor: pointer;
   font-size: 14px;
   font-weight: 400;
-  color: var(--label);
+  color: #273951;
   transition: border-color 0.15s, color 0.15s;
   font-feature-settings: "ss01";
 }
