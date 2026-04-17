@@ -2,7 +2,64 @@
 
 A personal financial independence planner that simulates portfolio growth over time, models uncertain life events (IPO exits, bonuses, property purchases), and calculates the earliest year you can retire. Built with a pure-Python domain engine, a FastAPI backend, and a Vue 3 frontend. Supports deterministic simulation, probabilistic branching, and 500-trial Monte Carlo analysis across real historical index returns (S&P 500, NASDAQ, Bonds, Russell 2000).
 
-Six Mermaid diagrams covering architecture, data models, request flows, and simulation logic.
+Seven Mermaid diagrams covering architecture, data models, request flows, and simulation logic.
+
+---
+
+## Diagram 0: Client ↔ Two Servers
+
+```mermaid
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "background": "#ffffff",
+    "primaryColor": "#eef0ff",
+    "primaryTextColor": "#061b31",
+    "primaryBorderColor": "#533afd",
+    "lineColor": "#533afd",
+    "edgeLabelBackground": "#ffffff",
+    "fontFamily": "ui-monospace, monospace",
+    "fontSize": "14px"
+  }
+}}%%
+flowchart LR
+    Browser(["🌐 Browser"])
+
+    subgraph FE["🖥️  Vue Dev Server  · :5173"]
+        Assets[/"① HTML · JS · CSS\n  served once"/]
+        Vue{{"Vue 3 SPA\n runs in browser"}}
+    end
+
+    subgraph BE["⚡  FastAPI  · :8000"]
+        Router(["🔀 Router"])
+        Sim{{"⚙️ simulate()"}}
+        MC{{"🎲 run_monte_carlo()"}}
+        DB[("🗄️ SQLite")]
+    end
+
+    CORS{{"⚠️ CORS\nheaders required"}}
+
+    Browser -->|"open app"| Assets
+    Assets -->|"② bundle download\n  one time only"| Browser
+    Browser -->|"③ user interacts\n  renders Vue"| Vue
+    Vue -..->|"Vue runs IN the browser\nnot a proxy"| Browser
+
+    Browser -->|"④ POST /simulate\n  POST /monte-carlo\n  GET /scenarios\n  direct from browser"| CORS
+    CORS --> Router
+    Router --> Sim & MC & DB
+    Sim & MC & DB -->|"process"| Router
+    Router -->|"⑤ JSON response"| Browser
+    Browser -->|"⑥ render chart\n  + metric cards"| Vue
+
+    style FE fill:#eef0ff,stroke:#533afd,color:#061b31
+    style BE fill:#f0faf4,stroke:#15be53,color:#061b31
+    style CORS fill:#fff9f0,stroke:#9b6829,color:#061b31
+    style Vue fill:#eef0ff,stroke:#533afd,color:#061b31
+
+    linkStyle 3 stroke:#b9b9f9,stroke-dasharray:5,stroke-width:1
+    linkStyle 4 stroke:#ea2261,stroke-width:3
+    linkStyle 8 stroke:#15be53,stroke-width:3
+```
 
 ---
 
@@ -28,44 +85,44 @@ Six Mermaid diagrams covering architecture, data models, request flows, and simu
   }
 }}%%
 graph TD
-    subgraph FE["🖥️  Frontend  ·  Vue 3"]
-        WhatIfView["What-If Explorer\nSliders · Events · Probabilistic"]
-        ScenarioDetailView["Scenario Detail"]
-        MonteCarloView["Monte Carlo View"]
-        ScenariosView["Saved Scenarios"]
+    subgraph FE["🖥️  Frontend  ·  Vue 3  · :5173"]
+        WhatIfView("What-If Explorer\nSliders · Events · Probabilistic")
+        ScenarioDetailView("Scenario Detail")
+        MonteCarloView("Monte Carlo View")
+        ScenariosView("Saved Scenarios")
     end
 
-    subgraph BE["⚡  Backend  ·  FastAPI"]
-        simulate["POST /simulate"]
-        montecarlo["POST /monte-carlo"]
-        saves["POST /saved-scenarios"]
-        scenarios["GET /scenarios"]
-        generator["POST /generate-scenario"]
+    subgraph BE["⚡  Backend  ·  FastAPI  :8000"]
+        simulate[/"POST /simulate"/]
+        montecarlo[/"POST /monte-carlo"/]
+        saves[/"POST /saved-scenarios"/]
+        scenarios[/"GET /scenarios"/]
+        generator[/"POST /generate-scenario"/]
     end
 
     subgraph Domain["🧠  Domain  ·  Pure Python"]
-        simulation["simulation.py\nsimulate() · simulate_branches()"]
-        monte_carlo["monte_carlo.py\nrun_monte_carlo()"]
-        sensitivity["sensitivity.py\nrun_oat_sensitivity()"]
+        simulation{{"simulation.py\nsimulate() · simulate_branches()"}}
+        monte_carlo{{"monte_carlo.py\nrun_monte_carlo()"}}
+        sensitivity{{"sensitivity.py\nrun_oat_sensitivity()"}}
         models["models.py\nScenario · Event · ProbabilisticEvent\nMortgage · Pension · FinancialStory"]
         historical["historical_returns.py\nS&P500 · NASDAQ · Bonds · Russell2000"]
     end
 
     subgraph Infra["🔧  Infrastructure"]
-        loaders["loaders.py — load_scenarios()"]
-        parsers["parsers.py — dict → model"]
-        cache["cache.py — SimulationCache"]
-        data_layer["data_layer.py — ProfileManager"]
+        loaders(["loaders.py — load_scenarios()"])
+        parsers(["parsers.py — dict → model"])
+        cache(["cache.py — SimulationCache"])
+        data_layer(["data_layer.py — ProfileManager"])
     end
 
     subgraph DB["🗄️  SQLite"]
-        profiles_t["profiles"]
-        scenario_defs["scenario_definitions"]
-        sim_runs["simulation_runs + year_data"]
-        prob_events["probabilistic_events + outcomes"]
+        profiles_t[(profiles)]
+        scenario_defs[(scenario_definitions)]
+        sim_runs[(simulation_runs + year_data)]
+        prob_events[(probabilistic_events + outcomes)]
     end
 
-    FE -->|"HTTP / JSON"| BE
+    FE -->|"HTTP / JSON  :5173 → :8000"| BE
     BE --> Domain
     BE --> DB
     Domain --> Infra
@@ -246,8 +303,8 @@ classDiagram
 sequenceDiagram
     autonumber
     actor User
-    participant Vue as WhatIfView.vue
-    participant API as FastAPI
+    participant Vue as WhatIfView.vue · :5173
+    participant API as FastAPI · :8000
     participant Sim as simulate.py
     participant Domain as simulation.py
     participant DB as SQLite
@@ -443,27 +500,29 @@ erDiagram
   }
 }}%%
 flowchart TD
-    Start([Open Monte Carlo View]) --> Select[Select saved scenario]
-    Select --> Request["POST /api/v1/monte-carlo\n{scenario_id, n_trials=500, years}"]
+    Start([Open Monte Carlo View]) --> Select("Select saved scenario")
+    Select --> Request[/"POST /api/v1/monte-carlo\n{scenario_id, n_trials=500, years}"/]
 
-    Request --> Load["Load ScenarioDefinition from DB"]
-    Load --> Build["Build Scenario domain object"]
+    Request --> Load[("Load ScenarioDefinition\nfrom DB")]
+    Load --> Build["Build Scenario\ndomain object"]
 
-    Build --> MC["run_monte_carlo(scenario, n_trials=500)"]
-    Build --> OAT["run_oat_sensitivity()"]
+    Build --> Fork:::junction
+    Fork --> MC{{"run_monte_carlo\n(scenario, n_trials=500)"}}
+    Fork --> OAT{{"run_oat_sensitivity()"}}
+    classDef junction fill:#533afd,stroke:#533afd,color:#fff,width:12px,height:12px
 
-    MC --> Lognormal["Sample returns\nlognormal σ=15%  ·  N×Y matrix"]
+    MC --> Lognormal[/"Sample returns\nlognormal σ=15%  ·  N×Y matrix"/]
     Lognormal --> Trials
 
     subgraph Trials["500 Independent Trials"]
         direction LR
-        T1["Trial 1"]
-        T2["Trial 2"]
-        TN["… Trial 500"]
+        T1("Trial 1")
+        T2("Trial 2")
+        TN("… Trial 500")
         T1 --- T2 --- TN
     end
 
-    Trials --> Agg["Percentile bands  p5 / p50 / p95\nRetirement probability\nSurvival probability"]
+    Trials --> Agg[/"p5 / p50 / p95 bands\nRetirement probability\nSurvival probability"/]
 
     subgraph OATVars["One-At-a-Time Variants"]
         direction LR
@@ -473,16 +532,21 @@ flowchart TD
     end
 
     OAT --> OATVars
-    OATVars --> Rank["Rank inputs by Δ retirement probability"]
+    OATVars --> Rank["Rank inputs by\nΔ retirement probability"]
 
-    Agg --> Response["MonteCarloResponse"]
-    Rank --> Response
+    Agg --> Join:::junction
+    Rank --> Join
+    Join --> Response(["MonteCarloResponse"])
+    classDef junction fill:#533afd,stroke:#533afd,color:#fff,width:12px,height:12px
 
-    Response --> FanChart["FanChart.vue\np5 / p50 / p95 bands"]
-    Response --> Drivers["Driver ranking cards\n'Which inputs matter most'"]
+    Response --> FanChart("FanChart.vue\np5 / p50 / p95 bands")
+    Response --> Drivers("Driver ranking cards\n'Which inputs matter most'")
 
     style Trials fill:#eef0ff,stroke:#533afd,color:#061b31
     style OATVars fill:#fff9f0,stroke:#9b6829,color:#061b31
+
+    linkStyle 1 stroke:#533afd,stroke-width:3
+    linkStyle 12 stroke:#15be53,stroke-width:3
 ```
 
 ---
@@ -511,22 +575,22 @@ flowchart TD
 
     Input --> Check{Has probabilistic\nevents?}
 
-    Check -->|No| Single["simulate(scenario)"]
-    Single --> SingleOut["SimulationResult\n(deterministic)"]
+    Check -->|No| Single{{"simulate(scenario)"}}
+    Single --> SingleOut(["SimulationResult\n(deterministic)"])
 
-    Check -->|Yes| Expand["_expand_branches()\nrecursive cross-product"]
+    Check -->|Yes| Expand{{"_expand_branches()\nrecursive cross-product"}}
 
     subgraph CrossProduct["Example — 2 events × 2 outcomes = 4 branches"]
         direction TB
-        IPO_Y["IPO: Success  70%"]
-        IPO_N["IPO: No event  30%"]
-        BON_H["Bonus: High  60%"]
-        BON_L["Bonus: Low  40%"]
+        IPO_Y[/"IPO: Success  70%"/]
+        IPO_N[/"IPO: No event  30%"/]
+        BON_H[\"Bonus: High  60%"\]
+        BON_L[\"Bonus: Low  40%"\]
 
-        B1["Branch 1\nSuccess + High  ·  p = 0.42"]
-        B2["Branch 2\nSuccess + Low   ·  p = 0.28"]
-        B3["Branch 3\nNo event + High ·  p = 0.18"]
-        B4["Branch 4\nNo event + Low  ·  p = 0.12"]
+        B1("Branch 1\nSuccess + High  ·  p = 0.42")
+        B2("Branch 2\nSuccess + Low   ·  p = 0.28")
+        B3("Branch 3\nNo event + High ·  p = 0.18")
+        B4("Branch 4\nNo event + Low  ·  p = 0.12")
 
         IPO_Y --> B1 & B2
         IPO_N --> B3 & B4
@@ -536,15 +600,17 @@ flowchart TD
 
     Expand --> CrossProduct
 
-    B1 --> S1["simulate(branch 1)"]
-    B2 --> S2["simulate(branch 2)"]
-    B3 --> S3["simulate(branch 3)"]
-    B4 --> S4["simulate(branch 4)"]
+    B1 --> S1{{"simulate(branch 1)"}}
+    B2 --> S2{{"simulate(branch 2)"}}
+    B3 --> S3{{"simulate(branch 3)"}}
+    B4 --> S4{{"simulate(branch 4)"}}
 
-    S1 & S2 & S3 & S4 --> Results["branches[]\n(label, probability, SimulationResult)"]
+    S1 & S2 & S3 & S4 --> JoinBranches:::junction
+    JoinBranches --> Results[/"branches[]\n(label, probability, SimulationResult)"/]
+    classDef junction fill:#533afd,stroke:#533afd,color:#fff,width:12px,height:12px
 
-    Results --> Assert["assert sum(probabilities) == 1.0"]
-    Assert --> UI["WhatIfView.vue\nOne colored line per branch\nProbability badge per metric card"]
+    Results --> Assert>"assert sum(probabilities) == 1.0"]
+    Assert --> UI("WhatIfView.vue\nOne colored line per branch\nProbability badge per metric card")
 
     style CrossProduct fill:#fffbf0,stroke:#9b6829,color:#061b31
     style B1 fill:#eef0ff,stroke:#533afd,color:#061b31
