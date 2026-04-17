@@ -45,22 +45,6 @@
             </select>
           </div>
 
-          <!-- Generate button -->
-          <button
-            @click="showGeneratorModal = true"
-            class="btn-generate-scenario-sidebar"
-          >
-            Generate Scenario
-          </button>
-
-          <!-- Save button -->
-          <button
-            v-if="whatIfResult"
-            @click="openSaveModal"
-            class="btn-save-scenario-sidebar"
-          >
-            Save as Scenario
-          </button>
         </div>
         </template>
 
@@ -463,6 +447,23 @@
 
               <button @click="addOutcome(peIdx)" class="btn-add-outcome">+ Outcome</button>
             </div>
+          </div>
+
+          <!-- Sidebar action buttons — bottom of parameters -->
+          <div v-if="!isViewMode" class="sidebar-actions-bottom">
+            <button
+              @click="showGeneratorModal = true"
+              class="btn-generate-scenario-sidebar"
+            >
+              Generate Scenario
+            </button>
+            <button
+              v-if="whatIfResult"
+              @click="openSaveModal"
+              class="btn-save-scenario-sidebar"
+            >
+              Save as Scenario
+            </button>
           </div>
         </div>
       </div>
@@ -1431,6 +1432,15 @@ if (route.query.scenarioId) {
 }
 
 /* ─── Sidebar Action Buttons ─────────────────────────────────────────────── */
+.sidebar-actions-bottom {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #e5edf5;
+}
+
 .btn-generate-scenario-sidebar {
   background: var(--sp);
   color: var(--white);
