@@ -162,7 +162,7 @@ def list_scenarios(
 
         final_portfolio = final_year.portfolio if final_year else 0.0
         cards.append({
-            "id": result.scenario_id if result.scenario_id else result.id,  # Use result.id as fallback for orphaned scenarios
+            "id": result.id,  # Always use result.id (ScenarioResult PK) for consistent navigation and delete
             "scenario_name": result.scenario_name,
             "retirement_year": result.retirement_year,
             "final_portfolio": final_portfolio
@@ -254,18 +254,13 @@ def delete_scenario(
     username: str = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Soft-delete a scenario (only What-If Saves scenarios)"""
+    """Soft-delete a scenario (any run label)"""
     result = db.query(ScenarioResult).filter(
         ScenarioResult.id == result_id
     ).first()
 
     if not result:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-
-    # Get the run to check if it's a What-If Saves run
-    run = db.query(SimulationRun).filter(SimulationRun.id == result.run_id).first()
-    if not run or run.label != "What-If Saves":
-        raise HTTPException(status_code=403, detail="Can only delete What-If Saves scenarios")
 
     # Mark as deleted in both result and definition
     result.is_deleted = True

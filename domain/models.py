@@ -105,6 +105,76 @@ class Scenario:
 
 
 @dataclass
+class StoryOutcome:
+    """One possible outcome of a probabilistic story event node."""
+    label: str
+    probability: float  # Weight in [0, 1]
+    portfolio_injection: float  # Positive = windfall, negative = expense
+
+
+@dataclass
+class StoryEventNode:
+    """A single event in a FinancialStory timeline.
+
+    Deterministic nodes (event_type="deterministic") apply a fixed portfolio
+    injection at a given year. Probabilistic nodes (event_type="probabilistic")
+    split the story into weighted outcome branches.
+
+    Args:
+        node_id: Unique identifier for this node within the story
+        label: Human-readable name (e.g., "Bonus", "IPO Exit")
+        year: Simulation year this event occurs (1-indexed)
+        event_type: "deterministic" | "probabilistic"
+        portfolio_injection: Amount applied for deterministic events
+        outcomes: Mutually exclusive outcomes for probabilistic events;
+                  probabilities must sum to 1.0 (within 0.001 tolerance)
+
+    Raises:
+        ValueError: If event_type is "probabilistic" and outcome probabilities
+                    do not sum to 1.0
+    """
+    node_id: str
+    label: str
+    year: int
+    event_type: str  # "deterministic" | "probabilistic"
+    portfolio_injection: float = 0.0
+    outcomes: list[StoryOutcome] = field(default_factory=list)
+
+    def __post_init__(self):
+        if self.event_type == "probabilistic" and self.outcomes:
+            total = sum(o.probability for o in self.outcomes)
+            if abs(total - 1.0) > 0.001:
+                raise ValueError(
+                    f"StoryEventNode '{self.label}': probabilistic outcomes must sum to 1.0, got {total:.3f}"
+                )
+
+
+@dataclass
+class FinancialStory:
+    """A financial narrative — base scenario parameters plus an explicit event timeline.
+
+    The root is a Scenario (base parameters, no events). Events hang off the
+    timeline as StoryEventNode objects. Deterministic nodes apply a single
+    portfolio injection; probabilistic nodes split the simulation into weighted
+    branches.
+
+    Use story_to_branches() to simulate all outcome paths.
+    Use story_to_scenario() to flatten to a single Scenario (deterministic events only).
+
+    Args:
+        name: Human-readable story name
+        base_scenario: Starting scenario; its .events and .probabilistic_events
+                       are ignored — event structure lives in self.events
+        events: Ordered list of StoryEventNode objects (chronological)
+        story_id: Optional persistent identifier (set by persistence layer)
+    """
+    name: str
+    base_scenario: "Scenario"
+    events: list[StoryEventNode] = field(default_factory=list)
+    story_id: Optional[str] = None
+
+
+@dataclass
 class ScenarioNode:
     """A node in a scenario inheritance tree.
 

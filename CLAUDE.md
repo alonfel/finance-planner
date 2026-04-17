@@ -1,6 +1,6 @@
 # Claude Code Guidelines for Finance Planner
 
-**Updated:** April 16, 2026 — **MAJOR: Probabilistic Events** — model uncertain outcomes (IPO, acquisition, bonus) with multiple weighted branches. simulate_branches() + Monte Carlo sampling + full UI. 109 tests passing.
+**Updated:** April 16, 2026 — **MAJOR: Probabilistic Events** — model uncertain outcomes (IPO, acquisition, bonus) with multiple weighted branches. simulate_branches() + Monte Carlo sampling + full UI. **FinancialStory domain model** — tree-structured narrative object with story_to_branches() + story_to_scenario(). 120 tests passing.
 
 ---
 
@@ -98,7 +98,7 @@ Each profile has its own `data/profiles/{name}/` directory.
 python -m unittest discover -s tests -p "test_*.py" -v
 ```
 
-All **108 tests** should pass (85 simulation + 23 Monte Carlo).
+All **120 tests** should pass (97 simulation + 23 Monte Carlo).
 
 ### Running the Web Server
 
@@ -492,7 +492,7 @@ FINANCE_PROFILE=alon python analysis/run_analysis.py
 ## Summary
 
 ✅ Modular (4 layers)  
-✅ 108 tests, all passing  
+✅ 120 tests, all passing  
 ✅ Extensible (JSON-driven)  
 ✅ Documented (component guides)  
 ✅ Fast (decoupled simulation/analysis)  

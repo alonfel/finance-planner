@@ -4,8 +4,8 @@ from pathlib import Path
 
 # Add parent directory to path for imports
 
-from domain.models import Mortgage, Scenario, Event, ScenarioNode, EventOutcome, ProbabilisticEvent
-from domain.simulation import simulate
+from domain.models import Mortgage, Scenario, Event, ScenarioNode, EventOutcome, ProbabilisticEvent, StoryOutcome, StoryEventNode, FinancialStory
+from domain.simulation import simulate, story_to_branches, story_to_scenario
 from domain.breakdown import IncomeBreakdown, ExpenseBreakdown
 
 
@@ -1553,6 +1553,177 @@ class TestProbabilisticEventModel(unittest.TestCase):
         self.assertEqual(len(scenario.probabilistic_events), 1)
         self.assertEqual(scenario.probabilistic_events[0].name, "IPO")
         self.assertEqual(len(scenario.probabilistic_events[0].outcomes), 3)
+
+
+class TestFinancialStory(unittest.TestCase):
+    """Tests for FinancialStory domain model and story_to_branches / story_to_scenario."""
+
+    def _base_scenario(self) -> Scenario:
+        return Scenario(
+            name="Base",
+            monthly_income=IncomeBreakdown({"salary": 50_000}),
+            monthly_expenses=ExpenseBreakdown({"expenses": 25_000}),
+            initial_portfolio=1_000_000,
+            age=40,
+        )
+
+    # --- Model construction ---
+
+    def test_financial_story_fields(self):
+        """FinancialStory stores name, base_scenario, events, story_id."""
+        story = FinancialStory(name="My Story", base_scenario=self._base_scenario())
+        self.assertEqual(story.name, "My Story")
+        self.assertEqual(story.events, [])
+        self.assertIsNone(story.story_id)
+
+    def test_story_event_node_deterministic(self):
+        """Deterministic StoryEventNode stores label, year, portfolio_injection."""
+        node = StoryEventNode(node_id="n1", label="Bonus", year=3, event_type="deterministic", portfolio_injection=200_000)
+        self.assertEqual(node.event_type, "deterministic")
+        self.assertEqual(node.portfolio_injection, 200_000)
+        self.assertEqual(node.outcomes, [])
+
+    def test_story_event_node_probabilistic_valid(self):
+        """Probabilistic StoryEventNode with outcomes summing to 1.0 constructs without error."""
+        node = StoryEventNode(
+            node_id="n2", label="IPO", year=3, event_type="probabilistic",
+            outcomes=[
+                StoryOutcome(label="Success", probability=0.7, portfolio_injection=2_000_000),
+                StoryOutcome(label="No event", probability=0.3, portfolio_injection=0.0),
+            ],
+        )
+        self.assertEqual(len(node.outcomes), 2)
+
+    def test_story_event_node_probabilistic_bad_probs_raises(self):
+        """Probabilistic StoryEventNode raises ValueError if outcomes don't sum to 1.0."""
+        with self.assertRaises(ValueError):
+            StoryEventNode(
+                node_id="n3", label="Bad", year=2, event_type="probabilistic",
+                outcomes=[
+                    StoryOutcome(label="A", probability=0.4, portfolio_injection=0.0),
+                    StoryOutcome(label="B", probability=0.4, portfolio_injection=0.0),
+                    # Total = 0.80
+                ],
+            )
+
+    # --- story_to_branches ---
+
+    def test_deterministic_only_story_returns_one_branch(self):
+        """Story with only deterministic events returns a single branch with probability=1.0."""
+        story = FinancialStory(
+            name="Bonus Story",
+            base_scenario=self._base_scenario(),
+            events=[
+                StoryEventNode(node_id="n1", label="Bonus", year=2, event_type="deterministic", portfolio_injection=500_000),
+            ],
+        )
+        branches = story_to_branches(story, years=20)
+        self.assertEqual(len(branches), 1)
+        label, prob, result = branches[0]
+        self.assertAlmostEqual(prob, 1.0)
+        self.assertIsNotNone(result)
+
+    def test_single_probabilistic_node_returns_two_branches(self):
+        """Story with one probabilistic node (2 outcomes) returns 2 branches."""
+        story = FinancialStory(
+            name="IPO Story",
+            base_scenario=self._base_scenario(),
+            events=[
+                StoryEventNode(
+                    node_id="n1", label="IPO", year=3, event_type="probabilistic",
+                    outcomes=[
+                        StoryOutcome(label="Success", probability=0.7, portfolio_injection=2_000_000),
+                        StoryOutcome(label="No event", probability=0.3, portfolio_injection=0.0),
+                    ],
+                ),
+            ],
+        )
+        branches = story_to_branches(story, years=20)
+        self.assertEqual(len(branches), 2)
+        total_prob = sum(prob for _, prob, _ in branches)
+        self.assertAlmostEqual(total_prob, 1.0, places=5)
+
+    def test_two_probabilistic_nodes_cross_product(self):
+        """Two probabilistic nodes (2 outcomes each) produce 4 branches summing to 1.0."""
+        story = FinancialStory(
+            name="Double Split",
+            base_scenario=self._base_scenario(),
+            events=[
+                StoryEventNode(
+                    node_id="n1", label="IPO", year=3, event_type="probabilistic",
+                    outcomes=[
+                        StoryOutcome(label="IPO Success", probability=0.6, portfolio_injection=2_000_000),
+                        StoryOutcome(label="IPO Miss", probability=0.4, portfolio_injection=0.0),
+                    ],
+                ),
+                StoryEventNode(
+                    node_id="n2", label="Bonus", year=5, event_type="probabilistic",
+                    outcomes=[
+                        StoryOutcome(label="Big Bonus", probability=0.5, portfolio_injection=300_000),
+                        StoryOutcome(label="No Bonus", probability=0.5, portfolio_injection=0.0),
+                    ],
+                ),
+            ],
+        )
+        branches = story_to_branches(story, years=20)
+        self.assertEqual(len(branches), 4)
+        total_prob = sum(prob for _, prob, _ in branches)
+        self.assertAlmostEqual(total_prob, 1.0, places=5)
+
+    def test_branches_with_deterministic_and_probabilistic(self):
+        """Deterministic + probabilistic nodes: deterministic applies to all branches."""
+        story = FinancialStory(
+            name="Mixed",
+            base_scenario=self._base_scenario(),
+            events=[
+                StoryEventNode(node_id="d1", label="Bonus", year=1, event_type="deterministic", portfolio_injection=100_000),
+                StoryEventNode(
+                    node_id="p1", label="IPO", year=3, event_type="probabilistic",
+                    outcomes=[
+                        StoryOutcome(label="Win", probability=0.8, portfolio_injection=1_000_000),
+                        StoryOutcome(label="Lose", probability=0.2, portfolio_injection=0.0),
+                    ],
+                ),
+            ],
+        )
+        branches = story_to_branches(story, years=20)
+        self.assertEqual(len(branches), 2)
+
+    # --- story_to_scenario ---
+
+    def test_story_to_scenario_deterministic_only(self):
+        """story_to_scenario returns Scenario with deterministic events only."""
+        story = FinancialStory(
+            name="Flat",
+            base_scenario=self._base_scenario(),
+            events=[
+                StoryEventNode(node_id="d1", label="Windfall", year=2, event_type="deterministic", portfolio_injection=500_000),
+                StoryEventNode(
+                    node_id="p1", label="IPO", year=4, event_type="probabilistic",
+                    outcomes=[
+                        StoryOutcome(label="Yes", probability=0.5, portfolio_injection=1_000_000),
+                        StoryOutcome(label="No", probability=0.5, portfolio_injection=0.0),
+                    ],
+                ),
+            ],
+        )
+        scenario = story_to_scenario(story)
+        self.assertEqual(len(scenario.events), 1)
+        self.assertEqual(scenario.events[0].description, "Windfall")
+        self.assertEqual(scenario.probabilistic_events, [])
+
+    def test_story_to_scenario_uses_story_name(self):
+        """story_to_scenario uses the story name, not the base scenario name."""
+        story = FinancialStory(name="My Narrative", base_scenario=self._base_scenario())
+        scenario = story_to_scenario(story)
+        self.assertEqual(scenario.name, "My Narrative")
+
+    def test_story_to_scenario_empty_events(self):
+        """story_to_scenario with no events returns Scenario with empty events list."""
+        story = FinancialStory(name="Empty", base_scenario=self._base_scenario())
+        scenario = story_to_scenario(story)
+        self.assertEqual(scenario.events, [])
+        self.assertEqual(scenario.probabilistic_events, [])
 
 
 if __name__ == "__main__":

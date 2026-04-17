@@ -1,7 +1,7 @@
 import random
 from dataclasses import dataclass, replace
 from typing import Optional
-from domain.models import Scenario, Event
+from domain.models import Scenario, Event, FinancialStory, EventOutcome, ProbabilisticEvent
 
 
 @dataclass
@@ -267,3 +267,84 @@ def _expand_branches(
             years,
             out,
         )
+
+
+def story_to_branches(
+    story: FinancialStory,
+    years: int = 40,
+) -> list[tuple[str, float, "SimulationResult"]]:
+    """Simulate all outcome paths of a FinancialStory.
+
+    Converts StoryEventNode objects into the existing Event / ProbabilisticEvent
+    format, then delegates to simulate_branches() for cross-product expansion.
+    All deterministic events apply to every branch equally.
+
+    Args:
+        story: FinancialStory with base scenario and event nodes
+        years: Number of years to simulate per branch (default 40)
+
+    Returns:
+        List of (label, probability, SimulationResult) — one entry per leaf
+        branch path. Single-path stories return one entry with probability=1.0.
+    """
+    det_events: list[Event] = []
+    prob_events: list[ProbabilisticEvent] = []
+
+    for node in story.events:
+        if node.event_type == "deterministic":
+            det_events.append(Event(
+                year=node.year,
+                portfolio_injection=node.portfolio_injection,
+                description=node.label,
+            ))
+        elif node.event_type == "probabilistic":
+            prob_events.append(ProbabilisticEvent(
+                name=node.label,
+                outcomes=[
+                    EventOutcome(
+                        year=node.year,
+                        probability=o.probability,
+                        portfolio_injection=o.portfolio_injection,
+                        description=o.label,
+                    )
+                    for o in node.outcomes
+                ],
+            ))
+
+    scenario = replace(
+        story.base_scenario,
+        name=story.name,
+        events=det_events,
+        probabilistic_events=prob_events,
+    )
+    return simulate_branches(scenario, years=years)
+
+
+def story_to_scenario(story: FinancialStory) -> Scenario:
+    """Flatten a FinancialStory to a single Scenario (deterministic events only).
+
+    Probabilistic event nodes are dropped. Useful for backward-compatible
+    callers that expect a plain Scenario rather than branches.
+
+    Args:
+        story: FinancialStory to flatten
+
+    Returns:
+        Scenario with only deterministic events from the story's event nodes.
+        base_scenario.events and .probabilistic_events are replaced entirely.
+    """
+    det_events = [
+        Event(
+            year=node.year,
+            portfolio_injection=node.portfolio_injection,
+            description=node.label,
+        )
+        for node in story.events
+        if node.event_type == "deterministic"
+    ]
+    return replace(
+        story.base_scenario,
+        name=story.name,
+        events=det_events,
+        probabilistic_events=[],
+    )
