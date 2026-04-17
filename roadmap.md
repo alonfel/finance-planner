@@ -98,7 +98,7 @@
 
 ### Feature: Sidebar Full-Height Layout
 
-* Status: planned
+* Status: done
 * Description: The scenario parameters sidebar only fills ~55% of vertical space; user must scroll to reach bottom controls. Root cause: .sliders-section has max-height: 55vh hard-coded. The sidebar container already scrolls — removing the cap lets the sidebar fill top-to-bottom naturally.
 * Layer: web/frontend/src/views/WhatIfView.vue (CSS)
 * Acceptance Criteria:
@@ -244,6 +244,6 @@ A `FinancialStory` is a tree-structured narrative object: a saveable entity that
 
 ## Status Summary
 
-* Done: 15
+* Done: 16
 * In Progress: 0
-* Planned: 10
+* Planned: 9

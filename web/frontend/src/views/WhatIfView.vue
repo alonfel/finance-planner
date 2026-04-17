@@ -4,11 +4,11 @@
       <div class="header-left">
         <button @click="goBack" class="btn-back">← Back</button>
         <h1 v-if="isViewMode && originalScenario">{{ originalScenario.scenario_name }}</h1>
-        <h1 v-else>🔮 What-If Explorer</h1>
-        <span v-if="isViewMode" class="mode-badge view-mode-badge">👁️ View Mode</span>
+        <h1 v-else>What-If Explorer</h1>
+        <span v-if="isViewMode" class="mode-badge view-mode-badge">View Mode</span>
       </div>
       <div class="header-right">
-        <button v-if="isViewMode" @click="enterEditMode" class="btn-edit-mode">✏️ Edit</button>
+        <button v-if="isViewMode" @click="enterEditMode" class="btn-edit-mode">Edit</button>
         <button @click="logout" class="btn-logout">Logout</button>
       </div>
     </header>
@@ -22,7 +22,7 @@
         <div v-else class="sidebar-content">
           <!-- Run selector -->
           <div class="selector-section">
-            <label>Simulation Run:</label>
+            <label>Simulation Run</label>
             <select v-model="selectedRunId" @change="onRunChange">
               <option value="">Select a run...</option>
               <option v-for="run in runs" :key="run.id" :value="run.id">
@@ -34,7 +34,7 @@
 
           <!-- Scenario selector -->
           <div class="selector-section">
-            <label>Base Scenario:</label>
+            <label>Base Scenario</label>
             <select v-model="selectedScenarioId" @change="onScenarioSelect">
               <option value="">Select a scenario...</option>
               <option v-for="scenario in scenarios" :key="scenario.id" :value="scenario.id">
@@ -50,7 +50,7 @@
             @click="showGeneratorModal = true"
             class="btn-generate-scenario-sidebar"
           >
-            ✨ Generate Scenario
+            Generate Scenario
           </button>
 
           <!-- Save button -->
@@ -59,7 +59,7 @@
             @click="openSaveModal"
             class="btn-save-scenario-sidebar"
           >
-            💾 Save as Scenario
+            Save as Scenario
           </button>
         </div>
         </template>
@@ -67,409 +67,403 @@
         <!-- Scenario Parameters (grayed out in view mode) -->
         <div v-if="loading && isViewMode" class="loading-sidebar">Loading scenario...</div>
         <div v-else-if="originalScenario" class="sliders-section" :class="{ 'view-mode': isViewMode }">
-            <h3 style="margin: 0 0 12px 0">Scenario Parameters</h3>
-            <div class="sliders-grid">
-              <div class="slider-group">
-                <label>Monthly Income</label>
-                <div class="slider-control">
+          <h3 class="section-title">Scenario Parameters</h3>
+          <div class="sliders-grid">
+            <div class="slider-group">
+              <label>Monthly Income</label>
+              <div class="slider-control">
+                <input
+                  v-model.number="sliders.income"
+                  type="range"
+                  min="15000"
+                  max="150000"
+                  step="1000"
+                  @input="onSliderChange"
+                />
+                <span class="slider-value">₪{{ formatNumber(sliders.income) }}</span>
+              </div>
+            </div>
+
+            <div class="slider-group">
+              <label>Monthly Expenses</label>
+              <div class="slider-control">
+                <input
+                  v-model.number="sliders.expenses"
+                  type="range"
+                  min="10000"
+                  max="100000"
+                  step="1000"
+                  @input="onSliderChange"
+                />
+                <span class="slider-value">₪{{ formatNumber(sliders.expenses) }}</span>
+              </div>
+            </div>
+
+            <div class="slider-group">
+              <label class="slider-label-block">Growth Rate</label>
+              <div class="index-selector">
+                <button
+                  v-for="opt in INDEX_OPTIONS"
+                  :key="opt.key"
+                  @click="onIndexSelect(opt)"
+                  class="btn-index-option"
+                  :class="{ active: selectedIndex === opt.key }"
+                >{{ opt.label }}</button>
+              </div>
+              <div v-if="selectedIndex === 'fixed'" class="slider-control slider-control-top">
+                <input
+                  v-model.number="sliders.growthRate"
+                  type="range"
+                  min="2"
+                  max="15"
+                  step="0.5"
+                  @input="onSliderChange"
+                />
+                <span class="slider-value">{{ sliders.growthRate.toFixed(1) }}%</span>
+              </div>
+              <div v-else class="slider-control slider-control-top">
+                <input
+                  v-model.number="historicalStartYear"
+                  type="range"
+                  :min="INDEX_OPTIONS.find(o => o.key === selectedIndex)?.minYear ?? 1928"
+                  max="2024"
+                  step="1"
+                  @input="onSliderChange"
+                />
+                <span class="slider-value">{{ historicalStartYear }}</span>
+              </div>
+            </div>
+
+            <div class="slider-group">
+              <label>Starting Age</label>
+              <div class="slider-control">
+                <input
+                  v-model.number="sliders.startingAge"
+                  type="range"
+                  min="25"
+                  max="65"
+                  step="1"
+                  @input="onSliderChange"
+                />
+                <span class="slider-value">{{ sliders.startingAge }}</span>
+              </div>
+            </div>
+
+            <div class="slider-group">
+              <label>Initial Portfolio</label>
+              <div class="slider-control">
+                <input
+                  v-model.number="sliders.initialPortfolio"
+                  type="range"
+                  min="0"
+                  max="10000000"
+                  step="100000"
+                  @input="onSliderChange"
+                />
+                <span class="slider-value">₪{{ formatPortfolio(sliders.initialPortfolio) }}M</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Mortgage Section (Collapsible) -->
+          <div class="param-section">
+            <div class="param-section-header">
+              <div class="param-section-title-row">
+                <h4 class="param-section-title">Mortgage</h4>
+                <button
+                  v-if="mortgage"
+                  @click="showMortgage = !showMortgage"
+                  class="btn-collapse"
+                >
+                  {{ showMortgage ? '▼' : '▶' }}
+                </button>
+              </div>
+              <div class="mortgage-buttons">
+                <button v-if="!mortgage" @click="addMortgage; showMortgage = true" class="btn-add-mortgage">+ Add</button>
+                <button v-else @click="removeMortgage; showMortgage = false" class="btn-remove-mortgage">Remove</button>
+              </div>
+            </div>
+
+            <div v-if="mortgage && showMortgage" class="mortgage-controls">
+              <div class="mortgage-row">
+                <label>Principal (₪)</label>
+                <div class="mortgage-control">
                   <input
-                    v-model.number="sliders.income"
+                    v-model.number="mortgage.principal"
                     type="range"
-                    min="15000"
-                    max="150000"
-                    step="1000"
+                    min="100000"
+                    max="5000000"
+                    step="50000"
+                    class="mortgage-slider"
                     @input="onSliderChange"
                   />
-                  <span class="slider-value">₪{{ formatNumber(sliders.income) }}</span>
+                  <span class="mortgage-value">₪{{ formatNumber(mortgage.principal / 1000000) }}M</span>
+                </div>
+              </div>
+
+              <div class="mortgage-row">
+                <label>Annual Rate (%)</label>
+                <div class="mortgage-control">
+                  <input
+                    v-model.number="mortgage.annual_rate"
+                    type="range"
+                    min="1"
+                    max="8"
+                    step="0.1"
+                    class="mortgage-slider"
+                    @input="onSliderChange"
+                  />
+                  <span class="mortgage-value">{{ mortgage.annual_rate.toFixed(1) }}%</span>
+                </div>
+              </div>
+
+              <div class="mortgage-row">
+                <label>Duration (years)</label>
+                <div class="mortgage-control">
+                  <input
+                    v-model.number="mortgage.duration_years"
+                    type="range"
+                    min="5"
+                    max="30"
+                    step="1"
+                    class="mortgage-slider"
+                    @input="onSliderChange"
+                  />
+                  <span class="mortgage-value">{{ mortgage.duration_years }} yrs</span>
+                </div>
+              </div>
+
+              <div class="mortgage-info">
+                <span v-if="mortgage">Monthly Payment: ₪{{ calculateMortgagePayment(mortgage) }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Retirement Lifestyle Section -->
+          <div class="param-section">
+            <div class="param-section-header">
+              <h4 class="param-section-title">Retirement Lifestyle</h4>
+            </div>
+
+            <div class="retirement-toggle">
+              <label class="checkbox-label">
+                <input
+                  v-model="retirementEnabled"
+                  type="checkbox"
+                  @change="onSliderChange"
+                />
+                <span>Enable Retirement Mode</span>
+              </label>
+            </div>
+
+            <div v-if="retirementEnabled" class="retirement-panel">
+              <div class="retirement-type-row">
+                <span class="field-label">Type</span>
+                <div class="radio-group">
+                  <label class="radio-label">
+                    <input
+                      v-model="retirementType"
+                      type="radio"
+                      value="full"
+                      @change="onSliderChange"
+                    />
+                    <span>Full Retirement</span>
+                  </label>
+                  <label class="radio-label">
+                    <input
+                      v-model="retirementType"
+                      type="radio"
+                      value="partial"
+                      @change="onSliderChange"
+                    />
+                    <span>Partial Retirement</span>
+                  </label>
                 </div>
               </div>
 
               <div class="slider-group">
-                <label>Monthly Expenses</label>
+                <label>
+                  Retire at Age
+                  <span class="field-value-inline">{{ retirementAge }}</span>
+                </label>
                 <div class="slider-control">
                   <input
-                    v-model.number="sliders.expenses"
+                    v-model.number="retirementAge"
                     type="range"
-                    min="10000"
+                    min="40"
+                    max="95"
+                    step="1"
+                    @input="onSliderChange"
+                  />
+                  <span class="slider-value">{{ retirementAge }}</span>
+                </div>
+              </div>
+
+              <div v-if="retirementType === 'partial'" class="slider-group">
+                <label>
+                  New Monthly Income
+                  <span class="field-value-inline">₪{{ formatNumber(partialRetirementIncome) }}</span>
+                </label>
+                <div class="slider-control">
+                  <input
+                    v-model.number="partialRetirementIncome"
+                    type="range"
+                    min="0"
                     max="100000"
                     step="1000"
                     @input="onSliderChange"
                   />
-                  <span class="slider-value">₪{{ formatNumber(sliders.expenses) }}</span>
+                  <span class="slider-value">₪{{ formatNumber(partialRetirementIncome) }}</span>
                 </div>
+                <div class="field-hint">e.g., consulting, freelance income</div>
               </div>
+            </div>
+          </div>
 
-              <div class="slider-group">
-                <label style="margin-bottom:8px; display:block">Growth Rate</label>
-                <div class="index-selector">
-                  <button
-                    v-for="opt in INDEX_OPTIONS"
-                    :key="opt.key"
-                    @click="onIndexSelect(opt)"
-                    class="btn-index-option"
-                    :class="{ active: selectedIndex === opt.key }"
-                  >{{ opt.label }}</button>
-                </div>
-                <div v-if="selectedIndex === 'fixed'" class="slider-control" style="margin-top:8px">
+          <!-- Events as part of scenario parameters -->
+          <div class="events-in-parameters">
+            <div class="param-section-header param-section-divider">
+              <h4 class="param-section-title">One-Time Events</h4>
+              <div class="events-buttons">
+                <button @click="addEvent('windfall')" class="btn-add-event btn-windfall">
+                  + Windfall
+                </button>
+                <button @click="addEvent('expense')" class="btn-add-event btn-expense">
+                  + Expense
+                </button>
+              </div>
+            </div>
+
+            <div v-if="events.length === 0" class="no-events">
+              No events. Add windfalls or expenses above.
+            </div>
+
+            <div v-else class="events-list">
+              <div v-for="(event, index) in events" :key="index" class="event-row">
+                <input
+                  v-model="event.enabled"
+                  type="checkbox"
+                  class="event-toggle"
+                  @change="onSliderChange"
+                />
+                <input
+                  v-model="event.description"
+                  type="text"
+                  class="event-description"
+                  placeholder="Description"
+                  @input="onSliderChange"
+                />
+                <div class="event-controls">
+                  <label>Y:</label>
                   <input
-                    v-model.number="sliders.growthRate"
+                    v-model.number="event.year"
                     type="range"
-                    min="2"
-                    max="15"
-                    step="0.5"
-                    @input="onSliderChange"
-                  />
-                  <span class="slider-value">{{ sliders.growthRate.toFixed(1) }}%</span>
-                </div>
-                <div v-else class="slider-control" style="margin-top:8px">
-                  <input
-                    v-model.number="historicalStartYear"
-                    type="range"
-                    :min="INDEX_OPTIONS.find(o => o.key === selectedIndex)?.minYear ?? 1928"
-                    max="2024"
+                    min="1"
+                    max="20"
                     step="1"
+                    class="event-year-slider"
                     @input="onSliderChange"
                   />
-                  <span class="slider-value">{{ historicalStartYear }}</span>
+                  <span class="event-year-value">{{ event.year }}</span>
                 </div>
-              </div>
-
-              <div class="slider-group">
-                <label>Starting Age</label>
-                <div class="slider-control">
+                <div class="event-controls">
+                  <label>₪:</label>
                   <input
-                    v-model.number="sliders.startingAge"
+                    v-model.number="event.amount"
                     type="range"
-                    min="25"
-                    max="65"
-                    step="1"
+                    min="-3000000"
+                    max="5000000"
+                    step="50000"
+                    class="event-amount-slider"
                     @input="onSliderChange"
                   />
-                  <span class="slider-value">{{ sliders.startingAge }}</span>
+                  <span class="event-amount-value">{{ formatEventAmount(event.amount) }}</span>
                 </div>
-              </div>
-
-              <div class="slider-group">
-                <label>Initial Portfolio</label>
-                <div class="slider-control">
-                  <input
-                    v-model.number="sliders.initialPortfolio"
-                    type="range"
-                    min="0"
-                    max="10000000"
-                    step="100000"
-                    @input="onSliderChange"
-                  />
-                  <span class="slider-value">₪{{ formatPortfolio(sliders.initialPortfolio) }}M</span>
-                </div>
+                <button @click="removeEvent(index)" class="btn-remove-event">✕</button>
               </div>
             </div>
+          </div>
 
-            <!-- Mortgage Section (Collapsible) -->
-            <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e0e0e0;">
-              <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <h4 style="margin: 0; font-size: 13px; font-weight: 600; color: #333;">Mortgage</h4>
+          <!-- Probabilistic Events Section -->
+          <div class="param-section param-section-divider-top">
+            <div class="param-section-header">
+              <h4 class="param-section-title">Probabilistic Events</h4>
+              <button @click="addProbabilisticEvent" class="btn-add-prob-event">+ Add Event</button>
+            </div>
+
+            <div v-if="probabilisticEvents.length === 0" class="no-events">
+              Model uncertain outcomes (e.g. IPO: 70% success / 30% no event).
+            </div>
+
+            <div v-if="hasProbabilityError" class="prob-error-banner">
+              Fix probabilities to sum to 100% before simulating
+            </div>
+
+            <div v-for="(pe, peIdx) in probabilisticEvents" :key="peIdx" class="prob-event-card">
+              <div class="prob-event-header">
+                <input
+                  v-model="pe.name"
+                  type="text"
+                  class="prob-event-name-input"
+                  placeholder="Event name"
+                  @input="onSliderChange"
+                />
+                <span
+                  class="prob-total-badge"
+                  :class="probEventTotalPct(pe) === 100 ? 'badge-ok' : 'badge-err'"
+                >{{ probEventTotalPct(pe) }}%</span>
+                <button @click="removeProbabilisticEvent(peIdx)" class="btn-remove-prob-event">✕</button>
+              </div>
+
+              <div class="prob-outcomes-list">
+                <div v-for="(outcome, oIdx) in pe.outcomes" :key="oIdx" class="prob-outcome-row">
+                  <div class="outcome-field-group">
+                    <span class="outcome-field-label">Y</span>
+                    <input
+                      v-model.number="outcome.year"
+                      type="range" min="1" max="20" step="1"
+                      class="outcome-mini-slider"
+                      @input="onSliderChange"
+                    />
+                    <span class="outcome-field-val">{{ outcome.year }}</span>
+                  </div>
+                  <div class="outcome-field-group">
+                    <span class="outcome-field-label">%</span>
+                    <input
+                      v-model.number="outcome.probability"
+                      type="number" min="0" max="100" step="1"
+                      class="outcome-pct-input"
+                      @input="onSliderChange"
+                    />
+                  </div>
+                  <div class="outcome-field-group outcome-amount-group">
+                    <span class="outcome-field-label">₪</span>
+                    <input
+                      v-model.number="outcome.amount"
+                      type="range" min="-3000000" max="10000000" step="100000"
+                      class="outcome-mini-slider outcome-amount-slider"
+                      @input="onSliderChange"
+                    />
+                    <span class="outcome-field-val">{{ formatEventAmount(outcome.amount) }}</span>
+                  </div>
+                  <input
+                    v-model="outcome.description"
+                    type="text"
+                    class="outcome-desc-input"
+                    placeholder="Label"
+                    @input="onSliderChange"
+                  />
                   <button
-                    v-if="mortgage"
-                    @click="showMortgage = !showMortgage"
-                    style="background: none; border: none; cursor: pointer; font-size: 12px; color: #667eea;"
-                  >
-                    {{ showMortgage ? '▼' : '▶' }}
-                  </button>
-                </div>
-                <div class="mortgage-buttons">
-                  <button v-if="!mortgage" @click="addMortgage; showMortgage = true" class="btn-add-mortgage">+ Add</button>
-                  <button v-else @click="removeMortgage; showMortgage = false" class="btn-remove-mortgage">Remove</button>
+                    v-if="pe.outcomes.length > 2"
+                    @click="removeOutcome(peIdx, oIdx)"
+                    class="btn-remove-outcome"
+                  >✕</button>
                 </div>
               </div>
 
-              <div v-if="mortgage && showMortgage" class="mortgage-controls">
-                <div class="mortgage-row">
-                  <label>Principal (₪)</label>
-                  <div class="mortgage-control">
-                    <input
-                      v-model.number="mortgage.principal"
-                      type="range"
-                      min="100000"
-                      max="5000000"
-                      step="50000"
-                      class="mortgage-slider"
-                      @input="onSliderChange"
-                    />
-                    <span class="mortgage-value">₪{{ formatNumber(mortgage.principal / 1000000) }}M</span>
-                  </div>
-                </div>
-
-                <div class="mortgage-row">
-                  <label>Annual Rate (%)</label>
-                  <div class="mortgage-control">
-                    <input
-                      v-model.number="mortgage.annual_rate"
-                      type="range"
-                      min="1"
-                      max="8"
-                      step="0.1"
-                      class="mortgage-slider"
-                      @input="onSliderChange"
-                    />
-                    <span class="mortgage-value">{{ mortgage.annual_rate.toFixed(1) }}%</span>
-                  </div>
-                </div>
-
-                <div class="mortgage-row">
-                  <label>Duration (years)</label>
-                  <div class="mortgage-control">
-                    <input
-                      v-model.number="mortgage.duration_years"
-                      type="range"
-                      min="5"
-                      max="30"
-                      step="1"
-                      class="mortgage-slider"
-                      @input="onSliderChange"
-                    />
-                    <span class="mortgage-value">{{ mortgage.duration_years }} yrs</span>
-                  </div>
-                </div>
-
-                <div class="mortgage-info">
-                  <span v-if="mortgage">Monthly Payment: ₪{{ calculateMortgagePayment(mortgage) }}</span>
-                </div>
-              </div>
+              <button @click="addOutcome(peIdx)" class="btn-add-outcome">+ Outcome</button>
             </div>
-
-            <!-- Retirement Lifestyle Section -->
-            <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e0e0e0;">
-              <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px;">
-                <h4 style="margin: 0; font-size: 13px; font-weight: 600; color: #333;">🏖️ Retirement Lifestyle</h4>
-              </div>
-
-              <!-- Toggle Retirement Lifestyle -->
-              <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                  <input
-                    v-model="retirementEnabled"
-                    type="checkbox"
-                    @change="onSliderChange"
-                  />
-                  <span style="font-size: 13px; color: #555;">Enable Retirement Mode</span>
-                </label>
-              </div>
-
-              <div v-if="retirementEnabled" style="background: #f9f9f9; padding: 12px; border-radius: 6px; margin-bottom: 12px;">
-                <!-- Retirement Type -->
-                <div style="margin-bottom: 12px;">
-                  <label style="display: block; font-size: 12px; font-weight: 600; color: #555; margin-bottom: 8px;">Type:</label>
-                  <div style="display: flex; gap: 12px;">
-                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                      <input
-                        v-model="retirementType"
-                        type="radio"
-                        value="full"
-                        @change="onSliderChange"
-                      />
-                      <span style="font-size: 12px;">Full Retirement</span>
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                      <input
-                        v-model="retirementType"
-                        type="radio"
-                        value="partial"
-                        @change="onSliderChange"
-                      />
-                      <span style="font-size: 12px;">Partial Retirement</span>
-                    </label>
-                  </div>
-                </div>
-
-                <!-- Retirement Age Slider -->
-                <div style="margin-bottom: 12px;">
-                  <label style="font-size: 12px; font-weight: 600; color: #555; display: block; margin-bottom: 6px;">
-                    Retire at Age: <span style="color: #667eea; font-weight: bold;">{{ retirementAge }}</span>
-                  </label>
-                  <div style="display: flex; align-items: center; gap: 8px;">
-                    <input
-                      v-model.number="retirementAge"
-                      type="range"
-                      min="40"
-                      max="95"
-                      step="1"
-                      style="flex: 1; cursor: pointer;"
-                      @input="onSliderChange"
-                    />
-                    <span style="font-size: 12px; color: #888; min-width: 30px;">{{ retirementAge }}</span>
-                  </div>
-                </div>
-
-                <!-- Partial Retirement Income (if partial mode) -->
-                <div v-if="retirementType === 'partial'" style="margin-bottom: 0;">
-                  <label style="font-size: 12px; font-weight: 600; color: #555; display: block; margin-bottom: 6px;">
-                    New Monthly Income (₪): <span style="color: #667eea; font-weight: bold;">{{ formatNumber(partialRetirementIncome) }}</span>
-                  </label>
-                  <div style="display: flex; align-items: center; gap: 8px;">
-                    <input
-                      v-model.number="partialRetirementIncome"
-                      type="range"
-                      min="0"
-                      max="100000"
-                      step="1000"
-                      style="flex: 1; cursor: pointer;"
-                      @input="onSliderChange"
-                    />
-                    <span style="font-size: 12px; color: #888; min-width: 60px;">₪{{ formatNumber(partialRetirementIncome) }}</span>
-                  </div>
-                  <div style="font-size: 11px; color: #999; margin-top: 4px;">
-                    e.g., consulting, freelance income
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Events as part of scenario parameters -->
-            <div class="events-in-parameters">
-              <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #e0e0e0;">
-                <h4 style="margin: 0; font-size: 13px; font-weight: 600; color: #333;">One-Time Events</h4>
-                <div class="events-buttons">
-                  <button @click="addEvent('windfall')" class="btn-add-event btn-windfall">
-                    + Windfall
-                  </button>
-                  <button @click="addEvent('expense')" class="btn-add-event btn-expense">
-                    + Expense
-                  </button>
-                </div>
-              </div>
-
-              <div v-if="events.length === 0" class="no-events">
-                No events. Add windfalls or expenses above.
-              </div>
-
-              <div v-else class="events-list">
-                <div v-for="(event, index) in events" :key="index" class="event-row">
-                  <input
-                    v-model="event.enabled"
-                    type="checkbox"
-                    class="event-toggle"
-                    @change="onSliderChange"
-                  />
-                  <input
-                    v-model="event.description"
-                    type="text"
-                    class="event-description"
-                    placeholder="Description"
-                    @input="onSliderChange"
-                  />
-                  <div class="event-controls">
-                    <label>Y:</label>
-                    <input
-                      v-model.number="event.year"
-                      type="range"
-                      min="1"
-                      max="20"
-                      step="1"
-                      class="event-year-slider"
-                      @input="onSliderChange"
-                    />
-                    <span class="event-year-value">{{ event.year }}</span>
-                  </div>
-                  <div class="event-controls">
-                    <label>₪:</label>
-                    <input
-                      v-model.number="event.amount"
-                      type="range"
-                      min="-3000000"
-                      max="5000000"
-                      step="50000"
-                      class="event-amount-slider"
-                      @input="onSliderChange"
-                    />
-                    <span class="event-amount-value">{{ formatEventAmount(event.amount) }}</span>
-                  </div>
-                  <button @click="removeEvent(index)" class="btn-remove-event">🗑</button>
-                </div>
-              </div>
-            </div>
-
-            <!-- Probabilistic Events Section -->
-            <div style="margin-top: 4px; padding-top: 12px; border-top: 1px solid #e0e0e0;">
-              <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px;">
-                <h4 style="margin: 0; font-size: 13px; font-weight: 600; color: #333;">Probabilistic Events</h4>
-                <button @click="addProbabilisticEvent" class="btn-add-prob-event">+ Add Event</button>
-              </div>
-
-              <div v-if="probabilisticEvents.length === 0" style="text-align: center; color: #999; font-size: 12px; padding: 10px 0;">
-                Model uncertain outcomes (e.g. IPO: 70% success / 30% no event).
-              </div>
-
-              <div v-if="hasProbabilityError" class="prob-error-banner">
-                ⚠ Fix probabilities to sum to 100% before simulating
-              </div>
-
-              <div v-for="(pe, peIdx) in probabilisticEvents" :key="peIdx" class="prob-event-card">
-                <div class="prob-event-header">
-                  <input
-                    v-model="pe.name"
-                    type="text"
-                    class="prob-event-name-input"
-                    placeholder="Event name"
-                    @input="onSliderChange"
-                  />
-                  <span
-                    class="prob-total-badge"
-                    :class="probEventTotalPct(pe) === 100 ? 'badge-ok' : 'badge-err'"
-                  >{{ probEventTotalPct(pe) }}%</span>
-                  <button @click="removeProbabilisticEvent(peIdx)" class="btn-remove-prob-event">✕</button>
-                </div>
-
-                <div class="prob-outcomes-list">
-                  <div v-for="(outcome, oIdx) in pe.outcomes" :key="oIdx" class="prob-outcome-row">
-                    <div class="outcome-field-group">
-                      <span class="outcome-field-label">Y</span>
-                      <input
-                        v-model.number="outcome.year"
-                        type="range" min="1" max="20" step="1"
-                        class="outcome-mini-slider"
-                        @input="onSliderChange"
-                      />
-                      <span class="outcome-field-val">{{ outcome.year }}</span>
-                    </div>
-                    <div class="outcome-field-group">
-                      <span class="outcome-field-label">%</span>
-                      <input
-                        v-model.number="outcome.probability"
-                        type="number" min="0" max="100" step="1"
-                        class="outcome-pct-input"
-                        @input="onSliderChange"
-                      />
-                    </div>
-                    <div class="outcome-field-group outcome-amount-group">
-                      <span class="outcome-field-label">₪</span>
-                      <input
-                        v-model.number="outcome.amount"
-                        type="range" min="-3000000" max="10000000" step="100000"
-                        class="outcome-mini-slider outcome-amount-slider"
-                        @input="onSliderChange"
-                      />
-                      <span class="outcome-field-val">{{ formatEventAmount(outcome.amount) }}</span>
-                    </div>
-                    <input
-                      v-model="outcome.description"
-                      type="text"
-                      class="outcome-desc-input"
-                      placeholder="Label"
-                      @input="onSliderChange"
-                    />
-                    <button
-                      v-if="pe.outcomes.length > 2"
-                      @click="removeOutcome(peIdx, oIdx)"
-                      class="btn-remove-outcome"
-                    >✕</button>
-                  </div>
-                </div>
-
-                <button @click="addOutcome(peIdx)" class="btn-add-outcome">+ Outcome</button>
-              </div>
-            </div>
+          </div>
         </div>
       </div>
 
@@ -477,7 +471,7 @@
       <div class="whatif-content">
         <div v-if="originalScenario">
 
-          <!-- Chart (Visible without scrolling) -->
+          <!-- Chart -->
           <div v-if="whatIfResult" class="chart-section">
             <ScenarioInsights :special-points="chartSpecialPoints" />
             <ComparisonChart
@@ -488,14 +482,14 @@
             />
           </div>
 
-          <!-- Bottom: Metrics (Scrollable) -->
+          <!-- Metrics -->
           <div class="bottom-section">
             <div v-if="whatIfResult" class="metrics-cards">
               <!-- Original scenario card — only shown in edit mode -->
               <div v-if="!isViewMode" class="metric-card">
                 <h3>Original</h3>
                 <div class="metric-item">
-                  <span class="label">Retirement:</span>
+                  <span class="label">Retirement</span>
                   <span class="value">
                     <span v-if="originalScenario.retirement_year">
                       Y{{ originalScenario.retirement_year }} / Age {{ calculateRetirementAge(originalScenario.retirement_year, originalStartingAge) }}
@@ -504,7 +498,7 @@
                   </span>
                 </div>
                 <div class="metric-item">
-                  <span class="label">Final Portfolio:</span>
+                  <span class="label">Final Portfolio</span>
                   <span class="value">₪{{ formatNumber((originalScenario.final_portfolio ?? 0) / 1000000) }}M</span>
                 </div>
               </div>
@@ -519,7 +513,7 @@
                   <h3>{{ branch.label }}</h3>
                   <div class="branch-probability-badge">{{ Math.round(branch.probability * 100) }}% chance</div>
                   <div class="metric-item">
-                    <span class="label">Retirement:</span>
+                    <span class="label">Retirement</span>
                     <span class="value">
                       <span v-if="branch.retirement_year">
                         Y{{ branch.retirement_year }} / Age {{ calculateRetirementAge(branch.retirement_year, sliders.startingAge) }}
@@ -528,17 +522,17 @@
                     </span>
                   </div>
                   <div class="metric-item">
-                    <span class="label">Final Portfolio:</span>
+                    <span class="label">Final Portfolio</span>
                     <span class="value">₪{{ formatNumber(branch.final_portfolio / 1000000) }}M</span>
                   </div>
                 </div>
               </template>
 
-              <!-- Single card: "Scenario" in view mode, "What-If" in edit mode -->
+              <!-- Single card -->
               <div v-else class="metric-card">
                 <h3>{{ isViewMode ? 'Scenario' : 'What-If' }}</h3>
                 <div class="metric-item">
-                  <span class="label">Retirement:</span>
+                  <span class="label">Retirement</span>
                   <span class="value">
                     <span v-if="whatIfResult.retirement_year">
                       Y{{ whatIfResult.retirement_year }} / Age {{ calculateRetirementAge(whatIfResult.retirement_year, sliders.startingAge) }}
@@ -547,7 +541,7 @@
                   </span>
                 </div>
                 <div class="metric-item">
-                  <span class="label">Final Portfolio:</span>
+                  <span class="label">Final Portfolio</span>
                   <span class="value">₪{{ formatNumber((whatIfResult.final_portfolio ?? 0) / 1000000) }}M</span>
                 </div>
               </div>
@@ -1232,22 +1226,47 @@ if (route.query.scenarioId) {
 </script>
 
 <style scoped>
+/* ─── Design Tokens (Stripe-inspired) ──────────────────────────────────── */
+:root {
+  --sp: #533afd;
+  --sp-hover: #4434d4;
+  --sp-light: #b9b9f9;
+  --navy: #061b31;
+  --label: #273951;
+  --body: #64748d;
+  --border: #e5edf5;
+  --white: #ffffff;
+  --bg: #f8fafc;
+  --shadow-std: rgba(50,50,93,0.25) 0px 30px 45px -30px, rgba(0,0,0,0.1) 0px 18px 36px -18px;
+  --shadow-ambient: rgba(23,23,23,0.08) 0px 15px 35px 0px;
+  --shadow-subtle: rgba(23,23,23,0.06) 0px 3px 6px;
+  --shadow-deep: rgba(3,3,39,0.25) 0px 14px 21px -14px, rgba(0,0,0,0.1) 0px 8px 17px -8px;
+}
+
+/* ─── Global ─────────────────────────────────────────────────────────────── */
 .whatif-container {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background: #f5f5f5;
+  background: var(--bg);
+  font-family: 'SF Pro Display', -apple-system, system-ui, sans-serif;
+  font-feature-settings: "ss01";
+  color: var(--navy);
 }
 
+/* ─── Header ─────────────────────────────────────────────────────────────── */
 .whatif-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: white;
-  padding: 16px 24px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  border-bottom: 1px solid #e0e0e0;
+  background: var(--white);
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--border);
+  box-shadow: rgba(0,55,112,0.08) 0px 2px 8px 0px;
   flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .header-left {
@@ -1262,107 +1281,79 @@ if (route.query.scenarioId) {
   gap: 8px;
 }
 
+.whatif-header h1 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 300;
+  color: var(--navy);
+  letter-spacing: -0.22px;
+  font-feature-settings: "ss01";
+}
+
 .mode-badge {
-  font-size: 12px;
-  font-weight: 600;
-  padding: 3px 10px;
-  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 400;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-feature-settings: "ss01";
 }
 
 .view-mode-badge {
-  background: #e8f4fd;
-  color: #2980b9;
-  border: 1px solid #aed6f1;
+  background: rgba(83,58,253,0.08);
+  color: var(--sp);
+  border: 1px solid var(--sp-light);
+}
+
+/* ─── Header Buttons ─────────────────────────────────────────────────────── */
+.btn-back,
+.btn-logout {
+  background: transparent;
+  border: 1px solid var(--border);
+  padding: 7px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--label);
+  transition: border-color 0.15s, color 0.15s;
+  font-feature-settings: "ss01";
+}
+
+.btn-back:hover,
+.btn-logout:hover {
+  border-color: #c0cdd8;
+  color: var(--navy);
 }
 
 .btn-edit-mode {
-  background: #667eea;
-  color: white;
+  background: var(--sp);
+  color: var(--white);
   border: none;
-  padding: 8px 16px;
+  padding: 7px 16px;
   border-radius: 4px;
   cursor: pointer;
   font-size: 13px;
-  font-weight: 500;
-  transition: background 0.2s;
+  font-weight: 400;
+  transition: background 0.15s;
+  font-feature-settings: "ss01";
 }
 
 .btn-edit-mode:hover {
-  background: #5a6fd6;
+  background: var(--sp-hover);
 }
 
-.loading-content {
-  padding: 40px;
-  text-align: center;
-  color: #666;
-  font-size: 14px;
-  background: white;
-  border-radius: 8px;
-}
-
-/* View mode: gray out all inputs, hide action buttons */
-.sliders-section.view-mode input[type="range"],
-.sliders-section.view-mode input[type="number"],
-.sliders-section.view-mode input[type="text"],
-.sliders-section.view-mode input[type="checkbox"],
-.sliders-section.view-mode input[type="radio"] {
-  opacity: 0.55;
-  pointer-events: none;
-  cursor: default;
-}
-
-.sliders-section.view-mode .btn-index-option {
-  opacity: 0.55;
-  pointer-events: none;
-  cursor: default;
-}
-
-.sliders-section.view-mode .events-buttons,
-.sliders-section.view-mode .btn-remove-event,
-.sliders-section.view-mode .mortgage-buttons,
-.sliders-section.view-mode .btn-add-prob-event,
-.sliders-section.view-mode .btn-remove-prob-event,
-.sliders-section.view-mode .btn-add-outcome,
-.sliders-section.view-mode .btn-remove-outcome,
-.sliders-section.view-mode .prob-error-banner {
-  display: none !important;
-}
-
-.whatif-header h1 {
-  margin: 0;
-  font-size: 20px;
-  color: #333;
-  font-weight: 600;
-}
-
-.btn-back, .btn-logout {
-  background: #f0f0f0;
-  border: 1px solid #ddd;
-  padding: 8px 16px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 13px;
-  color: #555;
-  transition: all 0.2s;
-}
-
-.btn-back:hover, .btn-logout:hover {
-  background: #e0e0e0;
-  border-color: #999;
-}
-
+/* ─── Layout ─────────────────────────────────────────────────────────────── */
 .whatif-main {
   display: flex;
   flex: 1;
-  gap: 0;
   overflow: hidden;
 }
 
+/* ─── Sidebar ────────────────────────────────────────────────────────────── */
 .whatif-sidebar {
   width: 380px;
-  background: white;
-  border-right: 1px solid #e0e0e0;
-  box-shadow: 1px 0 3px rgba(0, 0, 0, 0.05);
+  background: var(--white);
+  border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
@@ -1372,156 +1363,131 @@ if (route.query.scenarioId) {
 .sidebar-content {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   padding: 16px;
-  overflow-y: auto;
 }
 
-.loading-sidebar, .error-sidebar {
+.loading-sidebar,
+.error-sidebar {
   padding: 20px;
   text-align: center;
-  font-size: 14px;
-  color: #666;
+  font-size: 13px;
+  color: var(--body);
 }
 
 .error-sidebar {
-  color: #e74c3c;
+  color: #ea2261;
 }
 
-.whatif-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-  background: #f5f5f5;
-  padding: 16px;
-  gap: 12px;
-  min-height: 0;
-}
-
-.loading, .error {
-  background: white;
-  padding: 40px;
-  border-radius: 8px;
-  text-align: center;
-  font-size: 16px;
-}
-
-.error {
-  color: #e74c3c;
-  border: 1px solid #e74c3c;
-}
-
+/* ─── Selectors ──────────────────────────────────────────────────────────── */
 .selector-section {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
 }
 
 .selector-section label {
-  font-weight: 500;
-  color: #333;
-  font-size: 13px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--label);
+  font-feature-settings: "ss01";
 }
 
 .selector-section select {
   width: 100%;
-  padding: 8px;
-  border: 1px solid #ddd;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
   border-radius: 4px;
   font-size: 13px;
-  color: #333;
-  background: white;
+  color: var(--navy);
+  background: var(--white);
   cursor: pointer;
+  font-feature-settings: "ss01";
+  transition: border-color 0.15s;
 }
 
 .selector-section select:focus {
   outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  border-color: var(--sp);
+  box-shadow: 0 0 0 2px rgba(83,58,253,0.1);
 }
 
+/* ─── Sidebar Action Buttons ─────────────────────────────────────────────── */
 .btn-generate-scenario-sidebar {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  color: white;
+  background: var(--sp);
+  color: var(--white);
   border: none;
-  padding: 10px 12px;
+  padding: 9px 12px;
   border-radius: 4px;
   cursor: pointer;
   font-size: 13px;
-  font-weight: 600;
-  transition: all 0.2s;
+  font-weight: 400;
   width: 100%;
-  margin-bottom: 12px;
-  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+  transition: background 0.15s;
+  font-feature-settings: "ss01";
 }
 
 .btn-generate-scenario-sidebar:hover {
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
-  transform: translateY(-1px);
+  background: var(--sp-hover);
 }
 
 .btn-save-scenario-sidebar {
-  background: #27ae60;
-  color: white;
-  border: none;
-  padding: 10px 12px;
+  background: transparent;
+  color: var(--sp);
+  border: 1px solid var(--sp-light);
+  padding: 9px 12px;
   border-radius: 4px;
   cursor: pointer;
   font-size: 13px;
-  font-weight: 600;
-  transition: all 0.2s;
+  font-weight: 400;
   width: 100%;
-  margin-top: 8px;
+  transition: background 0.15s;
+  font-feature-settings: "ss01";
 }
 
 .btn-save-scenario-sidebar:hover {
-  background: #229954;
+  background: rgba(83,58,253,0.05);
 }
 
+/* ─── Sliders Section ────────────────────────────────────────────────────── */
 .sliders-section {
-  background: white;
-  padding: 12px;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  background: var(--white);
+  padding: 16px;
   flex-shrink: 0;
-  overflow-y: auto;
-  max-height: 55vh;
 }
 
-.sliders-section h3 {
-  font-size: 14px;
-  font-weight: 600;
-  color: #333;
+.section-title {
+  margin: 0 0 14px 0;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--label);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-feature-settings: "ss01";
 }
 
 .sliders-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-
-@media (max-width: 1400px) {
-  .sliders-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
-.events-in-parameters {
-  margin-top: 4px;
+  gap: 12px;
 }
 
 .slider-group {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .slider-group label {
-  font-weight: 500;
-  color: #333;
-  font-size: 12px;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--label);
+  font-feature-settings: "ss01";
+}
+
+.slider-label-block {
+  display: block;
+  margin-bottom: 2px;
 }
 
 .slider-control {
@@ -1530,484 +1496,254 @@ if (route.query.scenarioId) {
   gap: 8px;
 }
 
+.slider-control-top {
+  margin-top: 6px;
+}
+
 .slider-control input[type="range"] {
   flex: 1;
-  min-width: 60px;
-  height: 5px;
+  min-width: 50px;
+  height: 4px;
   border-radius: 2px;
-  background: linear-gradient(to right, #667eea 0%, #667eea 50%, #ddd 50%, #ddd 100%);
+  background: linear-gradient(to right, #533afd 0%, #533afd 50%, #e5edf5 50%, #e5edf5 100%);
   outline: none;
   -webkit-appearance: none;
   appearance: none;
+  cursor: pointer;
 }
 
 .slider-control input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
-  background: #667eea;
+  background: var(--sp);
   cursor: pointer;
-  box-shadow: 0 1px 3px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 1px 4px rgba(83,58,253,0.35);
+  border: 2px solid var(--white);
 }
 
 .slider-control input[type="range"]::-moz-range-thumb {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
-  background: #667eea;
+  background: var(--sp);
   cursor: pointer;
-  border: none;
-  box-shadow: 0 1px 3px rgba(102, 126, 234, 0.3);
+  border: 2px solid var(--white);
+  box-shadow: 0 1px 4px rgba(83,58,253,0.35);
 }
 
 .slider-value {
-  font-weight: 500;
-  color: #667eea;
-  min-width: 65px;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--sp);
+  min-width: 60px;
   text-align: right;
-  font-size: 12px;
   white-space: nowrap;
+  font-feature-settings: "tnum";
 }
 
-.chart-section {
-  background: white;
-  padding: 12px;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+.field-value-inline {
+  color: var(--sp);
+  font-feature-settings: "tnum";
+}
+
+.field-hint {
+  font-size: 11px;
+  color: var(--body);
+  margin-top: 2px;
+}
+
+/* ─── Param Sections ─────────────────────────────────────────────────────── */
+.param-section {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.param-section-divider {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.param-section-divider-top {
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.param-section-header {
   display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
-}
-
-.chart-section .insights-section {
-  flex-shrink: 0;
-}
-
-.chart-section .chart-wrapper {
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-}
-
-.bottom-section {
-  background: white;
-  border-radius: 8px;
-  padding: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  flex-shrink: 0;
-}
-
-.metrics-cards {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  flex-shrink: 0;
-}
-
-.metric-card {
-  padding: 10px;
-  background: #f9f9f9;
-  border-radius: 6px;
-  border: 1px solid #e0e0e0;
-}
-
-.metric-card h3 {
-  margin: 0 0 8px 0;
-  font-size: 12px;
-  font-weight: 600;
-  color: #333;
-}
-
-.metric-item {
-  display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 4px 0;
-  font-size: 11px;
-  border-bottom: 1px solid #f0f0f0;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
 }
 
-.metric-item:last-child {
-  border-bottom: none;
-}
-
-.metric-item .label {
-  color: #666;
-  font-weight: 500;
-}
-
-.metric-item .value {
-  color: #333;
-  font-weight: 600;
-  text-align: right;
-}
-
-.events-buttons {
+.param-section-title-row {
   display: flex;
+  align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
 }
 
-.btn-add-event {
+.param-section-title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--label);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-feature-settings: "ss01";
+}
+
+.btn-collapse {
+  background: none;
   border: none;
-  padding: 8px 14px;
-  border-radius: 4px;
+  cursor: pointer;
+  font-size: 10px;
+  color: var(--sp);
+  padding: 0;
+  line-height: 1;
+}
+
+/* ─── Retirement Controls ────────────────────────────────────────────────── */
+.retirement-toggle {
+  margin-bottom: 10px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   cursor: pointer;
   font-size: 12px;
-  font-weight: 600;
-  transition: all 0.2s;
+  color: var(--label);
+  font-feature-settings: "ss01";
 }
 
-.btn-windfall {
-  background: #27ae60;
-  color: white;
-}
-
-.btn-windfall:hover {
-  background: #229954;
-}
-
-.btn-expense {
-  background: #e74c3c;
-  color: white;
-}
-
-.btn-expense:hover {
-  background: #c0392b;
-}
-
-.btn-return-mode {
-  border: 1px solid #667eea;
-  padding: 2px 8px;
-  border-radius: 12px;
-  background: white;
-  color: #667eea;
+.checkbox-label input[type="checkbox"] {
+  accent-color: var(--sp);
+  width: 14px;
+  height: 14px;
   cursor: pointer;
+}
+
+.retirement-panel {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.retirement-type-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field-label {
   font-size: 11px;
-  font-weight: 600;
-  transition: all 0.2s;
+  font-weight: 400;
+  color: var(--label);
+  font-feature-settings: "ss01";
 }
 
-.btn-return-mode.active {
-  background: #667eea;
-  color: white;
-  border-color: #667eea;
+.radio-group {
+  display: flex;
+  gap: 16px;
 }
 
-.btn-return-mode:hover {
-  border-color: #5568d3;
-  color: #5568d3;
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--label);
+  font-feature-settings: "ss01";
 }
 
-.btn-return-mode.active:hover {
-  background: #5568d3;
+.radio-label input[type="radio"] {
+  accent-color: var(--sp);
+  cursor: pointer;
 }
 
+/* ─── Index Selector ─────────────────────────────────────────────────────── */
 .index-selector {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   flex-wrap: wrap;
-  margin-bottom: 8px;
 }
 
 .btn-index-option {
-  border: 1px solid #ddd;
-  padding: 6px 12px;
-  border-radius: 16px;
-  background: white;
-  color: #333;
+  border: 1px solid var(--border);
+  padding: 4px 10px;
+  border-radius: 4px;
+  background: var(--white);
+  color: var(--label);
   cursor: pointer;
-  font-size: 12px;
-  font-weight: 500;
-  transition: all 0.2s;
+  font-size: 11px;
+  font-weight: 400;
+  transition: all 0.15s;
+  font-feature-settings: "ss01";
 }
 
 .btn-index-option:hover {
-  border-color: #667eea;
-  color: #667eea;
+  border-color: var(--sp-light);
+  color: var(--sp);
 }
 
 .btn-index-option.active {
-  background: #667eea;
-  color: white;
-  border-color: #667eea;
+  background: var(--sp);
+  color: var(--white);
+  border-color: var(--sp);
 }
 
 .btn-index-option.active:hover {
-  background: #5568d3;
-  border-color: #5568d3;
+  background: var(--sp-hover);
+  border-color: var(--sp-hover);
 }
 
-.no-events {
-  text-align: center;
-  color: #999;
-  padding: 12px 10px;
-  font-size: 12px;
-}
-
-.events-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 8px;
-}
-
-.event-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px;
-  background: #f9f9f9;
-  border-radius: 4px;
-  border: 1px solid #e0e0e0;
-  font-size: 12px;
-  flex-wrap: wrap;
-}
-
-.event-toggle {
-  flex-shrink: 0;
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-}
-
-.event-description {
-  flex: 1;
-  padding: 6px;
-  border: 1px solid #ddd;
-  border-radius: 3px;
-  font-size: 12px;
-  color: #333;
-  min-width: 120px;
-}
-
-.event-description:focus {
-  outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
-}
-
-.event-controls {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex: 0 0 auto;
-}
-
-.event-controls label {
-  font-size: 12px;
-  font-weight: 600;
-  color: #666;
-  min-width: 25px;
-}
-
-.event-year-slider,
-.event-amount-slider {
-  width: 70px;
-  height: 4px;
-  cursor: pointer;
-  appearance: none;
-  -webkit-appearance: none;
-  background: linear-gradient(to right, #667eea 0%, #667eea 50%, #ddd 50%, #ddd 100%);
-  border-radius: 2px;
-  outline: none;
-}
-
-.event-year-slider::-webkit-slider-thumb,
-.event-amount-slider::-webkit-slider-thumb {
-  appearance: none;
-  -webkit-appearance: none;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: #667eea;
-  cursor: pointer;
-  box-shadow: 0 1px 3px rgba(102, 126, 234, 0.4);
-}
-
-.event-year-slider::-moz-range-thumb,
-.event-amount-slider::-moz-range-thumb {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: #667eea;
-  cursor: pointer;
-  border: none;
-  box-shadow: 0 1px 3px rgba(102, 126, 234, 0.4);
-}
-
-.event-year-value,
-.event-amount-value {
-  font-weight: 600;
-  color: #667eea;
-  font-size: 12px;
-  min-width: 40px;
-  text-align: right;
-}
-
-.btn-remove-event {
-  flex-shrink: 0;
-  background: none;
-  border: none;
-  font-size: 14px;
-  cursor: pointer;
-  padding: 2px;
-  transition: transform 0.2s;
-}
-
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-}
-
-.modal-box {
-  background: white;
-  border-radius: 10px;
-  padding: 32px;
-  width: 440px;
-  max-width: 90vw;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
-}
-
-.modal-box h2 {
-  margin: 0 0 8px 0;
-  font-size: 20px;
-  color: #333;
-}
-
-.modal-subtitle {
-  color: #666;
-  font-size: 14px;
-  margin-bottom: 20px;
-  margin-top: 0;
-}
-
-.modal-box label {
-  display: block;
-  font-weight: 500;
-  color: #333;
-  margin-bottom: 8px;
-  font-size: 14px;
-}
-
-.modal-text-input {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 10px 12px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 15px;
-  margin-bottom: 12px;
-}
-
-.modal-text-input:focus {
-  outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
-}
-
-.modal-error {
-  color: #e74c3c;
-  font-size: 13px;
-  margin-bottom: 12px;
-}
-
-.modal-success {
-  color: #27ae60;
-  font-size: 14px;
-  font-weight: 600;
-  margin-bottom: 12px;
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-top: 24px;
-}
-
-.btn-cancel {
-  background: #f0f0f0;
-  border: 1px solid #ddd;
-  padding: 9px 20px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.2s;
-}
-
-.btn-cancel:hover {
-  background: #e0e0e0;
-}
-
-.btn-cancel:disabled {
-  background: #f0f0f0;
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
-.btn-confirm-save {
-  background: #27ae60;
-  color: white;
-  border: none;
-  padding: 9px 20px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
-  transition: all 0.2s;
-}
-
-.btn-confirm-save:hover:not(:disabled) {
-  background: #229954;
-}
-
-.btn-confirm-save:disabled {
-  background: #aaa;
-  cursor: not-allowed;
-}
-
+/* ─── Mortgage Controls ──────────────────────────────────────────────────── */
 .mortgage-buttons {
   display: flex;
   gap: 8px;
 }
 
-.btn-add-mortgage, .btn-remove-mortgage {
+.btn-add-mortgage,
+.btn-remove-mortgage {
   border: none;
-  padding: 6px 12px;
+  padding: 5px 10px;
   border-radius: 4px;
   cursor: pointer;
   font-size: 11px;
-  font-weight: 600;
-  transition: all 0.2s;
+  font-weight: 400;
+  transition: background 0.15s;
+  font-feature-settings: "ss01";
 }
 
 .btn-add-mortgage {
-  background: #3498db;
-  color: white;
+  background: var(--sp);
+  color: var(--white);
 }
 
 .btn-add-mortgage:hover {
-  background: #2980b9;
+  background: var(--sp-hover);
 }
 
 .btn-remove-mortgage {
-  background: #e74c3c;
-  color: white;
+  background: transparent;
+  color: #ea2261;
+  border: 1px solid rgba(234,34,97,0.3);
 }
 
 .btn-remove-mortgage:hover {
-  background: #c0392b;
+  background: rgba(234,34,97,0.06);
 }
 
 .mortgage-controls {
@@ -2015,9 +1751,9 @@ if (route.query.scenarioId) {
   flex-direction: column;
   gap: 8px;
   padding: 10px;
-  background: #f9f9f9;
+  background: #f8fafc;
+  border: 1px solid var(--border);
   border-radius: 4px;
-  border: 1px solid #e0e0e0;
 }
 
 .mortgage-row {
@@ -2027,9 +1763,10 @@ if (route.query.scenarioId) {
 }
 
 .mortgage-row label {
-  font-weight: 500;
-  color: #555;
   font-size: 11px;
+  font-weight: 400;
+  color: var(--label);
+  font-feature-settings: "ss01";
 }
 
 .mortgage-control {
@@ -2043,7 +1780,7 @@ if (route.query.scenarioId) {
   min-width: 60px;
   height: 4px;
   border-radius: 2px;
-  background: linear-gradient(to right, #3498db 0%, #3498db 50%, #ddd 50%, #ddd 100%);
+  background: linear-gradient(to right, #533afd 0%, #533afd 50%, #e5edf5 50%, #e5edf5 100%);
   outline: none;
   -webkit-appearance: none;
   appearance: none;
@@ -2053,72 +1790,245 @@ if (route.query.scenarioId) {
 .mortgage-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 14px;
-  height: 14px;
+  width: 13px;
+  height: 13px;
   border-radius: 50%;
-  background: #3498db;
+  background: var(--sp);
   cursor: pointer;
-  box-shadow: 0 1px 3px rgba(52, 152, 219, 0.3);
+  border: 2px solid var(--white);
+  box-shadow: 0 1px 3px rgba(83,58,253,0.3);
 }
 
 .mortgage-slider::-moz-range-thumb {
-  width: 14px;
-  height: 14px;
+  width: 13px;
+  height: 13px;
   border-radius: 50%;
-  background: #3498db;
+  background: var(--sp);
   cursor: pointer;
-  border: none;
-  box-shadow: 0 1px 3px rgba(52, 152, 219, 0.3);
+  border: 2px solid var(--white);
 }
 
 .mortgage-value {
-  font-weight: 600;
-  color: #3498db;
   font-size: 11px;
+  font-weight: 400;
+  color: var(--sp);
   min-width: 50px;
   text-align: right;
+  font-feature-settings: "tnum";
 }
 
 .mortgage-info {
-  padding: 8px;
-  background: white;
-  border-radius: 3px;
-  border: 1px solid #e0e0e0;
+  padding: 6px 8px;
+  background: var(--white);
+  border-radius: 4px;
+  border: 1px solid var(--border);
   font-size: 11px;
-  color: #555;
+  color: var(--label);
+  font-feature-settings: "tnum";
+}
+
+/* ─── Events ─────────────────────────────────────────────────────────────── */
+.events-in-parameters {
   margin-top: 4px;
 }
 
-/* Probabilistic Events */
-.prob-error-banner {
-  background: #fef2f2;
-  border: 1px solid #fca5a5;
-  border-radius: 4px;
-  padding: 6px 10px;
-  font-size: 12px;
-  color: #b91c1c;
-  margin-bottom: 8px;
+.events-buttons {
+  display: flex;
+  gap: 6px;
 }
 
-.btn-add-prob-event {
-  background: #7c3aed;
-  color: white;
+.btn-add-event {
   border: none;
-  padding: 6px 12px;
+  padding: 5px 10px;
   border-radius: 4px;
   cursor: pointer;
   font-size: 11px;
-  font-weight: 600;
-  transition: all 0.2s;
+  font-weight: 400;
+  transition: background 0.15s;
+  font-feature-settings: "ss01";
 }
-.btn-add-prob-event:hover { background: #6d28d9; }
+
+.btn-windfall {
+  background: rgba(21,190,83,0.15);
+  color: #108c3d;
+  border: 1px solid rgba(21,190,83,0.35);
+}
+
+.btn-windfall:hover {
+  background: rgba(21,190,83,0.25);
+}
+
+.btn-expense {
+  background: rgba(234,34,97,0.1);
+  color: #b91c5c;
+  border: 1px solid rgba(234,34,97,0.25);
+}
+
+.btn-expense:hover {
+  background: rgba(234,34,97,0.18);
+}
+
+.no-events {
+  text-align: center;
+  color: var(--body);
+  padding: 10px 0;
+  font-size: 11px;
+  font-feature-settings: "ss01";
+}
+
+.events-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.event-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  background: #f8fafc;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  font-size: 12px;
+  flex-wrap: wrap;
+}
+
+.event-toggle {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+  accent-color: var(--sp);
+}
+
+.event-description {
+  flex: 1;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--navy);
+  min-width: 100px;
+  background: var(--white);
+  font-feature-settings: "ss01";
+}
+
+.event-description:focus {
+  outline: none;
+  border-color: var(--sp);
+  box-shadow: 0 0 0 2px rgba(83,58,253,0.1);
+}
+
+.event-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+.event-controls label {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--body);
+  min-width: 18px;
+}
+
+.event-year-slider,
+.event-amount-slider {
+  width: 60px;
+  height: 4px;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background: linear-gradient(to right, #533afd 0%, #533afd 50%, #e5edf5 50%, #e5edf5 100%);
+  border-radius: 2px;
+  outline: none;
+}
+
+.event-year-slider::-webkit-slider-thumb,
+.event-amount-slider::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--sp);
+  cursor: pointer;
+  border: 2px solid var(--white);
+}
+
+.event-year-slider::-moz-range-thumb,
+.event-amount-slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--sp);
+  cursor: pointer;
+  border: 2px solid var(--white);
+}
+
+.event-year-value,
+.event-amount-value {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--sp);
+  min-width: 36px;
+  text-align: right;
+  font-feature-settings: "tnum";
+}
+
+.btn-remove-event {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  font-size: 11px;
+  color: var(--body);
+  cursor: pointer;
+  padding: 2px 4px;
+  transition: color 0.15s;
+}
+
+.btn-remove-event:hover {
+  color: #ea2261;
+}
+
+/* ─── Probabilistic Events ───────────────────────────────────────────────── */
+.prob-error-banner {
+  background: rgba(234,34,97,0.08);
+  border: 1px solid rgba(234,34,97,0.25);
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 11px;
+  color: #b91c5c;
+  margin-bottom: 8px;
+  font-feature-settings: "ss01";
+}
+
+.btn-add-prob-event {
+  background: var(--sp);
+  color: var(--white);
+  border: none;
+  padding: 5px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 400;
+  transition: background 0.15s;
+  font-feature-settings: "ss01";
+}
+
+.btn-add-prob-event:hover {
+  background: var(--sp-hover);
+}
 
 .prob-event-card {
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--border);
   border-radius: 6px;
   padding: 10px;
   margin-top: 8px;
-  background: #fafafa;
+  background: #f8fafc;
 }
 
 .prob-event-header {
@@ -2131,52 +2041,70 @@ if (route.query.scenarioId) {
 .prob-event-name-input {
   flex: 1;
   padding: 5px 8px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border);
   border-radius: 4px;
   font-size: 12px;
-  font-weight: 600;
-  color: #333;
+  font-weight: 400;
+  color: var(--navy);
+  background: var(--white);
+  font-feature-settings: "ss01";
 }
+
 .prob-event-name-input:focus {
   outline: none;
-  border-color: #7c3aed;
+  border-color: var(--sp);
+  box-shadow: 0 0 0 2px rgba(83,58,253,0.1);
 }
 
 .prob-total-badge {
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-size: 11px;
-  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 400;
   white-space: nowrap;
+  font-feature-settings: "tnum";
 }
-.badge-ok { background: #d1fae5; color: #065f46; }
-.badge-err { background: #fee2e2; color: #991b1b; }
+
+.badge-ok {
+  background: rgba(21,190,83,0.2);
+  color: #108c3d;
+  border: 1px solid rgba(21,190,83,0.4);
+}
+
+.badge-err {
+  background: rgba(234,34,97,0.12);
+  color: #b91c5c;
+  border: 1px solid rgba(234,34,97,0.3);
+}
 
 .btn-remove-prob-event {
   background: none;
   border: none;
   cursor: pointer;
-  color: #999;
-  font-size: 14px;
+  color: var(--body);
+  font-size: 12px;
   padding: 2px 4px;
-  transition: color 0.2s;
+  transition: color 0.15s;
 }
-.btn-remove-prob-event:hover { color: #e74c3c; }
+
+.btn-remove-prob-event:hover {
+  color: #ea2261;
+}
 
 .prob-outcomes-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
   margin-bottom: 8px;
 }
 
 .prob-outcome-row {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 8px;
-  background: white;
-  border: 1px solid #eee;
+  gap: 5px;
+  padding: 5px 8px;
+  background: var(--white);
+  border: 1px solid var(--border);
   border-radius: 4px;
   flex-wrap: wrap;
 }
@@ -2189,107 +2117,384 @@ if (route.query.scenarioId) {
 }
 
 .outcome-field-label {
-  font-size: 11px;
-  font-weight: 600;
-  color: #777;
-  min-width: 14px;
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--body);
+  min-width: 12px;
+  font-feature-settings: "ss01";
 }
 
 .outcome-field-val {
   font-size: 11px;
-  font-weight: 600;
-  color: #7c3aed;
-  min-width: 32px;
+  font-weight: 400;
+  color: var(--sp);
+  min-width: 30px;
   text-align: right;
+  font-feature-settings: "tnum";
 }
 
 .outcome-mini-slider {
-  width: 60px;
+  width: 52px;
   height: 4px;
   cursor: pointer;
   appearance: none;
   -webkit-appearance: none;
-  background: linear-gradient(to right, #7c3aed 50%, #ddd 50%);
+  background: linear-gradient(to right, #533afd 50%, #e5edf5 50%);
   border-radius: 2px;
   outline: none;
 }
+
 .outcome-mini-slider::-webkit-slider-thumb {
   appearance: none;
   -webkit-appearance: none;
-  width: 12px;
-  height: 12px;
+  width: 11px;
+  height: 11px;
   border-radius: 50%;
-  background: #7c3aed;
+  background: var(--sp);
   cursor: pointer;
+  border: 2px solid var(--white);
 }
+
 .outcome-mini-slider::-moz-range-thumb {
-  width: 12px;
-  height: 12px;
+  width: 11px;
+  height: 11px;
   border-radius: 50%;
-  background: #7c3aed;
+  background: var(--sp);
   cursor: pointer;
-  border: none;
+  border: 2px solid var(--white);
 }
-.outcome-amount-slider { width: 80px; }
+
+.outcome-amount-slider {
+  width: 70px;
+}
 
 .outcome-pct-input {
-  width: 48px;
+  width: 44px;
   padding: 3px 5px;
-  border: 1px solid #ddd;
-  border-radius: 3px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #333;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--navy);
   text-align: right;
+  background: var(--white);
+  font-feature-settings: "tnum";
 }
-.outcome-pct-input:focus { outline: none; border-color: #7c3aed; }
+
+.outcome-pct-input:focus {
+  outline: none;
+  border-color: var(--sp);
+}
 
 .outcome-desc-input {
   flex: 1;
-  min-width: 80px;
+  min-width: 70px;
   padding: 4px 6px;
-  border: 1px solid #ddd;
-  border-radius: 3px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
   font-size: 11px;
-  color: #555;
+  color: var(--label);
+  background: var(--white);
+  font-feature-settings: "ss01";
 }
-.outcome-desc-input:focus { outline: none; border-color: #7c3aed; }
+
+.outcome-desc-input:focus {
+  outline: none;
+  border-color: var(--sp);
+}
 
 .btn-remove-outcome {
   background: none;
   border: none;
   cursor: pointer;
-  color: #bbb;
-  font-size: 12px;
+  color: var(--body);
+  font-size: 11px;
   padding: 2px;
+  transition: color 0.15s;
 }
-.btn-remove-outcome:hover { color: #e74c3c; }
+
+.btn-remove-outcome:hover {
+  color: #ea2261;
+}
 
 .btn-add-outcome {
   background: none;
-  border: 1px dashed #c4b5fd;
-  color: #7c3aed;
+  border: 1px dashed #b9b9f9;
+  color: var(--sp);
   padding: 4px 10px;
   border-radius: 4px;
   cursor: pointer;
   font-size: 11px;
-  font-weight: 600;
-  transition: all 0.2s;
+  font-weight: 400;
+  transition: background 0.15s;
+  font-feature-settings: "ss01";
 }
-.btn-add-outcome:hover { background: #f5f3ff; }
 
-/* Branch metric cards */
-.branch-metric-card {
-  border-left: 3px solid #7c3aed !important;
+.btn-add-outcome:hover {
+  background: rgba(83,58,253,0.05);
 }
+
+/* ─── View mode ──────────────────────────────────────────────────────────── */
+.sliders-section.view-mode input[type="range"],
+.sliders-section.view-mode input[type="number"],
+.sliders-section.view-mode input[type="text"],
+.sliders-section.view-mode input[type="checkbox"],
+.sliders-section.view-mode input[type="radio"] {
+  opacity: 0.45;
+  pointer-events: none;
+  cursor: default;
+}
+
+.sliders-section.view-mode .btn-index-option {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.sliders-section.view-mode .events-buttons,
+.sliders-section.view-mode .btn-remove-event,
+.sliders-section.view-mode .mortgage-buttons,
+.sliders-section.view-mode .btn-add-prob-event,
+.sliders-section.view-mode .btn-remove-prob-event,
+.sliders-section.view-mode .btn-add-outcome,
+.sliders-section.view-mode .btn-remove-outcome,
+.sliders-section.view-mode .prob-error-banner {
+  display: none !important;
+}
+
+/* ─── Main Content ───────────────────────────────────────────────────────── */
+.whatif-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  background: var(--bg);
+  padding: 20px;
+  gap: 16px;
+  min-height: 0;
+}
+
+/* ─── Chart Section ──────────────────────────────────────────────────────── */
+.chart-section {
+  background: var(--white);
+  padding: 16px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-std);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+/* ─── Metrics ────────────────────────────────────────────────────────────── */
+.bottom-section {
+  background: var(--white);
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  padding: 16px;
+  box-shadow: var(--shadow-std);
+  flex-shrink: 0;
+}
+
+.metrics-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.metric-card {
+  padding: 14px 16px;
+  background: #f8fafc;
+  border-radius: 5px;
+  border: 1px solid var(--border);
+}
+
+.metric-card h3 {
+  margin: 0 0 10px 0;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--label);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-feature-settings: "ss01";
+}
+
+.metric-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 0;
+  font-size: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.metric-item:last-child {
+  border-bottom: none;
+}
+
+.metric-item .label {
+  color: var(--body);
+  font-weight: 400;
+  font-feature-settings: "ss01";
+}
+
+.metric-item .value {
+  color: var(--navy);
+  font-weight: 400;
+  text-align: right;
+  font-feature-settings: "tnum";
+}
+
+/* ─── Branch Cards ───────────────────────────────────────────────────────── */
+.branch-metric-card {
+  border-left: 3px solid var(--sp) !important;
+}
+
 .branch-probability-badge {
   display: inline-block;
-  background: #ede9fe;
-  color: #5b21b6;
+  background: rgba(83,58,253,0.1);
+  color: var(--sp);
   font-size: 10px;
-  font-weight: 700;
-  padding: 2px 7px;
-  border-radius: 10px;
+  font-weight: 400;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  border: 1px solid var(--sp-light);
+  font-feature-settings: "tnum";
+}
+
+/* ─── Modal ──────────────────────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(6,27,49,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal-box {
+  background: var(--white);
+  border-radius: 8px;
+  padding: 32px;
+  width: 440px;
+  max-width: 90vw;
+  box-shadow: var(--shadow-deep);
+  border: 1px solid var(--border);
+}
+
+.modal-box h2 {
+  margin: 0 0 6px 0;
+  font-size: 22px;
+  font-weight: 300;
+  color: var(--navy);
+  letter-spacing: -0.22px;
+  font-feature-settings: "ss01";
+}
+
+.modal-subtitle {
+  color: var(--body);
+  font-size: 14px;
+  font-weight: 300;
+  margin-bottom: 20px;
+  margin-top: 0;
+  font-feature-settings: "ss01";
+}
+
+.modal-box label {
+  display: block;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--label);
   margin-bottom: 6px;
+  font-feature-settings: "ss01";
+}
+
+.modal-text-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 300;
+  color: var(--navy);
+  margin-bottom: 12px;
+  background: var(--white);
+  font-feature-settings: "ss01";
+  transition: border-color 0.15s;
+}
+
+.modal-text-input:focus {
+  outline: none;
+  border-color: var(--sp);
+  box-shadow: 0 0 0 2px rgba(83,58,253,0.12);
+}
+
+.modal-error {
+  color: #ea2261;
+  font-size: 12px;
+  margin-bottom: 10px;
+  font-feature-settings: "ss01";
+}
+
+.modal-success {
+  color: #108c3d;
+  font-size: 13px;
+  font-weight: 400;
+  margin-bottom: 10px;
+  font-feature-settings: "ss01";
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.btn-cancel {
+  background: transparent;
+  border: 1px solid var(--border);
+  padding: 8px 18px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--label);
+  transition: border-color 0.15s, color 0.15s;
+  font-feature-settings: "ss01";
+}
+
+.btn-cancel:hover:not(:disabled) {
+  border-color: #c0cdd8;
+  color: var(--navy);
+}
+
+.btn-cancel:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-confirm-save {
+  background: var(--sp);
+  color: var(--white);
+  border: none;
+  padding: 8px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 400;
+  transition: background 0.15s;
+  font-feature-settings: "ss01";
+}
+
+.btn-confirm-save:hover:not(:disabled) {
+  background: var(--sp-hover);
+}
+
+.btn-confirm-save:disabled {
+  background: #b9b9f9;
+  cursor: not-allowed;
 }
 </style>
