@@ -506,12 +506,14 @@
               <!-- Branch cards when probabilistic events are present -->
               <template v-if="(whatIfResult.branches ?? []).length > 0">
                 <div
-                  v-for="branch in whatIfResult.branches"
+                  v-for="(branch, idx) in whatIfResult.branches"
                   :key="branch.label"
                   class="metric-card branch-metric-card"
+                  :style="{ borderLeftColor: branchColor(idx) }"
                 >
+                  <div v-if="branchEventLabel" class="branch-event-name">{{ branchEventLabel }}</div>
                   <h3>{{ branch.label }}</h3>
-                  <div class="branch-probability-badge">{{ Math.round(branch.probability * 100) }}% chance</div>
+                  <div class="branch-probability-badge" :style="{ color: branchColor(idx), borderColor: branchColor(idx), background: branchColorBg(idx) }">{{ Math.round(branch.probability * 100) }}% chance</div>
                   <div class="metric-item">
                     <span class="label">Retirement</span>
                     <span class="value">
@@ -684,6 +686,22 @@ const originalStartingAge = computed(() => {
 // True if any probabilistic event has outcomes that don't sum to 100%
 const hasProbabilityError = computed(() =>
   probabilisticEvents.value.some(pe => probEventTotalPct(pe) !== 100)
+)
+
+// Branch card colors — must match ComparisonChart palette (index 0 = original baseline in edit mode)
+const CHART_COLORS = [
+  { border: '#667eea', bg: 'rgba(102,126,234,0.08)' },
+  { border: '#27ae60', bg: 'rgba(39,174,96,0.08)' },
+  { border: '#e74c3c', bg: 'rgba(231,76,60,0.08)' },
+  { border: '#f39c12', bg: 'rgba(243,156,18,0.08)' },
+  { border: '#9b59b6', bg: 'rgba(155,89,182,0.08)' },
+]
+// In edit mode: original occupies index 0, branches start at 1. In view mode: branches start at 0.
+const branchColor = (idx) => CHART_COLORS[(isViewMode.value ? idx : idx + 1) % CHART_COLORS.length].border
+const branchColorBg = (idx) => CHART_COLORS[(isViewMode.value ? idx : idx + 1) % CHART_COLORS.length].bg
+// For single-event scenarios show the event name as card header; multi-event labels are self-descriptive
+const branchEventLabel = computed(() =>
+  probabilisticEvents.value.length === 1 ? probabilisticEvents.value[0].name : null
 )
 
 // Chart scenarios: original + branches (when prob events present) or original + whatIfResult
@@ -2349,16 +2367,23 @@ if (route.query.scenarioId) {
   border-left: 3px solid var(--sp) !important;
 }
 
+.branch-event-name {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--body);
+  margin-bottom: 2px;
+}
+
 .branch-probability-badge {
   display: inline-block;
-  background: rgba(83,58,253,0.1);
-  color: var(--sp);
   font-size: 10px;
   font-weight: 400;
   padding: 1px 6px;
   border-radius: 4px;
   margin-bottom: 8px;
-  border: 1px solid var(--sp-light);
+  border: 1px solid;
   font-feature-settings: "tnum";
 }
 

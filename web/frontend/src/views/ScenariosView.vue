@@ -27,12 +27,6 @@
           <button @click="goToComparison" class="btn-compare-link">
             📊 Compare Scenarios
           </button>
-          <button @click="goToWhatIf" class="btn-whatif-link">
-            🔮 What-If Explorer
-          </button>
-          <button @click="showScenarioGenerator = true" class="btn-generator-link">
-            ✨ Guided Scenario Generator
-          </button>
         </div>
 
         <div v-if="scenarios.length === 0" class="empty">
@@ -99,7 +93,6 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
-import ScenarioGeneratorModal from '../components/ScenarioGeneratorModal.vue'
 import axios from 'axios'
 
 const router = useRouter()
@@ -115,7 +108,6 @@ const showDeleteModal = ref(false)
 const deleteTargetId = ref(null)
 const deleteTargetName = ref('')
 const deleting = ref(false)
-const showScenarioGenerator = ref(false)
 
 const API_BASE_URL = 'http://localhost:8000/api/v1'
 
@@ -162,13 +154,6 @@ const goToDetail = (scenarioId) => {
 const goToComparison = () => {
   router.push({
     name: 'Comparison',
-    params: { profileId }
-  })
-}
-
-const goToWhatIf = () => {
-  router.push({
-    name: 'WhatIf',
     params: { profileId }
   })
 }

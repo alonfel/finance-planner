@@ -88,7 +88,7 @@
 
 ### Feature: Delete Scenario Bug Fix
 
-* Status: planned
+* Status: done
 * Description: Can't delete seeded scenarios (e.g. "Alon - IPO Year 2") from the Scenarios screen. Root cause: backend delete endpoint restricts to "What-If Saves" run label only, rejecting seeded scenarios with 403. Secondary issue: list_scenarios returns scenario_id (definition ID) as the card ID instead of result.id, causing ID mismatch for both navigation and delete on What-If saved scenarios.
 * Layer: web/backend/routers/scenarios.py, web/frontend/src/views/ScenariosView.vue
 * Acceptance Criteria:
@@ -108,7 +108,7 @@
 
 ### Feature: Branch Color & Event Label Differentiation
 
-* Status: planned
+* Status: done
 * Description: When probabilistic events produce branches, all cards look identical with no visual tie between branch and event name. Branch label (e.g. "Success") doesn't show which event it belongs to. Fix: show the event name prominently in each branch card and match the card's left-border color to its chart line color so users can visually trace branch → chart line.
 * Layer: web/frontend/src/views/WhatIfView.vue
 * Acceptance Criteria:
@@ -118,7 +118,7 @@
 
 ### Feature: Scenarios Screen Cleanup
 
-* Status: planned
+* Status: done
 * Description: The Scenarios screen has redundant/broken action buttons cluttering the header: "🔮 What-If Explorer" (redundant — users navigate via card clicks) and "✨ Guided Scenario Generator" (non-functional). Remove both; keep "📊 Compare Scenarios" which is the only unique action.
 * Layer: web/frontend/src/views/ScenariosView.vue
 * Acceptance Criteria:
@@ -244,6 +244,6 @@ A `FinancialStory` is a tree-structured narrative object: a saveable entity that
 
 ## Status Summary
 
-* Done: 16
+* Done: 19
 * In Progress: 0
-* Planned: 9
+* Planned: 6
