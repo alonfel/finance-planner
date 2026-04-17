@@ -575,8 +575,8 @@
           @keyup.enter="saveScenario"
           autofocus
         />
-        <div v-if="saveStatus === 'error'" class="modal-error">{{ saveError }}</div>
-        <div v-if="saveStatus === 'success'" class="modal-success">Scenario saved!</div>
+        <div v-if="saveStatus === 'error'" class="modal-error">✕ {{ saveError }}</div>
+        <div v-if="saveStatus === 'success'" class="modal-success">✓ Scenario saved!</div>
         <div class="modal-actions">
           <button @click="showSaveModal = false" class="btn-cancel" :disabled="saveStatus === 'saving'">
             Cancel
@@ -1099,7 +1099,7 @@ const calculateRetirementAge = (retirementYear, startingAge) => {
 const generateDefaultScenarioName = () => {
   const baseName = originalScenario.value?.scenario_name || 'What-If Scenario'
   const now = new Date()
-  const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+  const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })
   return `${baseName} - Modified ${timeStr}`
 }
 
@@ -1128,7 +1128,7 @@ const saveScenario = async () => {
       showSaveModal.value = false
       saveStatus.value = null
       saveScenarioName.value = ''
-    }, 1500)
+    }, 2500)
   } catch (err) {
     saveStatus.value = 'error'
     saveError.value = err.response?.data?.detail || 'Failed to save scenario'
@@ -2457,18 +2457,31 @@ if (route.query.scenarioId) {
 }
 
 .modal-error {
-  color: #ea2261;
-  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff1f2;
+  border: 1px solid #fda4af;
+  color: #9f1239;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 10px 14px;
+  border-radius: 8px;
   margin-bottom: 10px;
-  font-feature-settings: "ss01";
 }
 
 .modal-success {
-  color: #108c3d;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #ecfdf5;
+  border: 1px solid #6ee7b7;
+  color: #065f46;
   font-size: 13px;
-  font-weight: 400;
+  font-weight: 500;
+  padding: 10px 14px;
+  border-radius: 8px;
   margin-bottom: 10px;
-  font-feature-settings: "ss01";
 }
 
 .modal-actions {
